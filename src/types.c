@@ -1,0 +1,93 @@
+/*
+ * This handles everything that involvs types.
+ */
+
+#include<types.h>
+#include<common.h>
+
+static const char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "u8", "i8", "u16", "i16", "u32",
+"i32", "u64", "i64", "u128", "i128", "float", "double", "%", "%" };
+
+static char*** TYPE_NAMES = &DEFAULT_TYPE_NAMES;
+
+/*
+ * This checks if type "_from" can be casted into type "_to" implicitily.
+ */
+bool type_can_implicitly_cast_to(type _from, type _to, bool error)
+{
+    if (!_from.kind || !_to.kind) {
+        if (!error)
+            return false;
+        send_error("Error usage of `void` type without cast");
+    }
+
+    if (_to.ptr != _from.ptr) {
+        if (!error)
+            return false;
+        goto type_can_implicitly_cast_to_error_label;
+    }
+
+    if (IS_TYPE_INT(_to) && (IS_TYPE_INT(_from))) {
+        if (_to.kind < _from.kind || _to.kind & 1 != _from.kind & 1) {
+            if (!error)
+                return false;
+            goto type_can_implicitly_cast_to_error_label;
+        }
+    }
+
+    if (_from.kind == 0xc || _from.kind == 0xd
+    || _to.kind == 0xc || _to.kind == 0xd)
+        send_error("Floats & doubles aren't implimented yet.");
+
+    return true;
+
+    type_can_implicitly_cast_to_error_label:
+        printf("Error cannot implicity cast type `");
+        print_type(_from);
+        printf("` into type `");
+        print_type(_to);
+        printf("`.\n");
+        #if DEBUG
+        abort();
+        #endif
+        exit(-1);
+}
+
+/*
+ * This "fprint"s the type name.
+ */
+void print_type(type _type)
+{
+    if (TYPE_NAMES[0xe][0] != '\0') {
+        for (u32 count = 0; count < _type.ptr; count++) {
+            printf("%s", TYPE_NAMES[0xe]);
+        }
+    }
+
+    printf("%s", TYPE_NAMES[_type.kind]);
+
+    if (TYPE_NAMES[0xf][0] == '\0')
+        return;
+
+    for (u32 count = 0; count < _type.ptr; count++) {
+        printf("%s", TYPE_NAMES[0xf]);
+    }
+}
+
+/*
+ * This allows different front ends to set custom type names. The 0xe and 0xf
+ * index of "TYPE_NAMES" should be the characters before and after variable
+ * names to show pointers 0x0 mean no character.
+ */
+void set_type_names(char*** _TYPE_NAMES)
+{
+    TYPE_NAMES = _TYPE_NAMES;
+}
+
+/*
+ * This resets the type names to the default
+ */
+void reset_type_names()
+{
+    TYPE_NAMES = DEFAULT_TYPE_NAMES;
+}

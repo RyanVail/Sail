@@ -1,0 +1,11 @@
+/*
+ * This is a comment.
+ *
+ */
+
+let a u32 32 =
+let b u16 8 =
+loop {
+    b ++
+    b a == if break
+}
