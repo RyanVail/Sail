@@ -49,8 +49,7 @@ void process_cli_options(u32 argc, char *args[])
 			if (!strcmp(args[i], "--help")) {
 				printf(help_message);
 				exit(0);
-			}
-			if (!strcmp(args[i], "--opt")) {
+			} else if (!strcmp(args[i], "--opt")) {
 				i++;
 				global_cli_options.opt = args[i][0]-48;
 			}

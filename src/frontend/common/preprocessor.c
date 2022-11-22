@@ -6,9 +6,10 @@
 
 /*
  * This function is meant to be run during the preprocessor loop and it skips
- * C style comments.
+ * C style comments. This can leave the "current_index" pointing to the end of
+ * the file, that has to be accounted for.
  */
-void remove_C_comments(vector* file, u32* current_index)
+void skip_C_comments(vector* file, u32* current_index)
 {
     #if DEBUG
     if (!is_special_char('/') && !is_special_char('*'))
@@ -19,6 +20,11 @@ void remove_C_comments(vector* file, u32* current_index)
     if (is_white_space_char('*'))
         send_error("'*' can't be white space for C style comment removal");
     #endif
+
+    if (*current_index <= VECTOR_SIZE((*file))-2
+    && (*(char**)vector_at(file, *current_index, false) == NULL
+    || *(char**)vector_at(file, *current_index+1, false) == NULL))
+        return;
 
     // TODO: Comments in comments are broken becaues /*/ would count as both
     // opening and closing a comment.
@@ -33,9 +39,14 @@ void remove_C_comments(vector* file, u32* current_index)
         else if (!depth)
             return;
 
+        free(*(char**)vector_at(file, *current_index, false));
+        *(char**)vector_at(file, *current_index, false) = NULL;
+
         if (first_token == '*' && second_token == '/') {
             depth--;
             if (!depth) {
+                free(*(char**)vector_at(file, *current_index+1, false));
+                *(char**)vector_at(file, *current_index+1, false) = NULL;
                 (*current_index) += 2;
                 return;
             }
@@ -48,7 +59,7 @@ void remove_C_comments(vector* file, u32* current_index)
  * constant char strings with their constant values. This replaces other tokens
  * inside of the string with NULL pointers.
  */
-void replace_C_const_chars(vector* file, u32* current_index)
+void replace_C_const_chars(vector* file, u32 current_index)
 {
     #if DEBUG
     if (!is_special_char('\''))
@@ -56,13 +67,58 @@ void replace_C_const_chars(vector* file, u32* current_index)
     if (!is_special_char('\\'))
         send_error("\\ has to be a special char for C const char replacment");
     #endif
-    //
+
+    if (**(char**)vector_at(file, current_index, false) != '\'')
+        return;
+
+    current_index += 1;
+
+    /* This reads in the chars and turns them into a number. */
+    u128 _result = 0;
+    u8 tokens = 0;
+    u8 digits = 0;
+    for (; current_index <= VECTOR_SIZE((*file))-1; current_index += 1) {
+        tokens++;
+
+        replace_C_escape_codes(file, &current_index);
+
+        find_next_valid_token(file, &current_index);
+        char* first_token = *(char**)vector_at(file, current_index, false);
+
+        if (*first_token == '\'')
+            break;
+
+        for (u32 i=0; i < strlen(first_token); i++) {
+            _result += (u128)first_token[i] << ((u128)digits << (u128)3);
+            digits++;
+        }
+    }
+
+    /* This frees the tokens used and the first token equal to the _result. */
+    for (u32 i=0; i <= tokens; i++) {
+        char* _token = *(char**)vector_at(file, current_index-i, false);
+
+        if (_token == NULL)
+            continue;
+
+        free(_token);
+        *(char**)vector_at(file, current_index-i, false) = NULL;
+    }
+
+    /* This turns the "_result" into decimal chars. */
+    u32 length = snprintf(NULL, 0, "%llu", _result);
+    char* destination = malloc(length + 1);
+    if (destination == NULL)
+        handle_error(0);
+    snprintf(destination, length + 1, "%llu", _result);
+    *(char**)vector_at(file, current_index-tokens, false) = destination;
 }
 
 /*
  * This function is meant to be run during the preprocessor loop and it replaces
  * escape codes with their true values. This will replace the other tokens
- * inside of the backslash with null pointers.
+ * inside of the backslash with null pointers. This doesn't check for NULL
+ * pointers so it must be done before this is called.
  */
 void replace_C_escape_codes(vector* file, u32* current_index)
 {
@@ -70,15 +126,15 @@ void replace_C_escape_codes(vector* file, u32* current_index)
     if (!is_special_char('\\'))
         send_error("\\ has to be a special char for C backslash replacment");
     #endif
-
+ 
     /*
-     * This is either the value of the escape code or the base if it's octal or
-     * hex.
+     * "_next" is either the value of the escape code or the base if it's octal
+     * or hex.
      */
-    // TODO: A lot of these "vector_at" call should be replaces with a single
-    // call in a variable.
     u8 _next = '\0';
-    if (**(char**)vector_at(file, *current_index, false) == '\\') {
+    if (**(char**)vector_at(file, *current_index, false) == '\\') {  
+        free(*(char**)vector_at(file, *current_index, false));
+        find_next_valid_token(file, current_index);
         switch (**(char**)vector_at(file, *current_index+1, false)) {
             case 'n':
                 _next = '\n';
@@ -126,6 +182,7 @@ void replace_C_escape_codes(vector* file, u32* current_index)
         }
 
         /* This turns the backslash char into the escape code value. */
+        // free(*(char**)vector_at(file, *current_index, false));
         **(char**)vector_at(file, *current_index, false) = _next;
 
         /* This frees the char after the backslash. */
@@ -141,9 +198,11 @@ void replace_C_escape_codes(vector* file, u32* current_index)
         u128 _result = strtoll(_begin, NULL, _next);
 
         /* This turns the "_result" into decimal chars. */
-        u32 length = snprintf(NULL, 0, "%lu", _result);
+        u32 length = snprintf(NULL, 0, "%llu", _result);
         char* destination = malloc(length + 1);
-        snprintf(destination, length + 1, "%lu", _result);
+        if (destination == NULL)
+            handle_error(0);
+        snprintf(destination, length + 1, "%llu", _result);
 
         
         free(_begin - sizeof(char));

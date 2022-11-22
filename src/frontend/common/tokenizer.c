@@ -5,6 +5,18 @@ static char* white_space_chars;
 static char* special_chars;
 
 /*
+ * This function goes through the tokenized file and skips NULL pointers till it
+ * finds a valid token.
+ */
+void find_next_valid_token(vector *file, u32* current_index)
+{
+    for (; *current_index <= VECTOR_SIZE((*file))-1; *current_index += 1) {
+        if (vector_at(file, *current_index, false) != NULL)
+            return;
+    }
+}
+
+/*
  * This returns true if the inputed char is a white space character
  */
 bool is_white_space_char(char _char)
@@ -16,7 +28,7 @@ bool is_white_space_char(char _char)
 }
 
 /*
- * This returns truw if the inputed char is a special char
+ * This returns true if the inputed char is a special char
  */
 bool is_special_char(char _char)
 {
@@ -75,7 +87,7 @@ vector tokenize_file(char* file_name)
             buffer_index++;
             char* _tmp = malloc(sizeof(char) * buffer_index);
             if (_tmp == NULL)
-                    handle_error(0);
+                handle_error(0);
             memcpy(_tmp, token_buffer, buffer_index);
             vector_append(&file_vector, &_tmp);
 
@@ -106,6 +118,27 @@ void set_tokenizer_chars(char* _white_space_chars, char* _special_chars)
     white_space_chars = _white_space_chars;
     special_chars = _special_chars;
 }
+
+// TODO: If this function isn't needed remove it.
+// /*
+//  * This takes in the vector of a tokenized file and removes NULL pointers.
+//  */
+// void remove_null_pointers_from_tokenized_file(vector* _vector)
+// {
+//     u32 new_index = 0;
+//     for (u32 real_index=0; real_index < VECTOR_SIZE((*_vector)); real_index++) {
+//         if (vector_at(_vector, real_index, false) == NULL)
+//             continue;
+//         if (*(char**)vector_at(_vector, real_index, false) != NULL) {
+//             *(char**)vector_at(_vector, new_index, false) = \
+//                 *(char**)vector_at(_vector, real_index, false);
+//             new_index++;
+//         }
+//     }
+//     _vector->apparent_size = new_index;
+//     vector_try_to_shrink(_vector);
+// }
+
 
 /*
  * This takes in the vector of a tokenized file and frees it.

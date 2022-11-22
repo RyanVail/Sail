@@ -46,6 +46,19 @@ typedef enum intermediate_type {
     LOOP,                   // loop {}
     FUNC_CALL,              // func()
     GOTO,                   // goto label
+
+    // Constant intermediate
+    CONST,                  // A const signed constant
 } intermediate_type;
+
+/* struct intermediate - This struct represents one intermediate token
+ * @type: This is the type of this intermediate
+ * @ptr: This is either a constant or a ptr to a variable, function, etc. which
+ * is determined from the "type".
+ */
+typedef struct intermediate {
+    intermediate_type type;
+    void* ptr;
+} intermediate;
 
 #endif

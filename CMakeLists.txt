@@ -4,7 +4,7 @@ set(CMAKE_C_REQUIRED True)
 
 set(CMAKE_BUILD_TYPE Debug)
 # set(CMAKE_BUILD_TYPE Release)
-# set(CMAKE_CXX_FLAGS_RELEASE "-Ofast")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 project(Sail)
 
@@ -21,4 +21,7 @@ add_executable(Sail
 	src/types.c
 	src/backend/intermediate/symboltable.c
 	src/frontend/common/preprocessor.c
+	src/frontend/salmon/preprocessor.c
+	src/common.c
+	src/frontend/common/parser.c
 )

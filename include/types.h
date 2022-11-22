@@ -48,9 +48,16 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error);
 void print_type(type _type);
 
 /*
- * This allows different front ends to set custom type names.
+ * This allows different front ends to set custom type names. The 0xe and 0xf
+ * index of "TYPE_NAMES" should be the characters before and after variable
+ * names to show pointers 0x0 mean no character.
  */
 void set_type_names(char*** _TYPE_NAMES);
+
+/*
+ * This allows the front ends to get the names of types.
+ */
+char*** get_type_names();
 
 /*
  * This resets the type names to the default

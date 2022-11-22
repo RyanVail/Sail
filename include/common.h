@@ -11,10 +11,15 @@
 #include<stdio.h>
 #include<stdbool.h>
 #include<string.h>
-#include<typedefs.h>
 
+#include<typedefs.h>
 #include<errors.h>
 #include<main.h>
 #include<datastructures/vector.h>
+
+/*
+ * This takes in a string an convertes the english characters to lower case.
+ */
+void strlower(char* _string);
 
 #endif

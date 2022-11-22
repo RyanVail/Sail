@@ -15,6 +15,7 @@
  */
 typedef struct function_symbol {
     char* name;
+        // TODO: Figure out if this needs to be a pointer or not.
     vector inputs;
     type return_type;
     u8 calls;

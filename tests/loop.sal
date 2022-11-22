@@ -1,11 +1,34 @@
 /*
  * This is a comment.
- *
+ * TODO: '\x234' this causes a seg fault.
  */
 
-let a u32 32 =
-let b u16 8 =
+fn test u32 <- $test$ -> u32
+
+let a u16 'a' =
+let b u32 \x3423 =
 loop {
+    2 2 + -
     b ++
     b a == if break
+    /* b 32 $std_print_bits$ */
 }
+
+/*let file_handle u32 "test.txt" "r" $fopen$ =
+file_handle ! if $exit$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/

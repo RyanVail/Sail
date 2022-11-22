@@ -4,6 +4,12 @@
 #include<common.h>
 
 /*
+ * This function goes through the tokenized file and skips NULL pointers till it
+ * finds a valid token.
+ */
+void find_next_valid_token(vector *file, u32* current_index);
+
+/*
  * This takes in a file name and returns the tokenized version of the file.
  */
 vector tokenize_file(char* file_name);
@@ -13,6 +19,12 @@ vector tokenize_file(char* file_name);
  * "white_space_chars" and "special_chars" with the given values.
  */
 void set_tokenizer_chars(char* _white_space_chars, char* _special_chars);
+
+// TODO: If this function isn't needed remove it.
+// /*
+//  * This takes in the vector of a tokenized file and removes NULL pointers.
+//  */
+// void remove_null_pointers_from_tokenized_file(vector* _vector);
 
 /*
  * This takes in the vector of a tokenized file and frees it.

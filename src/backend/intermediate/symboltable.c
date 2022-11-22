@@ -4,14 +4,15 @@
 
 #include<backend/intermediate/symboltable.h>
 
-vector function_symbols = { NULL, 0, 0, sizeof(function_symbol) };
-vector variable_symbols = { NULL, 0, 0, sizeof(variable_symbol) };
+vector function_symbols = { 0, 0, 0, sizeof(function_symbol) };
+vector variable_symbols = { 0, 0, 0, sizeof(variable_symbol) };
 
 /* 
- * This is a vector of all variables names in order of ids. This is used to
- * print the name of a variable if it was used outside of its scope.
+ * This is a vector of all variables names in order of ids for those O(1) times. 
+ * This is used to print the name of a variable if it was used outside of its
+ * scope.
  */
-vector variable_names = { NULL, 0, 0, sizeof(char*) };
+vector variable_names = { 0, 0, 0, sizeof(char*) };
 
 /*
  * This returns a pointer to the function symbol if found or a null pointer
@@ -87,18 +88,22 @@ bool add_variable_symbol(char* name, type type, u8 flags)
 }
 
 /*
- * This adds a function symbol to the symbol table. Returns true if adding the
- * function symbol was a success.
+ * This adds a function symbol to the symbol table. Inputs has to be on the
+ * heap. Returns true if adding the function symbol was a success.
  */
 bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
 {
     if (get_function_symbol(name, NULL))
         return false;
 
-    u32 id = ((function_symbol*)vector_at( \
-        &function_symbols, VECTOR_SIZE(function_symbols)-1, false))->id+1;
+    char* _name = malloc(sizeof(char) * strlen(name));
+    strcpy(_name, name);
+    if (_name == NULL)
+        handle_error(0);
 
-    function_symbol _function = { name, inputs, _return, 0, defintion, id };
+    u32 id = VECTOR_SIZE(function_symbols);
+
+    function_symbol _function = { _name, inputs, _return, 0, defintion, id };
     vector_append(&function_symbols, &_function);
     return true;
 }
@@ -117,6 +122,17 @@ void free_symbol_table()
         }
         free(variable_names.contents);
     }
+    
+    if (function_symbols.contents != NULL) {
+        // TODO: Benchmark this against a for loop through every item
+        while (VECTOR_SIZE(function_symbols)) {
+            char** _t = vector_pop(&function_symbols);
+            free(((function_symbol*)_t)->inputs.contents);
+            free(((function_symbol*)_t)->name);
+            free(_t);
+        }
+        free(function_symbols.contents);
+    }
 
     /* 
      * The variable names are the same as in "variable_names" so we don't need
@@ -124,7 +140,4 @@ void free_symbol_table()
      */
     if (variable_symbols.contents != NULL)
         free(variable_symbols.contents);
-
-    if (function_symbols.contents != NULL)
-        free(function_symbols.contents);
 }
