@@ -193,19 +193,18 @@ void replace_C_escape_codes(vector* file, u32* current_index)
         escape_codes_numerical_label:
 
         /* This turns the number into an unsigned 128bit. */
-        char* _begin = \
-            *(char**)vector_at(file, *current_index+1, false) + sizeof(char);
+        char* _begin = *(char**)vector_at(file, *current_index+1, false) + 1;
         u128 _result = strtoll(_begin, NULL, _next);
 
         /* This turns the "_result" into decimal chars. */
         u32 length = snprintf(NULL, 0, "%llu", _result);
-        char* destination = malloc(length + 1);
+        char* destination = malloc(length);
         if (destination == NULL)
             handle_error(0);
         snprintf(destination, length + 1, "%llu", _result);
 
         
-        free(_begin - sizeof(char));
+        free(_begin - 1);
         *(char**)vector_at(file, *current_index+1, false) = NULL;
         *(char**)vector_at(file, *current_index, false) = destination;
     }

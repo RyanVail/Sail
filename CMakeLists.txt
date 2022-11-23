@@ -12,16 +12,17 @@ include_directories(include)
 
 add_executable(Sail
 	src/main.c
-	src/cli.c
 	src/errors.c
-	src/frontend/common/tokenizer.c
+	src/common.c
+	src/types.c
+	src/cli.c
 	src/datastructures/vector.c
 	src/datastructures/stack.c
-	src/frontend/salmon/salmon.c
-	src/types.c
-	src/backend/intermediate/symboltable.c
 	src/frontend/common/preprocessor.c
-	src/frontend/salmon/preprocessor.c
-	src/common.c
+	src/frontend/common/tokenizer.c
 	src/frontend/common/parser.c
+	src/frontend/salmon/preprocessor.c
+	src/frontend/salmon/salmon.c
+	src/backend/intermediate/intermediate.c
+	src/backend/intermediate/symboltable.c
 )

@@ -4,6 +4,7 @@
 
 #include<frontend/salmon/preprocessor.h>
 #include<frontend/common/tokenizer.h>
+#include<frontend/common/preprocessor.h>
 
 char white_space[] = { ' ', '\t', '\n' };
 char special[] = { '*', '/', '{', '}', ';', '^', '!', '&', '|', ',', '(', \

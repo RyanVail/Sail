@@ -1,5 +1,6 @@
 /*
- * This handles everything to do with the symbol table.
+ * This handles everything to do with the symbol table. These functions should
+ * be used during the tokens to intermediate stage.
  */
 
 #include<backend/intermediate/symboltable.h>
@@ -36,6 +37,7 @@ function_symbol* get_function_symbol(char* name, u32 id)
                 return _func;
         }
     }
+    return NULL;
 }
 
 /*
@@ -45,19 +47,19 @@ variable_symbol* get_variable_symbol(char* name, u32 id)
 {
     if (name != NULL) {
         for (u32 i=0; i < VECTOR_SIZE(variable_symbols); i++) {
-            variable_symbol* _func = \
+            variable_symbol* _var = \
                 (variable_symbol*)vector_at(&variable_symbols, i, false);
-
-            if (!strcmp(_func->name, name))
-                return _func;
+            
+            if (!strcmp(_var->name, name))
+                return _var;
         }
     } else {
         for (u32 i=0; i < VECTOR_SIZE(variable_symbols); i++) {
-            variable_symbol* _func = \
+            variable_symbol* _var = \
                 (variable_symbol*)vector_at(&variable_symbols, i, false);
 
-            if (_func->id == id)
-                return _func;
+            if (_var->id == id)
+                return _var;
         }
     } 
     return NULL;
@@ -75,12 +77,12 @@ bool add_variable_symbol(char* name, type type, u8 flags)
     u32 id = VECTOR_SIZE(variable_names);
 
     char* _name = malloc(sizeof(char) * strlen(name));
-    strcpy(_name, name);
     if (_name == NULL)
         handle_error(0);
+    strcpy(_name, name);
 
     variable_symbol _variable = { _name, type, id, flags, 0 };
-    
+
     vector_append(&variable_symbols, &_variable);
     vector_append(&variable_names, &_name);
 
@@ -93,13 +95,13 @@ bool add_variable_symbol(char* name, type type, u8 flags)
  */
 bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
 {
-    if (get_function_symbol(name, NULL))
+    if (get_function_symbol(name, 0))
         return false;
 
     char* _name = malloc(sizeof(char) * strlen(name));
-    strcpy(_name, name);
     if (_name == NULL)
         handle_error(0);
+    strcpy(_name, name);
 
     u32 id = VECTOR_SIZE(function_symbols);
 

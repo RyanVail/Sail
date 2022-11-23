@@ -3,7 +3,7 @@
  * TODO: '\x234' this causes a seg fault.
  */
 
-fn test u32 <- $test$ -> u32
+fn test u32 <- $main$ -> u32
 
 let a u16 'a' =
 let b u32 \x3423 =
@@ -14,8 +14,8 @@ loop {
     /* b 32 $std_print_bits$ */
 }
 
-/*let file_handle u32 "test.txt" "r" $fopen$ =
-file_handle ! if $exit$
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
 
 let buffer %u8% 4096 $stack$ =
 

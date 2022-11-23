@@ -38,6 +38,11 @@ typedef struct type {
 } type;
 
 /*
+ * This returns the lowest possible type a value can be.
+ */
+type_kind get_lowest_type(i128 value);
+
+/*
  * This checks if type "_from" can be casted into type "_to" implicitily.
  */
 bool type_can_implicitly_cast_to(type _from, type _to, bool error);
@@ -52,12 +57,12 @@ void print_type(type _type);
  * index of "TYPE_NAMES" should be the characters before and after variable
  * names to show pointers 0x0 mean no character.
  */
-void set_type_names(char*** _TYPE_NAMES);
+void set_type_names(char** _TYPE_NAMES);
 
 /*
  * This allows the front ends to get the names of types.
  */
-char*** get_type_names();
+char** get_type_names();
 
 /*
  * This resets the type names to the default

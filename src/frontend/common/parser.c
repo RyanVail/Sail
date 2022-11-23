@@ -4,10 +4,11 @@
  */
 
 #include<frontend/common/parser.h>
+#include<frontend/common/tokenizer.h>
 #include<types.h>
 
-static const char* DEFAULT_INVALID_NAMES[] = { "if", "while", "for", "fn",
-"let", "char", "break", "return", "loop", "\0" };
+static char* DEFAULT_INVALID_NAMES[] = { "if", "while", "for", "fn", "let",
+"char", "break", "return", "loop", "\0" };
 
 static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
 
@@ -18,7 +19,7 @@ static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
  * didn't get a type the returning type kind will be equal to 255.
  */
 type parse_type(char** string_ptr) {
-    char*** type_names = get_type_names();
+    char** type_names = get_type_names();
     u16 before_ptrs = 0;
     u16 after_ptrs = 0;
     type _type;
@@ -79,7 +80,7 @@ bool is_invalid_name(char* name) {
             return true;
 
     /* Checks if the "name" matches any type names. */
-    char*** _types = get_type_names();
+    char** _types = get_type_names();
     for (u32 i=0; (char)_types[i][0] != '\0'; i++)
         if (!strcmp(name, _types[i]))
             return true;
@@ -96,6 +97,6 @@ bool is_invalid_name(char* name) {
  * INVALID_NAMES being invalid, any special tokens, and types are counted as
  * invalid.
  */
-void set_parser_invalid_names(char*** _invalid_names) {
+void set_parser_invalid_names(char** _invalid_names) {
     INVALID_NAMES = _invalid_names;
 }

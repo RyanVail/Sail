@@ -19,14 +19,15 @@ int main(i32 argc, char* args[])
     // }
     // free_tokenized_file_vector(&_tmp);
 
+
+
     vector _tmp = salmon_file_into_intermediate("../tests/loop.sal");
-    free_tokenized_file_vector(&_tmp);
+    // free_tokenized_file_vector(&_tmp);
     
     // type _a = { 0, U8_TYPE };
     // type _b = { 0, I8_TYPE };
     // type_can_implicitly_cast_to(_a, _b, true);
 
-    type _a = { 0, U8_TYPE };
 
     // vector* _inputs = malloc(sizeof(vector));
     // _inputs->apparent_size = 0;
@@ -39,15 +40,26 @@ int main(i32 argc, char* args[])
 
     // vector_append(_inputs, &_a);
 
-    // add_function_symbol("foo", _inputs, _a, 0);
+    // type _a = { 0, U8_TYPE };
 
-    add_variable_symbol("var", _a, 0);
+    // printf("%s\n", get_function_symbol("test", 0)->name);
+
+    // add_function_symbol("foo", _inputs, _a, 0);
+    // char* name = "c";
+    // char* _name = malloc(2);
+    // strcpy(_name, name);
+    // printf("----%s\n", _name);
+    // add_variable_symbol(_name, _a, 0);
+
+    // add_variable_symbol("var", _a, 0);
     // add_variable_symbol("var2", _a, 0);s
     
-    add_variable_symbol("sign", _a, 0);
-    add_variable_symbol("episode", _a, 0);
-    // printf("%s\n", get_variable_symbol("var", 0)->name);
-    // printf("%s\n", get_variable_symbol("var", 0)->name);
+    // add_variable_symbol("episode", _a, 0);
+    // free(_name);
+    // printf("%p\n", get_variable_symbol("a", 0)->name);
+    free_tokenized_file_vector(&_tmp);
+
+    // printf("%p\n", get_variable_symbol("a", 0));
 
     free_symbol_table();
 }

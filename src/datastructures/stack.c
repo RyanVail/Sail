@@ -16,6 +16,21 @@ u32 stack_push(stack* _stack, void* value)
 }
 
 /*
+ * This returns a pointer to the value on the top of the stack.
+ */
+void* stack_top(stack* _stack)
+{
+    if (_stack->top == NULL) {
+        #if DEBUG
+        printf("Cannot pop a stack with a size of zero.\n");
+        abort();
+        #endif
+        exit(-1);
+    }
+    return _stack->top->value;
+}
+
+/*
  * This takes the top value off the stack.
  */
 void* stack_pop(stack* _stack)

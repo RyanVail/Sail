@@ -5,11 +5,31 @@
 #include<types.h>
 #include<common.h>
 
-static const char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "u8", "i8", "u16", "i16", "u32",
+static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "u8", "i8", "u16", "i16", "u32",
 "i32", "u64", "i64", "u128", "i128", "float", "double", "%", "%", "\0" };
 
 // TODO: This doesn't need to be that many pointers.
-static char*** TYPE_NAMES = &DEFAULT_TYPE_NAMES;
+static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
+
+/*
+ * This returns the lowest possible type a value can be.
+ */
+type_kind get_lowest_type(i128 value)
+{
+    if (value >= 0 && value <= 1)
+        return BOOL_TYPE;
+    if (value >= __INT8_MAX__ && value <= ~__INT8_MAX__)
+        return I8_TYPE;
+    if (value >= __INT16_MAX__ && value <= ~__INT16_MAX__)
+        return I16_TYPE;
+    if (value >= __INT32_MAX__ && value <= ~__INT32_MAX__)
+        return I32_TYPE;
+    if (value >= __INT64_MAX__ && value <= ~__INT64_MAX__)
+        return I64_TYPE;
+    if (value >= __LONG_LONG_MAX__ && value <= ~__LONG_LONG_MAX__)
+        return I128_TYPE;
+    return I32_TYPE;
+}
 
 /*
  * This checks if type "_from" can be casted into type "_to" implicitily.
@@ -75,7 +95,7 @@ void print_type(type _type)
  * names to show pointers 0x0 means no character. The last string has to be
  * a string to a null pointers like so "\0".
  */
-void set_type_names(char*** _TYPE_NAMES)
+void set_type_names(char** _TYPE_NAMES)
 {
     TYPE_NAMES = _TYPE_NAMES;
 }
@@ -83,7 +103,7 @@ void set_type_names(char*** _TYPE_NAMES)
 /*
  * This allows the front ends to get the names of types.
  */
-char*** get_type_names()
+char** get_type_names()
 {
     return TYPE_NAMES;
 }

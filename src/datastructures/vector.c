@@ -7,16 +7,16 @@
 void vector_test_valid(vector *_vector)
 {
     #if DEBUG
-    if (_vector->contents == NULL) {
+    if (_vector->contents == 0) {
         printf("Vector has no contents.\n");
         abort();
     }
-    if (_vector->type_size == NULL) {
+    if (_vector->type_size == 0) {
         printf("Vector doesn't have type size yet.\n");
         abort();
     }
     #else
-    if (_vector->contents == NULL || _vector->type_size == NULL)
+    if (_vector->contents == 0 || _vector->type_size == 0)
         exit(-1);
     #endif
 }
@@ -33,7 +33,7 @@ void vector_try_to_shrink(vector *_vector)
         _vector->size--;
         _vector->contents = realloc( \
             _vector->contents, (1 << _vector->size) * _vector->type_size);
-        if (_vector->contents == NULL)
+        if (_vector->contents == 0)
             handle_error(1);
     }
 }
@@ -45,7 +45,7 @@ void vector_try_to_shrink(vector *_vector)
 void vector_try_to_expand(vector *_vector)
 {
     if (_vector->size == 0) {
-        if (_vector->type_size == NULL) {
+        if (_vector->type_size == 0) {
             #if DEBUG
             printf("Vector doesn't have type size yet.\n");
             abort();
@@ -54,14 +54,14 @@ void vector_try_to_expand(vector *_vector)
         }
         _vector->size = 1;
         _vector->contents = malloc(_vector->type_size);
-        if (_vector->contents == NULL)
+        if (_vector->contents == 0)
             handle_error(1);
     }
     else if (1 << _vector->size < _vector->apparent_size + 1) {
         _vector->size++;
         _vector->contents = realloc( \
             _vector->contents, (1 << _vector->size) * _vector->type_size);
-        if (_vector->contents == NULL)
+        if (_vector->contents == 0)
             handle_error(1);
     }
 }
@@ -125,7 +125,7 @@ void* vector_pop(vector *_vector)
     vector_test_valid(_vector);
 
     void* _tmp = malloc(_vector->type_size);
-    if (_tmp == NULL)
+    if (_tmp == 0)
         send_error(0);
 
     memcpy(_tmp, vector_at(_vector, _vector->apparent_size-1, false), \

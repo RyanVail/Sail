@@ -31,6 +31,11 @@ typedef struct stack {
 u32 stack_push(stack* _stack, void* value);
 
 /*
+ * This returns a pointer to the value on top of the stack.
+ */
+void* stack_top(stack* _stack);
+
+/*
  * This takes the top value off the stack.
  */
 void* stack_pop(stack* _stack);
