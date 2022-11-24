@@ -68,6 +68,8 @@ typedef enum intermediate_type {
                             // "MEM_ACCESS".
     COMPARISON_RETURN,      // This is used as a place holder for the result of
                             // a comprasion.
+    VAR_RETURN,             // This is used as a place holder for variable
+                            // declerations.
     CLEAR_STACK             // ;
 } intermediate_type;
 

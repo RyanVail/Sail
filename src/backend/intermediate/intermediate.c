@@ -40,8 +40,8 @@ void pop_operand(bool dual, bool comparison)
 
     if (!__first_operand->inited)
         add_operand_to_intermediates(__first_operand->intermediate);
-    __first_operand->inited = true;
     intermediate _first_operand = __first_operand->intermediate;
+    __first_operand->inited = true;
 
     if (!dual) {
         if (get_type_of_intermediate(_first_operand).kind == VOID_TYPE) {
@@ -60,13 +60,21 @@ void pop_operand(bool dual, bool comparison)
     else
         __second_operand = stack_top(&operand_stack);
 
-    if (!__second_operand->inited)
-        add_operand_to_intermediates(__second_operand->intermediate);
     intermediate _second_operand = __second_operand->intermediate;
 
-    if (!type_can_implicitly_cast_to(\
-    get_type_of_intermediate(_second_operand),\
-    get_type_of_intermediate(_first_operand), false)) {
+    if (__second_operand->intermediate.type == VAR_RETURN)
+        goto pop_operand_second_operand_is_place_holder_label;
+
+    if (!__second_operand->inited)
+        add_operand_to_intermediates(__second_operand->intermediate);
+    __second_operand->inited = true;
+
+    pop_operand_second_operand_is_place_holder_label:
+
+    printf("%u : %u\n", get_type_of_intermediate(_first_operand).kind, get_type_of_intermediate(_second_operand).kind);
+    if (type_can_implicitly_cast_to(\
+    get_type_of_intermediate(_first_operand),\
+    get_type_of_intermediate(_second_operand), true)) {
         printf("CAN\n");
     } else {
         printf("CANNOT\n");
@@ -89,13 +97,13 @@ void process_operation(intermediate_type _operation)
 {
     #if DEBUG
     if (_operation < INC || _operation > LESS_THAN_EQUAL
-    && _operation != EQUAL) {
+    && _operation != EQUAL && _operation != CLEAR_STACK) {
         printf("Got unexpected operation operand: %u\n", _operation);
         exit(-1);
     }
     #endif
     if (_operation == EQUAL)
-        return;
+        pop_operand(true, false);
     if (_operation == CLEAR_STACK)
         clear_operand_stack();
     if (_operation >= ADD && _operation <= MOD)
@@ -140,6 +148,7 @@ type get_type_of_intermediate(intermediate _intermediate)
             break;
         case VAR_ASSIGNMENT:
         case VAR_REASSIGNMENT:
+        case VAR_RETURN:
         case VAR_ACCESS:
         case VAR_MEM:
             return ((variable_symbol*)_intermediate.ptr)->type;
@@ -185,17 +194,22 @@ void clear_operand_stack()
  */
 void free_intermediates()
 {
-    //
+    while (intermediates_vector.size != 0)
+        free(vector_pop(&intermediates_vector));
+
+    free(intermediates_vector.contents);
 }
 
 /*
  * This prints the intermediates.
  */
 #if DEBUG
+// TODO: Replace the bellow array with something less temperary.
+const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var assignment", "Var reassignment", "Var access", "Var mem", "Mem location", "Mem access", "If", "While", "Loop", "Func call", "Goto", "Const", "Const_ptr", "Func return", "Mem return", "Comparison return", "Var return", "Clear stack"};
 void print_intermediates()
 {
     for (u32 i=0; i < VECTOR_SIZE(intermediates_vector); i++)
-        printf("INTER: %u\n",\
-            ((intermediate*)vector_at(&intermediates_vector, i, false))->type);
+        printf("INTER: %s\n",INTERMEDIATES_TEXT[\
+            ((intermediate*)vector_at(&intermediates_vector, i, false))->type]);
 }
 #endif

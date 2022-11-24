@@ -5,8 +5,8 @@
 #include<types.h>
 #include<common.h>
 
-static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "u8", "i8", "u16", "i16", "u32",
-"i32", "u64", "i64", "u128", "i128", "float", "double", "%", "%", "\0" };
+static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "i8", "u8", "i16", "u16",
+"i32", "u32", "i64", "u64", "i128", "u128", "float", "double", "%", "%", "\0" };
 
 // TODO: This doesn't need to be that many pointers.
 static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
@@ -16,23 +16,41 @@ static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
  */
 type_kind get_lowest_type(i128 value)
 {
-    if (value >= 0 && value <= 1)
+    if (value == 0 || value == 1)
         return BOOL_TYPE;
-    if (value >= __INT8_MAX__ && value <= ~__INT8_MAX__)
+
+    if (value > 0)
+        goto get_lowest_type_unsigned_label;
+
+    if (value <= __INT8_MAX__ && value >= ~__INT8_MAX__)
         return I8_TYPE;
-    if (value >= __INT16_MAX__ && value <= ~__INT16_MAX__)
+    if (value <= __INT16_MAX__ && value >= ~__INT16_MAX__)
         return I16_TYPE;
-    if (value >= __INT32_MAX__ && value <= ~__INT32_MAX__)
+    if (value <= __INT32_MAX__ && value >= ~__INT32_MAX__)
         return I32_TYPE;
-    if (value >= __INT64_MAX__ && value <= ~__INT64_MAX__)
+    if (value <= __INT64_MAX__ && value >= ~__INT64_MAX__)
         return I64_TYPE;
-    if (value >= __LONG_LONG_MAX__ && value <= ~__LONG_LONG_MAX__)
+    if (value <= __LONG_LONG_MAX__ && value >= ~__LONG_LONG_MAX__)
         return I128_TYPE;
     return I32_TYPE;
+
+    get_lowest_type_unsigned_label:
+    if (value <= __UINT8_MAX__)
+        return U8_TYPE;
+    if (value <= __UINT16_MAX__)
+        return U16_TYPE;
+    if (value <= __UINT32_MAX__)
+        return U32_TYPE;
+    if (value <= __UINT64_MAX__)
+        return U64_TYPE;
+    if (value <= __LONG_LONG_MAX__)
+        return U128_TYPE;
+    return U32_TYPE;
 }
 
 /*
  * This checks if type "_from" can be casted into type "_to" implicitily.
+ * Returns true if "_from" can implicitly cast to "_to".
  */
 bool type_can_implicitly_cast_to(type _from, type _to, bool error)
 {
@@ -42,19 +60,14 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
         send_error("Error usage of `void` type without cast");
     }
 
-    if (_to.ptr != _from.ptr) {
-        if (!error)
-            return false;
+    if (_to.ptr != _from.ptr)
         goto type_can_implicitly_cast_to_error_label;
-    }
 
-    if (IS_TYPE_INT(_to) && (IS_TYPE_INT(_from))) {
-        if (_to.kind < _from.kind || _to.kind & 1 != _from.kind & 1) {
-            if (!error)
-                return false;
+    // TODO: Make this into a single if statment in a way that isn't super
+    // confusing.
+    if (IS_TYPE_INT(_to) && (IS_TYPE_INT(_from)))
+        if ((_to.kind < _from.kind) || ((_to.kind & 1) != (_from.kind & 1)))
             goto type_can_implicitly_cast_to_error_label;
-        }
-    }
 
     if (_from.kind == FLOAT_TYPE || _from.kind == DOUBLE_TYPE
     || _to.kind == FLOAT_TYPE || _to.kind == DOUBLE_TYPE)
@@ -63,6 +76,8 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     return true;
 
     type_can_implicitly_cast_to_error_label:
+    if (!error)
+            return false;
         printf("Error cannot implicity cast type `");
         print_type(_from);
         printf("` into type `");

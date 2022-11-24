@@ -74,8 +74,8 @@ i128 get_ascii_number(char* num_string)
 bool is_ascii_number(char* num_string)
 {
     bool negative = num_string[0] == '-';
-    for (u32 i=0; i < strlen(num_string); i++)
-        if (48 >= num_string[i] || num_string[i] >= 57)
+    for (u32 i=(u32)negative; i < strlen(num_string); i++)
+        if (48 > num_string[i] || num_string[i] > 57)
             return false;
 
     return true;

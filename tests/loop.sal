@@ -5,12 +5,12 @@
 
 fn test u32 <- $main$ -> u32 {}
 
-let a u16 'a' =
+let a u64 213 =
 let b u32 \x3423 =
 loop {
-    2 2 + -
-    b ++
-    b a == if break
+    2 2 + ;
+    b b ++ =
+    a b == if break
     /* b 32 $std_print_bits$ */
 }
 

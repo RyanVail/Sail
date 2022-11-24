@@ -7,7 +7,7 @@
 
 #include<common.h>
 
-#define IS_TYPE_INT(x) x.kind > 0x1 && x.kind < 0xc || x.kind == 1
+#define IS_TYPE_INT(x) x.kind >= BOOL_TYPE && x.kind <= U128_TYPE
 
 typedef enum type_kind {
     VOID_TYPE,          // 0x0 // 0000

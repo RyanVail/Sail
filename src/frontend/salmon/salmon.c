@@ -2,6 +2,8 @@
  * This is the front end for the Salmon programming language. TODO: This file 
  * should be named parser or something along those lines.
  */
+// TODO: There should be a function to clear the out of scope variable names
+// when we stop reading from a file.
 
 #include<frontend/salmon/salmon.h>
 #include<frontend/common/parser.h>
@@ -51,7 +53,7 @@ vector salmon_file_into_intermediate(char* file_name)
     vector file = salmon_preprocess_file(file_name);
     for (u32 i=0; i < file.apparent_size; i++) {
         char* current_token = *(char**)vector_at(&file, i, false);
-        // printf("%s\n", *(char**)vector_at(&file, i, false));
+        // printf("%s\n", current_token);
         if (salmon_parse_initial_syntax_tree(&file, &i))
             continue;
 
@@ -60,8 +62,8 @@ vector salmon_file_into_intermediate(char* file_name)
 
         if (!is_invalid_name(current_token)
         && get_variable_symbol(current_token, 0)) {
-            intermediate _operand = { VAR_ACCESS,\
-                get_variable_symbol(current_token, 0) };
+            intermediate _operand = \
+                { VAR_ACCESS, get_variable_symbol(current_token, 0) };
 
             add_operand(_operand, false);
         }
@@ -90,9 +92,8 @@ vector salmon_file_into_intermediate(char* file_name)
             }
             add_operand(_operand, false);
         }
-        // printf("%s\n", *(char**)vector_at(&file, i, false));
     }
-    // clear_operand_stack();
+    clear_operand_stack();
     return file;
 }
 
@@ -202,8 +203,13 @@ inline void salmon_parse_let(vector* file, u32* location)
     if (_type.kind == 255)
         send_error("Expected type after let");
 
-    add_variable_symbol(name, _type, 0);
-    // add inter variable decleration
+    if (!add_variable_symbol(name, _type, 0))
+        send_error("Variable name already used");
+
+    intermediate _decleration = { VAR_ASSIGNMENT, get_variable_symbol(name,0) };
+    add_intermediate(_decleration);
+    _decleration.type = VAR_RETURN;
+    add_operand(_decleration, false);
 }
 inline void salmon_parse_while(vector* file, u32* location)
 {
@@ -253,6 +259,9 @@ static inline bool salmon_parse_single_char_operation(char _char)
             break;
         case '=':
             _operation = EQUAL;
+            break;
+        case ';':
+            _operation = CLEAR_STACK;
             break;
         default:
             return false;

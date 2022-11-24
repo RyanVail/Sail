@@ -86,7 +86,8 @@ vector tokenize_file(char* file_name)
 
             token_buffer[buffer_index] = '\0';
             buffer_index++;
-            char* _tmp = malloc(sizeof(char) * buffer_index);
+            char* _tmp = malloc(sizeof(char) * 
+            buffer_index);
             if (_tmp == NULL)
                 handle_error(0);
             memcpy(_tmp, token_buffer, buffer_index);

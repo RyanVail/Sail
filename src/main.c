@@ -58,9 +58,9 @@ int main(i32 argc, char* args[])
     // free(_name);
     // printf("%p\n", get_variable_symbol("a", 0)->name);
     // free_tokenized_file_vector(&_tmp);
-    clear_operand_stack();
 
     // printf("%p\n", get_variable_symbol("a", 0));
 
     free_symbol_table();
+    free_intermediates();
 }
