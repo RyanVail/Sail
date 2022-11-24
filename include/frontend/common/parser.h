@@ -18,6 +18,16 @@
 type parse_type(char** string_ptr);
 
 /*
+ * This returns the ASCII number of a string.
+ */
+i128 get_ascii_number(char* num_string);
+
+/*
+ * This goes through a string and returns true if it is an ASCII number.
+ */
+bool is_ascii_number(char* num_string);
+
+/*
  * If the inputed name is invalid it will return true. This is cap sensitive.
  * Along with the current INVALID_NAMES being invalid, any special tokens, and
  * types are counted as invalid. If the name starts with a number it is also

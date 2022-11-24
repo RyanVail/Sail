@@ -13,7 +13,6 @@ include_directories(include)
 add_executable(Sail
 	src/main.c
 	src/errors.c
-	src/common.c
 	src/types.c
 	src/cli.c
 	src/datastructures/vector.c

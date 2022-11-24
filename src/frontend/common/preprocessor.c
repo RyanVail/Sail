@@ -198,12 +198,12 @@ void replace_C_escape_codes(vector* file, u32* current_index)
 
         /* This turns the "_result" into decimal chars. */
         u32 length = snprintf(NULL, 0, "%llu", _result);
-        char* destination = malloc(length);
+        char* destination = malloc(length+1);
         if (destination == NULL)
             handle_error(0);
         snprintf(destination, length + 1, "%llu", _result);
+        destination[length] = '\0';
 
-        
         free(_begin - 1);
         *(char**)vector_at(file, *current_index+1, false) = NULL;
         *(char**)vector_at(file, *current_index, false) = destination;

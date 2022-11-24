@@ -2,6 +2,9 @@
  * This handles everything to do with the symbol table.
  */
 
+#ifndef BACKEND_INTERMEDIATE_SYMBOLTABLE
+#define BACKEND_INTERMEDIATE_SYMBOLTABLE
+
 #include<common.h>
 #include<types.h>
 
@@ -43,6 +46,11 @@ typedef struct variable_symbol {
 } variable_symbol;
 
 /*
+ * This initializes symbol tables vectors.
+ */
+void init_symbol_table();
+
+/*
  * This adds a function symbol to the symbol table. Returns true if adding the
  * function symbol was a success.
  */
@@ -64,11 +72,9 @@ variable_symbol* get_variable_symbol(char* name, u32 id);
  */
 bool add_variable_symbol(char* name, type type, u8 flags);
 
-// get var
-// get func
-// get out of scope var
-
 /*
  * This frees all the memory that is token up by the symbol table
  */
 void free_symbol_table();
+
+#endif

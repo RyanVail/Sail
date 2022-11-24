@@ -4,7 +4,7 @@
 /*
  * This adds a value onto the stack.
  */
-u32 stack_push(stack* _stack, void* value)
+void stack_push(stack* _stack, void* value)
 {
     link* _tmp = _stack->top;
     link* _new_top = malloc(sizeof(link));
@@ -22,7 +22,7 @@ void* stack_top(stack* _stack)
 {
     if (_stack->top == NULL) {
         #if DEBUG
-        printf("Cannot pop a stack with a size of zero.\n");
+        printf("Cannot take the top of a stack with a size of zero.\n");
         abort();
         #endif
         exit(-1);

@@ -7,6 +7,7 @@
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
 #include<backend/intermediate/symboltable.h>
+#include<backend/intermediate/intermediate.h>
 
 int main(i32 argc, char* args[])
 {
@@ -19,11 +20,10 @@ int main(i32 argc, char* args[])
     // }
     // free_tokenized_file_vector(&_tmp);
 
-
-
     vector _tmp = salmon_file_into_intermediate("../tests/loop.sal");
-    // free_tokenized_file_vector(&_tmp);
-    
+    print_intermediates();
+    free_tokenized_file_vector(&_tmp);
+
     // type _a = { 0, U8_TYPE };
     // type _b = { 0, I8_TYPE };
     // type_can_implicitly_cast_to(_a, _b, true);
@@ -57,7 +57,8 @@ int main(i32 argc, char* args[])
     // add_variable_symbol("episode", _a, 0);
     // free(_name);
     // printf("%p\n", get_variable_symbol("a", 0)->name);
-    free_tokenized_file_vector(&_tmp);
+    // free_tokenized_file_vector(&_tmp);
+    clear_operand_stack();
 
     // printf("%p\n", get_variable_symbol("a", 0));
 

@@ -33,14 +33,14 @@ void pop_operand(bool dual, bool comparison)
 
     operand* __first_operand;
 
-    if (!dual || comparison)
+    if (dual || comparison)
         __first_operand = stack_pop(&operand_stack);
     else
         __first_operand = stack_top(&operand_stack);
 
-
     if (!__first_operand->inited)
         add_operand_to_intermediates(__first_operand->intermediate);
+    __first_operand->inited = true;
     intermediate _first_operand = __first_operand->intermediate;
 
     if (!dual) {
@@ -53,20 +53,33 @@ void pop_operand(bool dual, bool comparison)
         return;
     }
 
-    operand* __second_operand = stack_top(&operand_stack);
+    operand* __second_operand;
+
+    if (comparison)
+        __second_operand = stack_pop(&operand_stack);
+    else
+        __second_operand = stack_top(&operand_stack);
+
     if (!__second_operand->inited)
         add_operand_to_intermediates(__second_operand->intermediate);
     intermediate _second_operand = __second_operand->intermediate;
 
     if (!type_can_implicitly_cast_to(\
     get_type_of_intermediate(_second_operand),\
-    get_type_of_intermediate(_first_operand), true)) {
+    get_type_of_intermediate(_first_operand), false)) {
         printf("CAN\n");
     } else {
         printf("CANNOT\n");
     }
-}
 
+    if (dual)
+        free(__first_operand);
+    if (comparison) {
+        free(__second_operand);
+        intermediate _to_add_intermediate = { COMPARISON_RETURN, 0 };
+        add_operand(_to_add_intermediate, true);
+    }
+}
 
 /*
  * This processes an operation by taking the needed variables off the operand
@@ -75,13 +88,14 @@ void pop_operand(bool dual, bool comparison)
 void process_operation(intermediate_type _operation)
 {
     #if DEBUG
-    if (_operation < INC || _operation > LESS_THAN_EQUAL) {
-        printf("Got unexpected operation operand: %u", _operation);
-        abort();
+    if (_operation < INC || _operation > LESS_THAN_EQUAL
+    && _operation != EQUAL) {
+        printf("Got unexpected operation operand: %u\n", _operation);
+        exit(-1);
     }
     #endif
     if (_operation == EQUAL)
-        //
+        return;
     if (_operation == CLEAR_STACK)
         clear_operand_stack();
     if (_operation >= ADD && _operation <= MOD)
@@ -90,6 +104,8 @@ void process_operation(intermediate_type _operation)
         pop_operand(true, true);
     if (_operation >= INC && _operation <= NEG)
         pop_operand(false, false);
+    intermediate _intermediate = { _operation, 0 };
+    add_intermediate(_intermediate);
 }
 
 /*
@@ -97,7 +113,7 @@ void process_operation(intermediate_type _operation)
  */
 void add_intermediate(intermediate _intermediate)
 {
-    //
+    vector_append(&intermediates_vector, &_intermediate);
 }
 
 /*
@@ -112,11 +128,14 @@ type get_type_of_intermediate(intermediate _intermediate)
         abort();
     }
     #endif
+    type _type = { 0, VOID_TYPE };
     switch (_intermediate.type) {
-        case CONST:
         case CONST_PTR:
-            type_kind _kind = get_lowest_type((i128)_intermediate.ptr);
-            type _type = { _kind, 0 };
+            _type.kind = get_lowest_type(*((i128*)_intermediate.ptr));
+            return _type;
+            break;
+        case CONST:
+            _type.kind = get_lowest_type((i128)_intermediate.ptr);
             return _type;
             break;
         case VAR_ASSIGNMENT:
@@ -133,9 +152,8 @@ type get_type_of_intermediate(intermediate _intermediate)
             return *((type*)_intermediate.ptr);
             break;
         default:
-            type __type = { VOID_TYPE, 0 };
-            return __type;
-
+            _type.kind = VOID_TYPE;
+            return _type;
     }
     
 }
@@ -143,9 +161,14 @@ type get_type_of_intermediate(intermediate _intermediate)
 /*
  * This adds an operand onto the "operand_stack".
  */
-void add_operand(intermediate _intermediate)
+void add_operand(intermediate _intermediate, bool inited)
 {
-    //
+    operand* _operand = malloc(sizeof(operand));
+    if (_operand == 0)
+        handle_error(0);
+    _operand->intermediate = _intermediate;
+    _operand->inited = inited;
+    stack_push(&operand_stack, _operand);
 }
 
 /*
@@ -153,5 +176,26 @@ void add_operand(intermediate _intermediate)
  */
 void clear_operand_stack()
 {
+    while (!stack_is_empty(operand_stack))
+        free((char*)stack_pop(&operand_stack));
+}
+
+/*
+ * This frees "intermediates_stack".
+ */
+void free_intermediates()
+{
     //
 }
+
+/*
+ * This prints the intermediates.
+ */
+#if DEBUG
+void print_intermediates()
+{
+    for (u32 i=0; i < VECTOR_SIZE(intermediates_vector); i++)
+        printf("INTER: %u\n",\
+            ((intermediate*)vector_at(&intermediates_vector, i, false))->type);
+}
+#endif

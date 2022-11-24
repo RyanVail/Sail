@@ -3,7 +3,7 @@
 
 #include<common.h>
 
-#define stack_is_empty(_stack) _stack.top == NULL
+#define stack_is_empty(_stack) _stack.top == 0
 
 typedef struct link link;
 
@@ -28,7 +28,7 @@ typedef struct stack {
 /*
  * This adds a value onto the stack.
  */
-u32 stack_push(stack* _stack, void* value);
+void stack_push(stack* _stack, void* value);
 
 /*
  * This returns a pointer to the value on top of the stack.

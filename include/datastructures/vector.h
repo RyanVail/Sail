@@ -33,6 +33,11 @@ void vector_try_to_shrink(vector *_vector);
 void vector_try_to_expand(vector *_vector);
 
 /*
+ * This inits a vector with '1 << size' as a real size.
+ */
+vector vector_init_with(u8 size_of_items, u8 size);
+
+/*
  * This returns the value at the index in the vector.
  */
 void* vector_at(vector *_vector, u32 index, bool real);

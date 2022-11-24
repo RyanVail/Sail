@@ -76,10 +76,11 @@ bool add_variable_symbol(char* name, type type, u8 flags)
 
     u32 id = VECTOR_SIZE(variable_names);
 
-    char* _name = malloc(sizeof(char) * strlen(name));
+    char* _name = malloc(sizeof(char) * strlen(name) + 1);
     if (_name == NULL)
         handle_error(0);
     strcpy(_name, name);
+    _name[strlen(name)] = '\0';
 
     variable_symbol _variable = { _name, type, id, flags, 0 };
 
@@ -98,10 +99,11 @@ bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
     if (get_function_symbol(name, 0))
         return false;
 
-    char* _name = malloc(sizeof(char) * strlen(name));
+    char* _name = malloc(sizeof(char) * strlen(name) + 1);
     if (_name == NULL)
         handle_error(0);
     strcpy(_name, name);
+    _name[strlen(name)] = '\0';
 
     u32 id = VECTOR_SIZE(function_symbols);
 

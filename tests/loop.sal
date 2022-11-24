@@ -3,7 +3,7 @@
  * TODO: '\x234' this causes a seg fault.
  */
 
-fn test u32 <- $main$ -> u32
+fn test u32 <- $main$ -> u32 {}
 
 let a u16 'a' =
 let b u32 \x3423 =

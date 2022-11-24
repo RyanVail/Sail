@@ -39,12 +39,22 @@ void vector_try_to_shrink(vector *_vector)
 }
 
 /*
+ * This inits a vector with '1 << size' as a real size.
+ */
+vector vector_init_with(u8 size_of_items, u8 size)
+{
+    vector _vector = \
+        { malloc(size_of_items*(1 << size)), 0, size, size_of_items};
+    return _vector;
+}
+
+/*
  * This attempts to expand the real size of the vector to fit the apparent size
  * before new values are added.
  */
 void vector_try_to_expand(vector *_vector)
 {
-    if (_vector->size == 0) {
+    if (_vector->contents == 0) {
         if (_vector->type_size == 0) {
             #if DEBUG
             printf("Vector doesn't have type size yet.\n");

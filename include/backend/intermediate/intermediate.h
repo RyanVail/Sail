@@ -7,9 +7,11 @@
 
 #include<types.h>
 #include<common.h>
+#include<main.h>
 #include<datastructures/stack.h>
 #include<backend/intermediate/symboltable.h>
 
+// TODO: Spell comparsion right!
 typedef enum intermediate_type {
     // One operand required
     INC,                    // ++
@@ -98,7 +100,7 @@ void clear_operand_stack();
 /*
  * This adds an operand onto the "operand_stack".
  */
-void add_operand(intermediate _intermediate);
+void add_operand(intermediate _intermediate, bool inited);
 
 /*
  * This processes an operation by taking the needed variables off the operand
@@ -116,5 +118,14 @@ void add_intermediate(intermediate _intermediate);
  * evaluate to.
  */
 type get_type_of_intermediate(intermediate _intermediate);
+
+void test_operand();
+
+/*
+ * This prints the intermediates.
+ */
+#if DEBUG
+void print_intermediates();
+#endif
 
 #endif

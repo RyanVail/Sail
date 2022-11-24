@@ -18,7 +18,8 @@ static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
  * the array. This also assumes that the pointer char is a special char. If we
  * didn't get a type the returning type kind will be equal to 255.
  */
-type parse_type(char** string_ptr) {
+type parse_type(char** string_ptr)
+{
     char** type_names = get_type_names();
     u16 before_ptrs = 0;
     u16 after_ptrs = 0;
@@ -47,15 +48,32 @@ type parse_type(char** string_ptr) {
 
     _type.ptr = after_ptrs;
 
-    free(type_name);
     return _type;
 }
 
-// TODO: These two functions should be named "is_" not "check_if_".
+/*
+ * This returns the ASCII number of a string.
+ */
+i128 get_ascii_number(char* num_string)
+{
+    bool negative = num_string[0] == '-';
+    i128 result = 0;
+    for (u32 i = negative; i < strlen(num_string); i++) {
+        result *= 10;
+        result += (num_string[i] - 48);
+    }
+
+    if (negative)
+        return -result;
+    return result;
+}
+
 /*
  * This goes through a string and returns true if it is an ASCII number.
  */
-bool is_ascii_number(char* num_string) {
+bool is_ascii_number(char* num_string)
+{
+    bool negative = num_string[0] == '-';
     for (u32 i=0; i < strlen(num_string); i++)
         if (48 >= num_string[i] || num_string[i] >= 57)
             return false;
@@ -69,7 +87,8 @@ bool is_ascii_number(char* num_string) {
  * types are counted as invalid. If the name starts with a number it is also
  * considered invalid.
  */
-bool is_invalid_name(char* name) {
+bool is_invalid_name(char* name)
+{
     /* Checks if the first letter is a number. */
     if (48 <= name[0] && name[0] <= 57)
         return true;
@@ -97,6 +116,7 @@ bool is_invalid_name(char* name) {
  * INVALID_NAMES being invalid, any special tokens, and types are counted as
  * invalid.
  */
-void set_parser_invalid_names(char** _invalid_names) {
+void set_parser_invalid_names(char** _invalid_names)
+{
     INVALID_NAMES = _invalid_names;
 }
