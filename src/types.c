@@ -35,6 +35,7 @@ type_kind get_lowest_type(i128 value)
     return I32_TYPE;
 
     get_lowest_type_unsigned_label:
+
     if (value <= __UINT8_MAX__)
         return U8_TYPE;
     if (value <= __UINT16_MAX__)
@@ -63,10 +64,8 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     if (_to.ptr != _from.ptr)
         goto type_can_implicitly_cast_to_error_label;
 
-    // TODO: Make this into a single if statment in a way that isn't super
-    // confusing.
-    if (IS_TYPE_INT(_to) && (IS_TYPE_INT(_from)))
-        if ((_to.kind < _from.kind) || ((_to.kind & 1) != (_from.kind & 1)))
+    if (IS_TYPE_INT(_to) && (IS_TYPE_INT(_from))
+    && ((_to.kind < _from.kind) || ((_to.kind & 1) != (_from.kind & 1))))
             goto type_can_implicitly_cast_to_error_label;
 
     if (_from.kind == FLOAT_TYPE || _from.kind == DOUBLE_TYPE

@@ -43,7 +43,6 @@ typedef enum intermediate_type {
 
     // Variable intermediates
     VAR_ASSIGNMENT,         // u32 var = 2
-    VAR_REASSIGNMENT,       // var = 4
     VAR_ACCESS,             // var
     VAR_MEM,                // &var
     // Memory intermediates
@@ -51,9 +50,11 @@ typedef enum intermediate_type {
     MEM_ACCESS,             // *ptr
 
     // Program flow intermediates
-    IF,                     // if (true) {}
-    WHILE,                  // while (true) {}
-    LOOP,                   // loop {}
+    IF,                     // if (true)
+    LOOP,                   // loop
+    END,                    // }
+    CONTINUE,               // Continue
+    BREAK,                  // Break
     FUNC_CALL,              // func()
     GOTO,                   // goto label
 
@@ -70,6 +71,8 @@ typedef enum intermediate_type {
                             // a comprasion.
     VAR_RETURN,             // This is used as a place holder for variable
                             // declerations.
+    CAST,                   // This is used to cast the top operand into another
+                            // type.
     CLEAR_STACK             // ;
 } intermediate_type;
 
@@ -88,11 +91,18 @@ typedef struct intermediate {
 /* struct operand - This represents an operand on "operand_stack"
  * @intermediate: The "intermediate" token of this operand
  * @inited: If this value is in a register / on the stack yet
+ * @type: The type of this operand
  */
 typedef struct operand {
     intermediate intermediate;
     bool inited;
+    type type;
 } operand;
+
+/*
+ * This frees "intermediates_vector".
+ */
+void free_intermediates();
 
 /*
  * This clears the operand stack
@@ -116,12 +126,9 @@ void process_operation(intermediate_type _operation);
 void add_intermediate(intermediate _intermediate);
 
 /*
- * This function takes in an "intermediate" and returns the type that it would
- * evaluate to.
+ * This casts the operand on top of "operand_stack" to the desired type.
  */
-type get_type_of_intermediate(intermediate _intermediate);
-
-void test_operand();
+void cast_top_operand(type _type);
 
 /*
  * This prints the intermediates.

@@ -7,8 +7,8 @@
 #include<frontend/common/tokenizer.h>
 #include<types.h>
 
-static char* DEFAULT_INVALID_NAMES[] = { "if", "while", "for", "fn", "let",
-"char", "break", "return", "loop", "\0" };
+static char* DEFAULT_INVALID_NAMES[] = { "if","fn", "let", "break", "return",
+"loop", "\0" };
 
 static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
 
@@ -21,6 +21,12 @@ static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
 type parse_type(char** string_ptr)
 {
     char** type_names = get_type_names();
+
+    #if DEBUG
+    if (!(type_names[0xe][0]) && !(type_names[0xf][0]))
+        send_error("Before and after pointer indicators cannot both be null");
+    #endif
+
     u16 before_ptrs = 0;
     u16 after_ptrs = 0;
     type _type;
@@ -38,6 +44,9 @@ type parse_type(char** string_ptr)
             break;
         }
     }
+
+    if (_type.kind == 255)
+        return _type;
 
     string_ptr += 1;
 

@@ -13,12 +13,14 @@
 #include<backend/intermediate/intermediate.h>
 
 static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location);
-static inline void salmon_parse_while(vector* file, u32* location);
+static inline void salmon_parse_loop(vector* file, u32* location);
 static inline void salmon_parse_else(vector* file, u32* location);
+static inline bool salmon_parse_type(vector* file, u32* location);
 static inline void salmon_parse_let(vector* file, u32* location);
 static inline void salmon_parse_if(vector* file, u32* location);
 static inline void salmon_parse_fn(vector* file, u32* location);
-bool salmon_parse_operation(char* string);
+static inline bool salmon_parse_flow_operators(char* string);
+static inline bool salmon_parse_operation(char* string);
 
 // #
     // #include
@@ -54,31 +56,35 @@ vector salmon_file_into_intermediate(char* file_name)
     for (u32 i=0; i < file.apparent_size; i++) {
         char* current_token = *(char**)vector_at(&file, i, false);
         // printf("%s\n", current_token);
-        if (salmon_parse_initial_syntax_tree(&file, &i))
+        if (salmon_parse_initial_syntax_tree(&file, &i)
+        || salmon_parse_type(&file, &i)
+        || salmon_parse_operation(current_token)
+        || salmon_parse_flow_operators(current_token))
             continue;
 
-        if (salmon_parse_operation(current_token))
+        if (*current_token == '}') {
+            intermediate _tmp_intermediate = { END, 0 };
+            add_intermediate(_tmp_intermediate);
             continue;
+        }
 
         if (!is_invalid_name(current_token)
         && get_variable_symbol(current_token, 0)) {
-            intermediate _operand = \
+            intermediate _tmp_intermediate = \
                 { VAR_ACCESS, get_variable_symbol(current_token, 0) };
 
-            add_operand(_operand, false);
+            add_operand(_tmp_intermediate, false);
         }
 
         if (is_ascii_number(current_token)) {
-            // TODO: This can be removed with a "#if" on 64 bit.
-            // TODO: Large constants should be stored in a vector rather than
-            // seperatly.
             i128 _const_num = get_ascii_number(current_token);
-            intermediate _operand;
             void* const_num;
             /*
              * If we have an i128 larger than the size of a pointer we store the
              * value on the heap and make the ptr point to the value.
              */
+            #if !VOID_PTR_64BIT
+            intermediate _operand;
             if (_const_num > ~((i128)1 << ((sizeof(void*) << 3) - 1))
             || _const_num < (i128)1 << ((sizeof(void*) << 3) - 1)) {
                 const_num = malloc(sizeof(i128));
@@ -90,6 +96,10 @@ vector salmon_file_into_intermediate(char* file_name)
                 const_num = (void*)_const_num;
                 intermediate _operand = { CONST, const_num };
             }
+            #else
+            const_num = (void*)_const_num;
+            intermediate _operand = { CONST, const_num };
+            #endif
             add_operand(_operand, false);
         }
     }
@@ -115,8 +125,8 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
         salmon_parse_fn(file, location);
     else if (!strcmp(_token, "let"))
         salmon_parse_let(file, location);
-    else if (!strcmp(_token, "while"))
-        salmon_parse_while(file, location);
+    else if (!strcmp(_token, "loop"))
+        salmon_parse_loop(file, location);
     else
         return false;
 
@@ -128,7 +138,8 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
  */
 inline void salmon_parse_if(vector* file, u32* location)
 {
-    //
+    intermediate _intermediate = { IF, 0 };
+    add_intermediate(_intermediate);
 }
 inline void salmon_parse_else(vector* file, u32* location)
 {
@@ -188,6 +199,13 @@ inline void salmon_parse_fn(vector* file, u32* location)
 
     if (!add_function_symbol(fn_name, inputs, return_type, 0))
         send_error("Function name already used.");
+
+    for (; *location < VECTOR_SIZE((*file)); *location += 1)
+        if (**(char**)(vector_at(file, *location, false)) == '}')
+            break;
+
+    // TODO: Add a function that reads the internals of the functions and saves
+    // it to somewhere.
 }
 inline void salmon_parse_let(vector* file, u32* location)
 {
@@ -206,14 +224,61 @@ inline void salmon_parse_let(vector* file, u32* location)
     if (!add_variable_symbol(name, _type, 0))
         send_error("Variable name already used");
 
+    char** type_names = get_type_names();
+
+    /* 
+     * This skips forward based on the number of before and after pointer
+     * idicator chars.
+     */
+    *location += \
+        _type.ptr << ((bool)type_names[14][0] + (bool)type_names[15][0] - 1);
+
     intermediate _decleration = { VAR_ASSIGNMENT, get_variable_symbol(name,0) };
     add_intermediate(_decleration);
     _decleration.type = VAR_RETURN;
     add_operand(_decleration, false);
 }
-inline void salmon_parse_while(vector* file, u32* location)
+inline void salmon_parse_loop(vector* file, u32* location)
 {
-    //
+    intermediate _intermediate = { LOOP, 0 };
+    add_intermediate(_intermediate);
+}
+
+/*
+ * This parses a type and if found sets the top operand to that type.
+ */
+static inline bool salmon_parse_type(vector* file, u32* location)
+{
+    if (*location >= VECTOR_SIZE((*file)))
+        return false;
+
+    type _type = parse_type((char**)vector_at(file, *location, false));
+    if (_type.kind == 255)
+        return false;
+
+    char** type_names = get_type_names();
+    /* 
+     * This skips forward based on the number of before and after pointer
+     * idicator chars.
+     */
+    *location += \
+        _type.ptr << ((bool)type_names[14][0] + (bool)type_names[15][0] - 1);
+
+    cast_top_operand(_type);
+
+    #if VOID_PTR_64BIT
+    intermediate _tmp_intermediate = { CAST, *((void**)&_type) };
+    #else
+    type* _tmp_type = malloc(sizeof(type));
+    if (_tmp_type == 0)
+        handle_error(0);
+    *_tmp_type = *(type*)&_type;
+    intermediate _tmp_intermediate = { CAST, (void*)_tmp_type };
+    #endif
+
+    add_intermediate(_tmp_intermediate);
+
+    return true;
 }
 
 /*
@@ -271,14 +336,34 @@ static inline bool salmon_parse_single_char_operation(char _char)
 }
 
 /*
+ * This parses through a flow operator and adds it to the intermediates. Return
+ * true if reading was successful.
+ */
+static inline bool salmon_parse_flow_operators(char* string)
+{
+    intermediate _tmp_intermediate = { 0, 0 };
+    if (!strcmp(string, "break"))
+        _tmp_intermediate.type = BREAK;
+    else if (!strcmp(string, "continue"))
+        _tmp_intermediate.type = CONTINUE;
+    // else if (!strcmp(string, "goto"))
+    else
+        return false;
+
+    add_intermediate(_tmp_intermediate);
+    return true;
+}
+
+/*
  * This parses through an operation and adds the operation to the intermediates.
  * Returns true if it read something.
  */
-bool salmon_parse_operation(char* string)
+static inline bool salmon_parse_operation(char* string)
 {
     #define U16_CHAR(a,b) a | (b << 8)
     if (strlen(string) == 1 && salmon_parse_single_char_operation(*string))
         return true;
+
     intermediate_type _operation;
     switch (*((u16*)string)) {
         case U16_CHAR('<','<'):

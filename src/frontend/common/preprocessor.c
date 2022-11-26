@@ -190,7 +190,7 @@ void replace_C_escape_codes(vector* file, u32* current_index)
         *(char**)vector_at(file, *current_index+1, false) = NULL;
         return;
 
-        escape_codes_numerical_label:
+        escape_codes_numerical_label: ;
 
         /* This turns the number into an unsigned 128bit. */
         char* _begin = *(char**)vector_at(file, *current_index+1, false) + 1;

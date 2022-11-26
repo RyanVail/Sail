@@ -40,13 +40,12 @@ void pop_operand(bool dual, bool comparison)
 
     if (!__first_operand->inited)
         add_operand_to_intermediates(__first_operand->intermediate);
-    intermediate _first_operand = __first_operand->intermediate;
     __first_operand->inited = true;
 
     if (!dual) {
-        if (get_type_of_intermediate(_first_operand).kind == VOID_TYPE) {
+        if (__first_operand->type.kind == VOID_TYPE) {
             printf("Cannot preform operation on a \'");
-            print_type(get_type_of_intermediate(_first_operand));
+            print_type(__first_operand->type);
             printf("\' type");
             send_error("");
         }
@@ -71,10 +70,9 @@ void pop_operand(bool dual, bool comparison)
 
     pop_operand_second_operand_is_place_holder_label:
 
-    printf("%u : %u\n", get_type_of_intermediate(_first_operand).kind, get_type_of_intermediate(_second_operand).kind);
-    if (type_can_implicitly_cast_to(\
-    get_type_of_intermediate(_first_operand),\
-    get_type_of_intermediate(_second_operand), true)) {
+    printf("%u : %u\n", __first_operand->type.kind, __second_operand->type.kind);
+    if (type_can_implicitly_cast_to( \
+    __first_operand->type, __second_operand->type, false)) {
         printf("CAN\n");
     } else {
         printf("CANNOT\n");
@@ -125,46 +123,55 @@ void add_intermediate(intermediate _intermediate)
 }
 
 /*
- * This function takes in an "intermediate" and returns the type that it would
- * evaluate to.
+ * This casts the operand on top of "operand_stack" to the desired type.
  */
-type get_type_of_intermediate(intermediate _intermediate)
+void cast_top_operand(type _type)
+{
+    ((operand*)stack_top(&operand_stack))->type = _type;
+}
+
+/*
+ * This takes in an "operand" and sets its "type" to the type of the
+ * intermediate it contains. This should only be called on an operand once.
+ */
+void set_type_of_operand(operand* _operand)
 {
     #if DEBUG
-    if (_intermediate.type >= INC && _intermediate.type <= LESS_THAN_EQUAL) {
-        printf("Cannot get the type of intermediate: %u", _intermediate.type);
+    if (_operand->intermediate.type >= INC
+    && _operand->intermediate.type <= LESS_THAN_EQUAL) {
+        printf("Cannot get the type of intermediate: %u", \
+            _operand->intermediate.type);
+
         abort();
     }
     #endif
     type _type = { 0, VOID_TYPE };
-    switch (_intermediate.type) {
+    switch (_operand->intermediate.type) {
         case CONST_PTR:
-            _type.kind = get_lowest_type(*((i128*)_intermediate.ptr));
-            return _type;
+            _type.kind = get_lowest_type(*((i128*)_operand->intermediate.ptr));
+            _operand->type = _type;
             break;
         case CONST:
-            _type.kind = get_lowest_type((i128)_intermediate.ptr);
-            return _type;
+            _type.kind = get_lowest_type((i128)_operand->intermediate.ptr);
+            _operand->type = _type;
             break;
         case VAR_ASSIGNMENT:
-        case VAR_REASSIGNMENT:
         case VAR_RETURN:
         case VAR_ACCESS:
         case VAR_MEM:
-            return ((variable_symbol*)_intermediate.ptr)->type;
+            _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
             break;
         case FUNC_RETURN:
-            return ((function_symbol*)_intermediate.ptr)->return_type;
+            _operand->type = ((function_symbol*)_operand->intermediate.ptr)->return_type;
             break;
         case MEM_RETURN:
         case MEM_LOCATION:
-            return *((type*)_intermediate.ptr);
+            _operand->type = *((type*)_operand->intermediate.ptr);
             break;
         default:
             _type.kind = VOID_TYPE;
-            return _type;
+            _operand->type = _type;
     }
-    
 }
 
 /*
@@ -177,6 +184,7 @@ void add_operand(intermediate _intermediate, bool inited)
         handle_error(0);
     _operand->intermediate = _intermediate;
     _operand->inited = inited;
+    set_type_of_operand(_operand);
     stack_push(&operand_stack, _operand);
 }
 
@@ -185,12 +193,12 @@ void add_operand(intermediate _intermediate, bool inited)
  */
 void clear_operand_stack()
 {
-    while (!stack_is_empty(operand_stack))
+    while (!(stack_is_empty(operand_stack)))
         free((char*)stack_pop(&operand_stack));
 }
 
 /*
- * This frees "intermediates_stack".
+ * This frees "intermediates_vector".
  */
 void free_intermediates()
 {
@@ -205,7 +213,7 @@ void free_intermediates()
  */
 #if DEBUG
 // TODO: Replace the bellow array with something less temperary.
-const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var assignment", "Var reassignment", "Var access", "Var mem", "Mem location", "Mem access", "If", "While", "Loop", "Func call", "Goto", "Const", "Const_ptr", "Func return", "Mem return", "Comparison return", "Var return", "Clear stack"};
+const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", "Loop", "End", "Continue", "Break", "Func call", "Goto", "Const", "Const_ptr", "Func return", "Mem return", "Comparison return", "Var return", "Cast", "Clear stack"};
 void print_intermediates()
 {
     for (u32 i=0; i < VECTOR_SIZE(intermediates_vector); i++)

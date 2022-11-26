@@ -11,6 +11,19 @@
 
 int main(i32 argc, char* args[])
 {
+    #if DEBUG
+    #if VOID_PTR_64BIT
+    /* This is a secondary fail safe. */
+    if (sizeof(void*) != 8)
+        send_error( \
+        "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to false and recompile");
+    #else
+    if (sizeof(void*) >= 8)
+        send_error( \
+        "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to true and recompile");
+    #endif
+    #endif
+
     // process_cli_options(argc, args);
 
     // vector _tmp = tokenize_file("/home/ryan/Documents/PDFs/Armv8-A Instruction Set Architecture.pdf");
