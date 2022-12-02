@@ -3,11 +3,13 @@
 #include<types.h>
 #include<datastructures/stack.h>
 #include<frontend/salmon/salmon.h>
-#include<frontend/salmon/preprocessor.h>
 #include<frontend/common/tokenizer.h>
+#include<frontend/salmon/preprocessor.h>
+#include<frontend/c/preprocessor.h>
 #include<frontend/common/preprocessor.h>
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
+#include<backend/intermediate/optimization/firstpass.h>
 
 int main(i32 argc, char* args[])
 {
@@ -23,6 +25,8 @@ int main(i32 argc, char* args[])
         "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to true and recompile");
     #endif
     #endif
+    // TOOD: Symbol table ids cannot be stored inside void pointers on 16bit
+    // machines which may be a problem.
 
     // process_cli_options(argc, args);
 
@@ -33,9 +37,16 @@ int main(i32 argc, char* args[])
     // }
     // free_tokenized_file_vector(&_tmp);
 
-    vector _tmp = salmon_file_into_intermediate("../tests/loop.sal");
+    vector c_file = C_preprocess_file("../tests/fib.c");
+    for (u32 i=0; i < VECTOR_SIZE(c_file); i++) {
+        printf("%s\n", *(char**)vector_at(&c_file, i, 0));
+    }
+/*
+    salmon_file_into_intermediate("../tests/loop.sal");
+    // free_tokenized_file_vector(&_tmp);
+
+    optimization_do_first_pass();
     print_intermediates();
-    free_tokenized_file_vector(&_tmp);
 
     // type _a = { 0, U8_TYPE };
     // type _b = { 0, I8_TYPE };
@@ -72,8 +83,8 @@ int main(i32 argc, char* args[])
     // printf("%p\n", get_variable_symbol("a", 0)->name);
     // free_tokenized_file_vector(&_tmp);
 
-    // printf("%p\n", get_variable_symbol("a", 0));
+    // printf("%p\n", get_variable_symbol("", 0));
 
     free_symbol_table();
-    free_intermediates();
+    free_intermediates();*/
 }

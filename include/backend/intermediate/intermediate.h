@@ -42,25 +42,26 @@ typedef enum intermediate_type {
                                     // into "process_operation".
 
     // Variable intermediates
-    VAR_ASSIGNMENT,         // u32 var = 2
-    VAR_ACCESS,             // var
-    VAR_MEM,                // &var
+    VAR_ASSIGNMENT,         // The variable id in the "ptr"
+    VAR_ACCESS,             // ^^^
+    VAR_MEM,                // ^^^
     // Memory intermediates
     MEM_LOCATION,           // *ptr = 8
     MEM_ACCESS,             // *ptr
 
     // Program flow intermediates
     IF,                     // if (true)
+    ELSE,                   // else
     LOOP,                   // loop
     END,                    // }
     CONTINUE,               // Continue
     BREAK,                  // Break
-    FUNC_CALL,              // func()
-    GOTO,                   // goto label
+    FUNC_CALL,              // The function id is in "ptr"
+    GOTO,                   // "ptr" is a "char*" to the label name
 
     // Constant intermediate
     CONST,                  // A signed constant the size of (void*)
-    CONST_PTR,              // A ptr to a i128 bit constant the size of (void*)
+    CONST_PTR,              // A ptr to a i64 bit constant the size of (void*)
 
     // More
     FUNC_RETURN,            // This is used as a place holder for the return of
@@ -72,7 +73,12 @@ typedef enum intermediate_type {
     VAR_RETURN,             // This is used as a place holder for variable
                             // declerations.
     CAST,                   // This is used to cast the top operand into another
-                            // type.
+                            // type. The type is in "ptr".
+    REGISTER,               // This is used to tell the compiler which variables
+                            // should be in registers within a basic block. This
+                            // contains a pointer to a vector which contains in
+                            // order the highest priority variables for
+                            // register subsitution.
     CLEAR_STACK             // ;
 } intermediate_type;
 
@@ -129,6 +135,11 @@ void add_intermediate(intermediate _intermediate);
  * This casts the operand on top of "operand_stack" to the desired type.
  */
 void cast_top_operand(type _type);
+
+/*
+ * This returns a pointer to the intermediate vector.
+ */
+vector* get_intermediate_vector();
 
 /*
  * This prints the intermediates.

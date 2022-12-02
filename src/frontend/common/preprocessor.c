@@ -4,6 +4,7 @@
 
 #include<frontend/common/preprocessor.h>
 
+// TODO: C style comments don't nest so this function can be simplified.
 /*
  * This function is meant to be run during the preprocessor loop and it skips
  * C style comments. This can leave the "current_index" pointing to the end of
@@ -71,38 +72,26 @@ void replace_C_const_chars(vector* file, u32 current_index)
     if (**(char**)vector_at(file, current_index, false) != '\'')
         return;
 
+    u32 _initial_index = current_index;
+
     current_index += 1;
 
     /* This reads in the chars and turns them into a number. */
-    u128 _result = 0;
-    u8 tokens = 0;
-    u8 digits = 0;
+    u64 _result = 0;
     for (; current_index <= VECTOR_SIZE((*file))-1; current_index += 1) {
-        tokens++;
-
-        replace_C_escape_codes(file, &current_index);
-
         find_next_valid_token(file, &current_index);
+
+        // replace_C_escape_codes(file, &current_index);
+
         char* first_token = *(char**)vector_at(file, current_index, false);
 
-        if (*first_token == '\'')
-            break;
-
-        for (u32 i=0; i < strlen(first_token); i++) {
-            _result += (u128)first_token[i] << ((u128)digits << (u128)3);
-            digits++;
-        }
-    }
-
-    /* This frees the tokens used and the first token equal to the _result. */
-    for (u32 i=0; i <= tokens; i++) {
-        char* _token = *(char**)vector_at(file, current_index-i, false);
-
-        if (_token == NULL)
+        if (first_token == NULL)
             continue;
 
-        free(_token);
-        *(char**)vector_at(file, current_index-i, false) = NULL;
+        _result += (u64)(*first_token);
+
+        free(first_token);
+        *(char**)vector_at(file, current_index, false) = NULL;
     }
 
     /* This turns the "_result" into decimal chars. */
@@ -111,7 +100,7 @@ void replace_C_const_chars(vector* file, u32 current_index)
     if (destination == NULL)
         handle_error(0);
     snprintf(destination, length + 1, "%llu", _result);
-    *(char**)vector_at(file, current_index-tokens, false) = destination;
+    *(char**)vector_at(file, _initial_index, false) = destination;
 }
 
 /*
@@ -194,7 +183,7 @@ void replace_C_escape_codes(vector* file, u32* current_index)
 
         /* This turns the number into an unsigned 128bit. */
         char* _begin = *(char**)vector_at(file, *current_index+1, false) + 1;
-        u128 _result = strtoll(_begin, NULL, _next);
+        u64 _result = strtoll(_begin, NULL, _next);
 
         /* This turns the "_result" into decimal chars. */
         u32 length = snprintf(NULL, 0, "%llu", _result);

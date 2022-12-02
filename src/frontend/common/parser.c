@@ -23,7 +23,9 @@ type parse_type(char** string_ptr)
     char** type_names = get_type_names();
 
     #if DEBUG
-    if (!(type_names[0xe][0]) && !(type_names[0xf][0]))
+    if (!type_names)
+        send_error("Type names weren't set");
+    if (!(type_names[0xe]) && !(type_names[0xf][0]))
         send_error("Before and after pointer indicators cannot both be null");
     #endif
 
@@ -63,10 +65,10 @@ type parse_type(char** string_ptr)
 /*
  * This returns the ASCII number of a string.
  */
-i128 get_ascii_number(char* num_string)
+i64 get_ascii_number(char* num_string)
 {
     bool negative = num_string[0] == '-';
-    i128 result = 0;
+    i64 result = 0;
     for (u32 i = negative; i < strlen(num_string); i++) {
         result *= 10;
         result += (num_string[i] - 48);

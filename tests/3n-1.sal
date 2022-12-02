@@ -1,0 +1,24 @@
+#include "std_print_int.sah"
+let a u32 7 =
+loop {
+    a & 1 if {
+        a a 3 * 1 - =
+    } else {
+        a a 1 >> =
+    }
+    a $std_print_int$
+    a 1 == if break
+}
+
+/*#include<stdio.h>
+int main()
+{
+    int a = 7;
+    while (a != 1) {
+        if (a & 1)
+            a = a * 3 + 1;
+        else
+            a >>= 1;
+        printf("%u\n", a);
+    }
+}*/

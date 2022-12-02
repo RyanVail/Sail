@@ -31,57 +31,50 @@ void pop_operand(bool dual, bool comparison)
     if (stack_size(&operand_stack) < (u32)dual+1)
         send_error("Not enough operands to perform operation");
 
-    operand* __first_operand;
+    operand* _first_operand;
 
     if (dual || comparison)
-        __first_operand = stack_pop(&operand_stack);
+        _first_operand = stack_pop(&operand_stack);
     else
-        __first_operand = stack_top(&operand_stack);
+        _first_operand = stack_top(&operand_stack);
 
-    if (!__first_operand->inited)
-        add_operand_to_intermediates(__first_operand->intermediate);
-    __first_operand->inited = true;
+    if (!_first_operand->inited)
+        add_operand_to_intermediates(_first_operand->intermediate);
+    _first_operand->inited = true;
 
     if (!dual) {
-        if (__first_operand->type.kind == VOID_TYPE) {
+        if (_first_operand->type.kind == VOID_TYPE) {
             printf("Cannot preform operation on a \'");
-            print_type(__first_operand->type);
+            print_type(_first_operand->type);
             printf("\' type");
             send_error("");
         }
         return;
     }
 
-    operand* __second_operand;
+    operand* _second_operand;
 
     if (comparison)
-        __second_operand = stack_pop(&operand_stack);
+        _second_operand = stack_pop(&operand_stack);
     else
-        __second_operand = stack_top(&operand_stack);
+        _second_operand = stack_top(&operand_stack);
 
-    intermediate _second_operand = __second_operand->intermediate;
-
-    if (__second_operand->intermediate.type == VAR_RETURN)
+    if (_second_operand->intermediate.type == VAR_RETURN)
         goto pop_operand_second_operand_is_place_holder_label;
 
-    if (!__second_operand->inited)
-        add_operand_to_intermediates(__second_operand->intermediate);
-    __second_operand->inited = true;
+    if (!_second_operand->inited)
+        add_operand_to_intermediates(_second_operand->intermediate);
+    _second_operand->inited = true;
 
     pop_operand_second_operand_is_place_holder_label:
 
-    printf("%u : %u\n", __first_operand->type.kind, __second_operand->type.kind);
-    if (type_can_implicitly_cast_to( \
-    __first_operand->type, __second_operand->type, false)) {
-        printf("CAN\n");
-    } else {
-        printf("CANNOT\n");
-    }
+    // printf("%u : %u\n", _first_operand->type.kind, _second_operand->type.kind);    
+    type_can_implicitly_cast_to(_first_operand->type, _second_operand->type, 1);
 
     if (dual)
-        free(__first_operand);
+        free(_first_operand);
     if (comparison) {
-        free(__second_operand);
+        free(_second_operand);
         intermediate _to_add_intermediate = { COMPARISON_RETURN, 0 };
         add_operand(_to_add_intermediate, true);
     }
@@ -128,6 +121,7 @@ void add_intermediate(intermediate _intermediate)
 void cast_top_operand(type _type)
 {
     ((operand*)stack_top(&operand_stack))->type = _type;
+    pop_operand(false, false);
 }
 
 /*
@@ -148,21 +142,23 @@ void set_type_of_operand(operand* _operand)
     type _type = { 0, VOID_TYPE };
     switch (_operand->intermediate.type) {
         case CONST_PTR:
-            _type.kind = get_lowest_type(*((i128*)_operand->intermediate.ptr));
+            _type.kind = get_lowest_type(*((i64*)_operand->intermediate.ptr));
             _operand->type = _type;
             break;
         case CONST:
-            _type.kind = get_lowest_type((i128)_operand->intermediate.ptr);
+            _type.kind = get_lowest_type((i64)_operand->intermediate.ptr);
             _operand->type = _type;
             break;
         case VAR_ASSIGNMENT:
         case VAR_RETURN:
         case VAR_ACCESS:
         case VAR_MEM:
-            _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
+            _operand->type = get_variable_symbol("", \
+                *(u32*)(&_operand->intermediate.ptr))->type;
             break;
         case FUNC_RETURN:
-            _operand->type = ((function_symbol*)_operand->intermediate.ptr)->return_type;
+            _operand->type = get_function_symbol("", \
+                *(u32*)(&_operand->intermediate.ptr))->return_type;
             break;
         case MEM_RETURN:
         case MEM_LOCATION:
@@ -202,22 +198,66 @@ void clear_operand_stack()
  */
 void free_intermediates()
 {
-    while (intermediates_vector.size != 0)
-        free(vector_pop(&intermediates_vector));
-
+    while (intermediates_vector.size != 0) {
+        register intermediate* _intermediate = vector_pop(&intermediates_vector);
+        #if !VOID_PTR_64BIT
+        if (_intermediate->type == CONST_PTR || _intermediate->type == CAST)
+            free(_intermediate->ptr);
+        #endif
+        if (_intermediate->type == REGISTER) {
+            free(((vector*)_intermediate->ptr)->contents);
+            free(_intermediate->ptr);
+        }
+        free(_intermediate);
+    }
     free(intermediates_vector.contents);
+}
+
+/*
+ * This returns a pointer to the intermediate vector.
+ */
+vector* get_intermediate_vector()
+{
+    return &intermediates_vector;
 }
 
 /*
  * This prints the intermediates.
  */
 #if DEBUG
+
 // TODO: Replace the bellow array with something less temperary.
-const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", "Loop", "End", "Continue", "Break", "Func call", "Goto", "Const", "Const_ptr", "Func return", "Mem return", "Comparison return", "Var return", "Cast", "Clear stack"};
+const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", \
+"Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", \
+"LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var assignment", \
+"Var access", "Var mem", "Mem location", "Mem access", "If", "Else", "Loop", \
+"End", "Continue", "Break", "Func call", "Goto", "Const", "Const_ptr", \
+"Func return", "Mem return", "Comparison return", "Var return", "Cast", \
+"Register", "Clear stack"};
+
 void print_intermediates()
 {
-    for (u32 i=0; i < VECTOR_SIZE(intermediates_vector); i++)
-        printf("INTER: %s\n",INTERMEDIATES_TEXT[\
-            ((intermediate*)vector_at(&intermediates_vector, i, false))->type]);
+    for (u32 i=0; i < VECTOR_SIZE(intermediates_vector); i++) {
+        intermediate* _intermediate = vector_at(&intermediates_vector, i, 0);
+
+        printf("INTER: %s\n",INTERMEDIATES_TEXT[_intermediate->type]);
+
+        if (_intermediate->type == REGISTER)
+        {
+            vector* _tmp_vec = _intermediate->ptr;
+            for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++) {
+                printf("%u\n",*(u32*)vector_at((vector*)_intermediate->ptr,y,0));
+            }
+            // printf("%u\n", *(u32*)vector_at((vector*)_intermediate->ptr, 0, false));
+            // printf("%s\n", (((variable_symbol*)_intermediate->ptr)[0]).name);
+            // printf("%s\n", ((variable_symbol*)_intermediate->ptr)->name);
+        }
+
+        // if (_intermediate->type == REGISTER) {
+            // variable_symbol* _vars = _intermediate->ptr;
+            // printf("%s\n", _vars->name);
+        // }
+    }
 }
+
 #endif

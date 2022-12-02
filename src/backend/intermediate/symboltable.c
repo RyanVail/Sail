@@ -45,7 +45,7 @@ function_symbol* get_function_symbol(char* name, u32 id)
  */
 variable_symbol* get_variable_symbol(char* name, u32 id)
 {
-    if (name != NULL) {
+    if (strcmp(name,"")) {
         for (u32 i=0; i < VECTOR_SIZE(variable_symbols); i++) {
             variable_symbol* _var = \
                 (variable_symbol*)vector_at(&variable_symbols, i, false);
@@ -61,7 +61,7 @@ variable_symbol* get_variable_symbol(char* name, u32 id)
             if (_var->id == id)
                 return _var;
         }
-    } 
+    }
     return NULL;
 }
 
@@ -76,7 +76,7 @@ bool add_variable_symbol(char* name, type type, u8 flags)
 
     u32 id = VECTOR_SIZE(variable_names);
 
-    char* _name = malloc(sizeof(char) * strlen(name) + 1);
+    char* _name = malloc(strlen(name) + 1);
     if (_name == NULL)
         handle_error(0);
     strcpy(_name, name);
@@ -99,7 +99,7 @@ bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
     if (get_function_symbol(name, 0))
         return false;
 
-    char* _name = malloc(sizeof(char) * strlen(name) + 1);
+    char* _name = malloc(strlen(name) + 1);
     if (_name == NULL)
         handle_error(0);
     strcpy(_name, name);
@@ -138,7 +138,7 @@ void free_symbol_table()
         free(function_symbols.contents);
     }
 
-    /* 
+    /*
      * The variable names are the same as in "variable_names" so we don't need
      * to free them twice. 
      */

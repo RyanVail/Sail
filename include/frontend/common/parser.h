@@ -20,7 +20,7 @@ type parse_type(char** string_ptr);
 /*
  * This returns the ASCII number of a string.
  */
-i128 get_ascii_number(char* num_string);
+i64 get_ascii_number(char* num_string);
 
 /*
  * This goes through a string and returns true if it is an ASCII number.

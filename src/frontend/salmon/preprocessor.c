@@ -6,16 +6,16 @@
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
 
-char white_space[] = { ' ', '\t', '\n' };
-char special[] = { '*', '/', '{', '}', ';', '^', '!', '&', '|', ',', '(', \
-')', '$', '%', '@', '#', '\\', '.', '\"', '\'' };
+static char white_space_salmon[] = { ' ', '\t', '\n' };
+static char special_salmon[] = { '*', '/', '{', '}', ';', '^', '!', '&', '|', ',', '(', \
+')', '$', '%', '@', '#', '\\', '.', '\"', '\'', '~' };
 
 /* 
  * This takes in a file name and returns the preprocessed version of it.
  */
 inline vector salmon_preprocess_file(char* file_name)
 {
-    set_tokenizer_chars(white_space, special);
+    set_tokenizer_chars(white_space_salmon, special_salmon);
     vector tokenized_file = tokenize_file(file_name);
     vector new_file = { NULL, 0, 0, sizeof(char*) };
 

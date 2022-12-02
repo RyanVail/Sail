@@ -16,5 +16,6 @@
 #include<errors.h>
 #include<main.h>
 #include<datastructures/vector.h>
+#include<defs.h>
 
 #endif

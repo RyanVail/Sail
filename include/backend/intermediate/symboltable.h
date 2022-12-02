@@ -30,7 +30,7 @@ typedef struct function_symbol {
  * @name: The name of this variable
  * @type: The type of this variable
  * @id: The id of the variable
- * @flags: 1 -> in scope, 2 -> used, 4 -> register, 8 -> global
+ * @flags: 1 -> register, 2 -> global, 4 -> on stack
  * @uese: The number of times this variable has been used
  */
 typedef struct variable_symbol {
@@ -39,9 +39,9 @@ typedef struct variable_symbol {
     u32 id;
     // TODO: Flags should be an enum same defintion in "function_symbol"
     u8 flags;
-        // bool used;
         // bool register;
         // bool global;
+        // bool need_stack;
     u8 uses;
 } variable_symbol;
 

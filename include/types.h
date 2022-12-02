@@ -7,7 +7,7 @@
 
 #include<common.h>
 
-#define IS_TYPE_INT(x) x.kind >= BOOL_TYPE && x.kind <= U128_TYPE
+#define IS_TYPE_INT(x) x.kind >= BOOL_TYPE && x.kind <= U64_TYPE
 
 typedef enum type_kind {
     VOID_TYPE,          // 0x0 // 0000
@@ -21,11 +21,9 @@ typedef enum type_kind {
     U32_TYPE,           // 0x7 // 0001
     I64_TYPE,           // 0x8 // 1001
     U64_TYPE,           // 0x9 // 0101
-    I128_TYPE,          // 0xa // 1101
-    U128_TYPE,          // 0xb // 0011
 
-    FLOAT_TYPE,         // 0xc // 0011
-    DOUBLE_TYPE,        // 0xd // 1011
+    FLOAT_TYPE,         // 0xa // 0110
+    DOUBLE_TYPE,        // 0xb // 0111
 } type_kind;
 
 /* struct type - This holds information about types
@@ -40,7 +38,7 @@ typedef struct type {
 /*
  * This returns the lowest possible type a value can be.
  */
-type_kind get_lowest_type(i128 value);
+type_kind get_lowest_type(i64 value);
 
 /*
  * This checks if type "_from" can be casted into type "_to" implicitily.

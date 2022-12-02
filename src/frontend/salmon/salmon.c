@@ -50,7 +50,7 @@ static inline bool salmon_parse_operation(char* string);
  * This function turns a single salmon source file into intermediate tokens
  * and returns a vector of those intermediate tokens.
  */
-vector salmon_file_into_intermediate(char* file_name)
+void salmon_file_into_intermediate(char* file_name)
 {
     vector file = salmon_preprocess_file(file_name);
     for (u32 i=0; i < file.apparent_size; i++) {
@@ -71,26 +71,26 @@ vector salmon_file_into_intermediate(char* file_name)
         if (!is_invalid_name(current_token)
         && get_variable_symbol(current_token, 0)) {
             intermediate _tmp_intermediate = \
-                { VAR_ACCESS, get_variable_symbol(current_token, 0) };
+                { VAR_ACCESS, (void*)get_variable_symbol(current_token, 0)->id };
 
             add_operand(_tmp_intermediate, false);
         }
 
         if (is_ascii_number(current_token)) {
-            i128 _const_num = get_ascii_number(current_token);
+            i64 _const_num = get_ascii_number(current_token);
             void* const_num;
             /*
-             * If we have an i128 larger than the size of a pointer we store the
+             * If we have an i64 larger than the size of a pointer we store the
              * value on the heap and make the ptr point to the value.
              */
             #if !VOID_PTR_64BIT
             intermediate _operand;
-            if (_const_num > ~((i128)1 << ((sizeof(void*) << 3) - 1))
-            || _const_num < (i128)1 << ((sizeof(void*) << 3) - 1)) {
-                const_num = malloc(sizeof(i128));
+            if (_const_num > ~((i64)1 << ((sizeof(void*) << 3) - 1))
+            || _const_num < (i64)1 << ((sizeof(void*) << 3) - 1)) {
+                const_num = malloc(sizeof(i64));
                 if (const_num == 0)
                     handle_error(0);
-                memcpy(const_num, &_const_num, sizeof(i128));
+                memcpy(const_num, &_const_num, sizeof(i64));
                 intermediate _operand = { CONST_PTR, const_num };
             } else {
                 const_num = (void*)_const_num;
@@ -104,7 +104,7 @@ vector salmon_file_into_intermediate(char* file_name)
         }
     }
     clear_operand_stack();
-    return file;
+    free_tokenized_file_vector(&file);
 }
 
 // TODO: A lot of these functions don't check for the end of the file so they
@@ -143,7 +143,8 @@ inline void salmon_parse_if(vector* file, u32* location)
 }
 inline void salmon_parse_else(vector* file, u32* location)
 {
-    //
+    intermediate _intermediate = { ELSE, 0 };
+    add_intermediate(_intermediate);
 }
 inline void salmon_parse_fn(vector* file, u32* location)
 {
@@ -233,7 +234,9 @@ inline void salmon_parse_let(vector* file, u32* location)
     *location += \
         _type.ptr << ((bool)type_names[14][0] + (bool)type_names[15][0] - 1);
 
-    intermediate _decleration = { VAR_ASSIGNMENT, get_variable_symbol(name,0) };
+    intermediate _decleration = \
+        { VAR_ASSIGNMENT, (void*)get_variable_symbol(name,0)->id };
+    
     add_intermediate(_decleration);
     _decleration.type = VAR_RETURN;
     add_operand(_decleration, false);

@@ -10,8 +10,7 @@ void vector_test_valid(vector *_vector)
     if (_vector->contents == 0) {
         printf("Vector has no contents.\n");
         abort();
-    }
-    if (_vector->type_size == 0) {
+    } else if (_vector->type_size == 0) {
         printf("Vector doesn't have type size yet.\n");
         abort();
     }

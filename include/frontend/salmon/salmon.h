@@ -9,9 +9,9 @@
 #include<frontend/common/tokenizer.h>
 
 /*
- * This function turns a single salmon source file into intermediate tokens
- * and returns a vector of those intermediate tokens.
+ * This function turns a single salmon source file into intermediate tokens.
+ * The tokens are stored in "frontend/common/tokenizer.c"
  */
-vector salmon_file_into_intermediate(char* file_name);
+void salmon_file_into_intermediate(char* file_name);
 
 #endif

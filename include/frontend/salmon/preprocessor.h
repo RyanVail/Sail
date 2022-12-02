@@ -1,3 +1,7 @@
+/*
+ * This is the preprocessor for the Salmon programming language.
+ */
+
 #ifndef FRONTEND_SALMON_PREPROCESSOR_H
 #define FRONTEND_SALMON_PREPROCESSOR_H
 

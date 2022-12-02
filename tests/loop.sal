@@ -5,8 +5,9 @@
 
 fn test u32 <- $main$ -> u32 {}
 
-let a %u32% 213 %u32% =
-let b %u8% \x3423 %u8% =
+let c u8 10 =
+let a u32 213 u32 =
+let b u8 \x3423 u8 =
 loop {
     2 2 + ;
     b b ++ =

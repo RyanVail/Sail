@@ -6,7 +6,7 @@
 #include<common.h>
 
 static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "i8", "u8", "i16", "u16",
-"i32", "u32", "i64", "u64", "i128", "u128", "float", "double", "%", "%", "\0" };
+"i32", "u32", "i64", "u64", "float", "double", "%", "%", "\0" };
 
 // TODO: This doesn't need to be that many pointers.
 static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
@@ -14,7 +14,7 @@ static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
 /*
  * This returns the lowest possible type a value can be.
  */
-type_kind get_lowest_type(i128 value)
+type_kind get_lowest_type(i64 value)
 {
     if (value == 0 || value == 1)
         return BOOL_TYPE;
@@ -30,8 +30,6 @@ type_kind get_lowest_type(i128 value)
         return I32_TYPE;
     if (value <= __INT64_MAX__ && value >= ~__INT64_MAX__)
         return I64_TYPE;
-    if (value <= __LONG_LONG_MAX__ && value >= ~__LONG_LONG_MAX__)
-        return I128_TYPE;
     return I32_TYPE;
 
     get_lowest_type_unsigned_label:
@@ -44,8 +42,6 @@ type_kind get_lowest_type(i128 value)
         return U32_TYPE;
     if (value <= __UINT64_MAX__)
         return U64_TYPE;
-    if (value <= __LONG_LONG_MAX__)
-        return U128_TYPE;
     return U32_TYPE;
 }
 

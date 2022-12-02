@@ -4,14 +4,16 @@
 
 #ifndef TYPEDEFS_H
 #define TYPEDEFS_H
-typedef unsigned long long u128;
-typedef signed long long i128;
-typedef unsigned long u64;
-typedef signed long i64;
-typedef unsigned int u32;
-typedef signed int i32;
-typedef unsigned short u16;
-typedef signed short i16;
-typedef unsigned char u8;
-typedef signed char i8;
+
+#include<inttypes.h>
+
+typedef uint64_t u64;
+typedef int64_t i64;
+typedef uint32_t u32;
+typedef int32_t i32;
+typedef uint16_t u16;
+typedef int16_t i16;
+typedef uint8_t u8;
+typedef int8_t i8;
+
 #endif
