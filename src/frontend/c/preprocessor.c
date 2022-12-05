@@ -16,24 +16,45 @@ static vector tokenized_file = { 0, 0, 0, sizeof(char*) };
 static vector new_file = { NULL, 0, 0, sizeof(char*) };
 
 static inline void C_expand_macro(vector* new_file, u32* i, vector* file);
-static inline void C_read_macro(vector* file, u32* i);
+static inline bool C_read_macro(vector* file, u32* i, bool first_pass);
+static u32 C_get_end_of_line(vector* file, u32 i);
+
+// TODO: tokenized file is static now but it is still being passed into
+// functions.
 
 /*
- * This preprocesses a single line of C code.
+ * This preprocesses a single token of C code.
  */
-void C_preprocess_line(u32* i)
+void C_preprocess_token(u32* i)
 {
     replace_C_const_chars(&tokenized_file, *i);
     replace_C_escape_codes(&tokenized_file, i);
     skip_C_comments(&tokenized_file, i);
 
     C_expand_macro(&new_file, i, &tokenized_file);
-    C_read_macro(&tokenized_file, i);
+
+    // if (C_read_macro(&tokenized_file, i, true)) {
+        // find_next_valid_token(&tokenized_file, i);
+        // return;
+    // }
 
     if (*i == VECTOR_SIZE(tokenized_file))
         return;
 
+    // printf("%s\n", *(char**)vector_at(&tokenized_file, *i, false));
     vector_append(&new_file, vector_at(&tokenized_file, *i, false));
+}
+
+/*
+ * This preprocesses a single line of C code.
+ */
+void C_preprocess_line(u32* i)
+{
+    u32 end_line_index = C_get_end_of_line(&tokenized_file, *i);
+    u32 first_index = *i;
+    for (; *i < end_line_index; find_next_valid_token(&tokenized_file, i))
+        C_preprocess_token(i);
+    C_read_macro(&tokenized_file, &first_index, false);
 }
 
 /*
@@ -133,6 +154,7 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
             vector_append(new_file, &current_token);
         }
     }
+    find_next_valid_token(file, i);
 }
 
 /*
@@ -140,8 +162,10 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
  */
 static inline void C_skip_single_line_comment(vector* file, u32* i)
 {
-    if (**(u16**)vector_at(file, *i, false) == '/' | ('/' << 8))
-        *i = C_get_end_of_line(file, *i) + 1;
+    if (**(u16**)vector_at(file, *i, false) == '/' | ('/' << 8)) {
+        *i = C_get_end_of_line(file, *i);
+        find_next_valid_token(file, i);
+    }
 }
 
 /*
@@ -150,57 +174,49 @@ static inline void C_skip_single_line_comment(vector* file, u32* i)
  */
 static inline void C_process_if_macro(vector* file, u32 *i)
 {
-    /*
-     * I apologize for the abuse of macros but without it this section is even
-     * more unreadable.
-     */
-    #define CURRENT_STRING *(char**)vector_at(file, *i, false)
-    #define CURRENT_CHAR **(char**)vector_at(file, *i, false)
-    #define GOTO_NEXT_LINE() *i = C_get_end_of_line(file, *i) + 1
-    u32 _tmp_i = *i + 1;
+    u32 _tmp_i = *i;
     C_preprocess_line(&_tmp_i);
     // TODO: This should compute the result of the current line
-    if (CURRENT_CHAR == '0') {
-        GOTO_NEXT_LINE();
-        for (; *i < VECTOR_SIZE((*file)); *i += 1) {
-            if (CURRENT_CHAR == '#') {
+    // printf("%s\n", *(char**)vector_at(file, *i, 0));
+    // exit(0);
+    if (**(char**)vector_at(file, *i, 0) == '0') {
+        for (; *i < VECTOR_SIZE((*file)); find_next_valid_token(file, i)) {
+            if (**(char**)vector_at(file, *i, false) == '#') {
                 find_next_valid_token(file, i);
-                if (!strcmp(CURRENT_STRING, "else")) {
-                    GOTO_NEXT_LINE();
+                if (!strcmp(*(char**)vector_at(file, *i, false), "else")
+                || !strcmp(*(char**)vector_at(file, *i, false), "endif")
+                || !strcmp(*(char**)vector_at(file, *i, false), "if")) {
                     return;
                 }
-                GOTO_NEXT_LINE();
             }
         }
         send_error("Expected #endif after #if");
-    } else {
-        bool in_else = 0;
-        GOTO_NEXT_LINE();
-        for (; *i < VECTOR_SIZE((*file)); *i += 1) {
-            if (CURRENT_CHAR == '#') {
-                find_next_valid_token(file, i);
-                if (!strcmp(CURRENT_STRING, "endif")) {
-                    GOTO_NEXT_LINE();
-                    return;
-                }
-                if (!strcmp(CURRENT_STRING, "else"))
-                    in_else = 1;
-                GOTO_NEXT_LINE();
-            } else if (!in_else)
-                C_preprocess_line(i);
-
-        }
-        send_error("Expected #endif after #if");
     }
-    #undef CURRENT_STRING
-    #undef CURRENT_CHAR
-    #undef GOTO_NEXT_LINE
 }
 
 /*
- * This is run during the C preprocessor pass and it reads macros.
+ * This skips forward to the next "#endif" macro with the same depth.
  */
-static inline void C_read_macro(vector* file, u32* i)
+static inline void C_process_else_macro(vector* file, u32 *i)
+{
+    for (; *i < VECTOR_SIZE((*file)); find_next_valid_token(file, i)) {
+        if (**(char**)vector_at(file, *i, false) == '#') {
+            find_next_valid_token(file, i);
+            if (!strcmp(*(char**)vector_at(file, *i, false), "endif")) {
+                // *i = C_get_end_of_line(file, *i);
+                // find_next_valid_token(file, i);
+                break;
+            }
+        }
+    }
+    send_error("Expected #endif after #else");
+}
+
+/*
+ * This is run during the C preprocessor pass and it reads macros. Returns true
+ * if the saving of the current line should be skipped
+ */
+static inline bool C_read_macro(vector* file, u32* i, bool first_pass)
 {
     /*
     #if
@@ -215,29 +231,39 @@ static inline void C_read_macro(vector* file, u32* i)
     #pragma // pragmas are skipped
     */
     if (**(char**)vector_at(file, *i, false) != '#')
-        return;
+        return false;
 
     find_next_valid_token(file, i);
     char* current_token = *(char**)vector_at(file, *i, false);
-    find_next_valid_token(file, i);
+    // find_next_valid_token(file, i);
 
     if (!strcmp(current_token, "if")) {
-        C_process_if_macro(file, i);
+        if (!first_pass)
+            C_process_if_macro(file, i);
     } else if (!strcmp(current_token, "ifdef")) {
         //
     } else if (!strcmp(current_token, "ifndef")) {
         //
     } else if (!strcmp(current_token, "define")) {
-        C_add_macro(file, i);
+        if (!first_pass)
+            C_add_macro(file, i);
     } else if (!strcmp(current_token, "undef")) {
         //
     } else if (!strcmp(current_token, "include")) {
         //
+    } else if (!strcmp(current_token, "else")) {
+        if (!first_pass)
+            C_process_else_macro(file, i);
     } else if (!strcmp(current_token, "error")) {
         //
     } else if (!strcmp(current_token, "pragma")
     || !strcmp(current_token, "endif")) {
-        *i = C_get_end_of_line(file, *i) + 1;
+        //
     } else
-        return;
+        return false;
+
+    if (first_pass)
+        find_next_valid_token(file, i);
+
+    return true;
 }

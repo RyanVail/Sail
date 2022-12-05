@@ -116,6 +116,8 @@ void replace_C_escape_codes(vector* file, u32* current_index)
         send_error("\\ has to be a special char for C backslash replacment");
     #endif
  
+    // TODO: This shouldn't blindly incrament "current_index" instead it should
+    // find the next valid token.
     /*
      * "_next" is either the value of the escape code or the base if it's octal
      * or hex.
@@ -123,7 +125,6 @@ void replace_C_escape_codes(vector* file, u32* current_index)
     u8 _next = '\0';
     if (**(char**)vector_at(file, *current_index, false) == '\\') {  
         free(*(char**)vector_at(file, *current_index, false));
-        find_next_valid_token(file, current_index);
         switch (**(char**)vector_at(file, *current_index+1, false)) {
             case 'n':
                 _next = '\n';
@@ -167,6 +168,7 @@ void replace_C_escape_codes(vector* file, u32* current_index)
                 goto escape_codes_numerical_label;
                 break;
             default:
+                printf("%s\n", *(char**)vector_at(file, *current_index+1, false));
                 send_error("Unknown escape code");
         }
 

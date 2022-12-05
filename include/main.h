@@ -12,8 +12,16 @@
  * pointers or on the heap. If this flag is set to false it will still compile
  * on 64 bit but will use more memory and call more mallocs.
  */
-#define VOID_PTR_64BIT __UINTPTR_MAX__ == 0xffffffffffffffff
+#ifdef _WIN32
+	#if _WIN64 
+		#define VOID_PTR_64BIT 1
+	#else
+		#define VOID_PTR_64BIT 0
+	#endif
+#else
+#define VOID_PTR_64BIT (__UINTPTR_MAX__ == 0xffffffffffffffff)
 // #define VOID_PTR_64BIT 0 // This is used for testing
+#endif
 
 #define FILE_BUFFER_SIZE 4096
 

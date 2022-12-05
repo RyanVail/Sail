@@ -104,7 +104,11 @@ void* vector_at(vector *_vector, u32 index, bool real)
         if (index >= 1 << _vector->size || index < 0)
             exit(-1);
     #endif
+    #ifdef _WIN32
+    return (u64)_vector->contents + _vector->type_size * index;
+    #else
     return _vector->contents + _vector->type_size * index;
+    #endif
 }
 
 /*

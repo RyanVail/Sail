@@ -232,7 +232,7 @@ inline void salmon_parse_let(vector* file, u32* location)
      * idicator chars.
      */
     *location += \
-        _type.ptr << ((bool)type_names[14][0] + (bool)type_names[15][0] - 1);
+        _type.ptr << ((bool)type_names[0xc][0] + (bool)type_names[0xd][0] - 1);
 
     intermediate _decleration = \
         { VAR_ASSIGNMENT, (void*)get_variable_symbol(name,0)->id };
@@ -265,7 +265,7 @@ static inline bool salmon_parse_type(vector* file, u32* location)
      * idicator chars.
      */
     *location += \
-        _type.ptr << ((bool)type_names[14][0] + (bool)type_names[15][0] - 1);
+        _type.ptr << ((bool)type_names[0xc][0] + (bool)type_names[0xd][0] - 1);
 
     cast_top_operand(_type);
 

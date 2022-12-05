@@ -37,11 +37,11 @@ int main(i32 argc, char* args[])
     // }
     // free_tokenized_file_vector(&_tmp);
 
-    vector c_file = C_preprocess_file("../tests/fib.c");
+    /*vector c_file = C_preprocess_file("../tests/fib.c");
     for (u32 i=0; i < VECTOR_SIZE(c_file); i++) {
         printf("%s\n", *(char**)vector_at(&c_file, i, 0));
-    }
-/*
+    }*/
+
     salmon_file_into_intermediate("../tests/loop.sal");
     // free_tokenized_file_vector(&_tmp);
 
@@ -86,5 +86,5 @@ int main(i32 argc, char* args[])
     // printf("%p\n", get_variable_symbol("", 0));
 
     free_symbol_table();
-    free_intermediates();*/
+    free_intermediates();
 }

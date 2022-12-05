@@ -13,8 +13,9 @@ ess\n\t-o <file>\t\t--output <file>\t\tAllows specification of output file\n\
 \t-O<level>\t\t--opt <level>\t\tLevel of optimization 0-3\n";
 #else
 const char help_message[] = "Usage: Sail [options] files...\n\nOptions:\n\t-h\
-\t\t\t--help\t\t\tDisplays help\n\t-o <file>\t\t--output <file>\t\tAllows specification of output file\n\
-\t-O<level>\t\t--opt <level>\t\tLevel of optimization 0-3\n";
+\t\t\t--help\t\t\tDisplays help\n\t-o <file>\t\t--output <file>\t\tAllows speci\
+fication of output file\n\t-O<level>\t\t--opt <level>\t\tLevel of optimization \
+0-3\n";
 #endif
 
 
@@ -37,8 +38,9 @@ struct cli_options *get_global_cli_options()
 	return &global_cli_options;
 }
 
+// TODO: Make this use a vector
 /*
- * This goes through CLI options and sets the appropriete flags in
+ * This goes through CLI options and sets the appropriate flags in
  * "global_cli_options"
  */
 void process_cli_options(u32 argc, char *args[])

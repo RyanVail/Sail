@@ -1,11 +1,12 @@
 #define COND 0
-#if COND
-int a = 3;
+#if 0
+    int foo = 3;
 #else
-#if 1
-int c = 32;
-#endif
-int b = 3;
+    #if 0
+        int abc = 32;
+    #else
+        int test = 3;
+    #endif
 #endif
 
 //#include<stdio.h>

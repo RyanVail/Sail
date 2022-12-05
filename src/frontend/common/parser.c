@@ -25,7 +25,7 @@ type parse_type(char** string_ptr)
     #if DEBUG
     if (!type_names)
         send_error("Type names weren't set");
-    if (!(type_names[0xe]) && !(type_names[0xf][0]))
+    if (!(type_names[0xc]) && !(type_names[0xd][0]))
         send_error("Before and after pointer indicators cannot both be null");
     #endif
 
@@ -33,7 +33,7 @@ type parse_type(char** string_ptr)
     u16 after_ptrs = 0;
     type _type;
 
-    for (; string_ptr[before_ptrs][0] == type_names[0xe][0]; before_ptrs++);
+    for (; string_ptr[before_ptrs][0] == type_names[0xd][0]; before_ptrs++);
 
     string_ptr += before_ptrs;
 
@@ -52,9 +52,9 @@ type parse_type(char** string_ptr)
 
     string_ptr += 1;
 
-    for (; string_ptr[after_ptrs][0] == type_names[0xf][0]; after_ptrs++);
+    for (; string_ptr[after_ptrs][0] == type_names[0xd][0]; after_ptrs++);
 
-    if (after_ptrs != before_ptrs && type_names[0xe][0] && type_names[0xf][0])
+    if (after_ptrs != before_ptrs && type_names[0xc][0] && type_names[0xd][0])
         send_error("Numbers of pointer chars before and afer must be equal");
 
     _type.ptr = after_ptrs;

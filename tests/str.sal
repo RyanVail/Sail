@@ -1,0 +1,9 @@
+#include "c_string.sah";
+let target %u8% "start" =
+let input %u8% ".text\n.global _start\n_start:\nstart:" =
+let input_end u32 input $strlen$ target $strlen$ - input + =
+loop {
+    input target $strcmp$ if break
+    input input_end == ! if $abort$
+    input input ++ =
+}

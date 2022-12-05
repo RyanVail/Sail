@@ -1,7 +1,6 @@
 /*
  * This handles everything that involvs types.
  */
-
 #include<types.h>
 #include<common.h>
 
@@ -86,17 +85,17 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
  */
 void print_type(type _type)
 {
-    if (TYPE_NAMES[0xe][0] != '\0')
+    if (TYPE_NAMES[0xc][0] != '\0')
         for (u32 count = 0; count < _type.ptr; count++)
-            printf("%s", TYPE_NAMES[0xe]);
+            printf("%s", TYPE_NAMES[0xc]);
 
     printf("%s", TYPE_NAMES[_type.kind]);
 
-    if (TYPE_NAMES[0xf][0] == '\0')
+    if (TYPE_NAMES[0xd][0] == '\0')
         return;
 
     for (u32 count = 0; count < _type.ptr; count++)
-        printf("%s", TYPE_NAMES[0xf]);
+        printf("%s", TYPE_NAMES[0xd]);
 }
 
 /*

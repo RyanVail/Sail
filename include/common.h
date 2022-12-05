@@ -12,10 +12,10 @@
 #include<stdbool.h>
 #include<string.h>
 
+#include<defs.h>
 #include<typedefs.h>
 #include<errors.h>
 #include<main.h>
 #include<datastructures/vector.h>
-#include<defs.h>
 
 #endif
