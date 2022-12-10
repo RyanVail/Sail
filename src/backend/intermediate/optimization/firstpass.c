@@ -109,7 +109,7 @@ u32 end)
     uses->apparent_size = 0;
 
     optimization_first_pass_process_basic_block_label:
-    // TODO: Using "memcpy" instead of append can increase the speed of this.
+    // TODO: Using "memcpy" instead of appending can increase the speed of this.
     for (; start < end; start++)
         vector_append(&output_intermediates, vector_at(&intermediates,start,0));
 }

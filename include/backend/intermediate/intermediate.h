@@ -43,8 +43,8 @@ typedef enum intermediate_type {
 
     // Variable intermediates
     VAR_ASSIGNMENT,         // The variable id in the "ptr"
-    VAR_ACCESS,             // ^^^
-    VAR_MEM,                // ^^^
+    VAR_ACCESS,             // The variable id in the "ptr"
+    VAR_MEM,                // The variable id in the "ptr"
     // Memory intermediates
     MEM_LOCATION,           // *ptr = 8
     MEM_ACCESS,             // *ptr
@@ -82,8 +82,6 @@ typedef enum intermediate_type {
     CLEAR_STACK             // ;
 } intermediate_type;
 
-// TODO: This could be optimized to use less memory by not having a "ptr" if we
-// have an operation operand.
 /* struct intermediate - This struct represents one intermediate token
  * @type: This is the type of this intermediate
  * @ptr: This is either a constant or a ptr to a variable, function, etc. which

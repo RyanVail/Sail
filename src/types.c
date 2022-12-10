@@ -7,9 +7,13 @@
 static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "i8", "u8", "i16", "u16",
 "i32", "u32", "i64", "u64", "float", "double", "%", "%", "\0" };
 
-// TODO: This doesn't need to be that many pointers.
-static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
+static u32 DEFAULT_TYPE_SIZES[] = { 0, 1, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8};
 
+static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
+static u32* TYPE_SIZES = &DEFAULT_TYPE_SIZES;
+
+// TODO: The below function should change based on TYPE_SIZES rather than using
+// hard coded values.
 /*
  * This returns the lowest possible type a value can be.
  */
@@ -44,6 +48,8 @@ type_kind get_lowest_type(i64 value)
     return U32_TYPE;
 }
 
+// TODO: The error input of the below function was only used for debug things I'm
+// pretty sure and doesn't need to exist anymore.
 /*
  * This checks if type "_from" can be casted into type "_to" implicitily.
  * Returns true if "_from" can implicitly cast to "_to".
@@ -63,6 +69,7 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     && ((_to.kind < _from.kind) || ((_to.kind & 1) != (_from.kind & 1))))
             goto type_can_implicitly_cast_to_error_label;
 
+    // TODO: Impliment floats and doubles.
     if (_from.kind == FLOAT_TYPE || _from.kind == DOUBLE_TYPE
     || _to.kind == FLOAT_TYPE || _to.kind == DOUBLE_TYPE)
         send_error("Floats & doubles aren't implimented yet.");
@@ -70,6 +77,7 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     return true;
 
     type_can_implicitly_cast_to_error_label:
+
     if (!error)
             return false;
         printf("Error cannot implicity cast type `");
@@ -110,11 +118,28 @@ void set_type_names(char** _TYPE_NAMES)
 }
 
 /*
+ * This allows different front ends / back ends to set custom type sizes. The
+ * sizes should correspond with the "type_kind" enum rather than "TYPE_NAMES".
+ */
+void set_type_sizes(u32* _TYPE_SIZES)
+{
+    TYPE_SIZES = _TYPE_SIZES;
+}
+
+/*
  * This allows the front ends to get the names of types.
  */
 char** get_type_names()
 {
     return TYPE_NAMES;
+}
+
+/*
+ * This allows the front ends / back ends to get the sizes of types.
+ */
+u32* get_type_sizes()
+{
+    return TYPE_SIZES;
 }
 
 /*

@@ -14,7 +14,7 @@ static vector intermediates_vector = { 0, 0, 0, sizeof(intermediate) };
  */
 void add_operand_to_intermediates(intermediate _intermediate)
 {
-    /* These intermediates are just placeholders. */
+    /* These intermediates are just placeholders and don't need to be added. */
     if (_intermediate.type == FUNC_RETURN || _intermediate.type == MEM_RETURN)
         return;
 

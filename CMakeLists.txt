@@ -26,4 +26,5 @@ add_executable(Sail
 	src/backend/intermediate/optimization/firstpass.c
 	src/backend/intermediate/intermediate.c
 	src/backend/intermediate/symboltable.c
+	src/backend/asm/ARMv7.c
 )

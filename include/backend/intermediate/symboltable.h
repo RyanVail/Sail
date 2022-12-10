@@ -43,6 +43,7 @@ typedef struct variable_symbol {
         // bool global;
         // bool need_stack;
     u8 uses;
+    u32 stack_location;
 } variable_symbol;
 
 /*

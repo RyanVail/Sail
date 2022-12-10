@@ -20,7 +20,7 @@ struct cli_options {
 	enum { linux_ARMv7 } compilation_target;
 	u8 opt;
 	#if DEBUG
-	u8 time_compilation;
+	bool time_compilation;
 	#endif
 	char **input_files;
 	u8 input_files_length;

@@ -7,7 +7,8 @@
 
 #include<common.h>
 
-#define IS_TYPE_INT(x) x.kind >= BOOL_TYPE && x.kind <= U64_TYPE
+#define IS_TYPE_INT(x) (x.kind >= BOOL_TYPE && x.kind <= U64_TYPE)
+#define IS_KIND_INT(x) (x >= BOOL_TYPE && x <= U64_TYPE)
 
 typedef enum type_kind {
     VOID_TYPE,          // 0x0 // 0000
@@ -58,9 +59,20 @@ void print_type(type _type);
 void set_type_names(char** _TYPE_NAMES);
 
 /*
+ * This allows different front ends / back ends to set custom type sizes. The
+ * sizes should correspond with the "type_kind" enum rather than "TYPE_NAMES".
+ */
+void set_type_sizes(u32* _TYPE_SIZES);
+
+/*
  * This allows the front ends to get the names of types.
  */
 char** get_type_names();
+
+/*
+ * This allows the front ends / back ends to get the sizes of types.
+ */
+u32* get_type_sizes();
 
 /*
  * This resets the type names to the default

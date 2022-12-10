@@ -10,6 +10,7 @@
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
 #include<backend/intermediate/optimization/firstpass.h>
+#include<backend/asm/ARMv7.h>
 
 int main(i32 argc, char* args[])
 {
@@ -47,6 +48,16 @@ int main(i32 argc, char* args[])
 
     optimization_do_first_pass();
     print_intermediates();
+
+    bin sadfdf = intermediates_into_binary(get_intermediate_vector());
+
+    for (u32 i=0; i < VECTOR_SIZE(sadfdf.contents); i++) {
+        printf("%08x\n", *(u32*)vector_at(&(sadfdf.contents), i, 0));
+    }
+
+    free(sadfdf.contents.contents);
+    free(sadfdf.labels.contents);
+    // ARMv7_free_all();
 
     // type _a = { 0, U8_TYPE };
     // type _b = { 0, I8_TYPE };
