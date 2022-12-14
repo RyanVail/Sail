@@ -24,6 +24,7 @@ add_executable(Sail
 	src/frontend/salmon/salmon.c
 	src/frontend/c/preprocessor.c
 	src/backend/intermediate/optimization/firstpass.c
+	src/backend/intermediate/optimization/secondpass.c
 	src/backend/intermediate/intermediate.c
 	src/backend/intermediate/symboltable.c
 	src/backend/asm/ARMv7.c

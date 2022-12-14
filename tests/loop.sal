@@ -4,17 +4,10 @@
  */
 
 fn test u32 <- $main$ -> u32 {}
-
-let c u8 10 =
-let a u32 213 u32 =
-let b u8 \x123 u8 =
-loop {
-    2 2 + ;
-    b b ++ =
-    a b == if break
-    /* b 32 $std_print_bits$ */
-}
-
+let c u8 10 u8 =
+let a i32 -213 i32 =
+let b u8 -257 u8 = ;
+c u8 c u8 3 u8 << =
 /*let file_handle %void% "test.txt" "r" $fopen$ =
 file_handle ! if $end$
 

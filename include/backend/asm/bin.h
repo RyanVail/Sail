@@ -1,4 +1,10 @@
-/* This contains some commonly used assembly structures and functions. */
+/* 
+ * This contains some commonly used assembly structures and functions.
+ *
+ * The following macros must be defined before including this header file:
+ * REGISTERS_SIZE_NOT_CONST: If registers can have different sizes this is the
+ * byte width of a register.
+ */
 
 #ifndef BACKEND_ASM_BIN_H
 #define BACKEND_ASM_BIN_H

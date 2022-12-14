@@ -183,7 +183,7 @@ void replace_C_escape_codes(vector* file, u32* current_index)
 
         escape_codes_numerical_label: ;
 
-        /* This turns the number into an unsigned 128bit. */
+        /* This turns the number into an unsigned 64 bit int. */
         char* _begin = *(char**)vector_at(file, *current_index+1, false) + 1;
         u64 _result = strtoll(_begin, NULL, _next);
 

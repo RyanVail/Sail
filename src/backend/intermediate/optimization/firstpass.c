@@ -64,6 +64,10 @@ void optimization_do_first_pass()
         optimization_first_pass_next_intermediate_label:
         location++;
     }
+
+    /* If we don't end with a control flow, save the left over intermediates. */
+    process_basic_block(&ptrs, &uses, start, location);
+
     free(uses.contents);
     free(ptrs.contents);
     free_intermediates();
@@ -80,7 +84,7 @@ u32 end)
     if (VECTOR_SIZE((*ptrs)) == 0)
         goto optimization_first_pass_process_basic_block_label;
 
-    /* This reorders ptrs from highest to lowest uses. */
+    /* This reorders ptrs from highest to lowest uses badly. */
     vector* new_ptrs = malloc(sizeof(vector));
     *new_ptrs = vector_init_with(sizeof(u32), ptrs->size);
 

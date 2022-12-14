@@ -85,8 +85,8 @@ void salmon_file_into_intermediate(char* file_name)
              */
             #if !VOID_PTR_64BIT
             intermediate _operand;
-            if (_const_num > ~((i64)1 << ((sizeof(void*) << 3) - 1))
-            || _const_num < (i64)1 << ((sizeof(void*) << 3) - 1)) {
+            if (_const_num < ~((i64)1 << ((sizeof(void*) << 3))-1) + 1
+            || _const_num > ((i64)1 << ((sizeof(void*) << 3)-1))-1) {
                 const_num = malloc(sizeof(i64));
                 if (const_num == 0)
                     handle_error(0);
@@ -269,6 +269,7 @@ static inline bool salmon_parse_type(vector* file, u32* location)
 
     cast_top_operand(_type);
 
+    // TODO: This should be done in "intermediate.c".
     #if VOID_PTR_64BIT
     intermediate _tmp_intermediate = { CAST, *((void**)&_type) };
     #else
@@ -291,6 +292,7 @@ static inline bool salmon_parse_type(vector* file, u32* location)
 static inline bool salmon_parse_single_char_operation(char _char)
 {
     intermediate_type _operation;
+    // TODO: Switch statments need to be standerdized inside of this project.
     switch (_char) {
         case '+':
             _operation = ADD;

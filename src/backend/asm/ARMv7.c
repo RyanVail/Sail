@@ -3,20 +3,44 @@
  *
  * When a variable is used it is put into a register and kept in that register
  * till another variable or a constant takes its place. Variables in registers
- * have the "intermediate_kind" of variable_access Registers that are being
+ * have the "intermediate_kind" of variable_access. Registers that are being
  * operated on have the "intermediate_kind" of "VAR_RETURN".
  */
 
 #include<backend/asm/ARMv7.h>
 #include<backend/intermediate/intermediate.h>
 
+typedef enum location_type {
+    STACK_INDEX,
+    REG_INDEX,
+    IMMEDIATE,
+} location_type;
+
+/* struct value_location - This holds the location of a value
+ * @first: This is the first half of the location
+ * @second: This is the second half of the location, which is only used if the
+ * value is 64 bit
+ * @type: This is the type of location
+ * @value_type: This is the type of value
+ */
+typedef struct value_location {
+    u16 first;
+    u16 second;
+    location_type type;
+    type value_type;
+} value_location;
+
 static bin output_bin = { 0, 0 };
 static reg regs[GENERAL_REGISTER_COUNT];
 static vector variable_priorities = { 0, 0, 0, 0 };
-static vector variable_locations = { 0, 0, 0, sizeof(u32) };
-static u32 stack_pointer_location = 0;
-static u8 operational_register = __UINT8_MAX__;
-static u8 second_operational_register = __UINT8_MAX__;
+static stack value_locations = { 0, sizeof(value_location) };
+
+#define ASSEMBLE_MOVT(condition, destination_reg, _immediate) \
+    condition << 28 | 1 << 25 | 1 << 24 | 1 << 22 | destination_reg << 16 \
+    | _immediate
+
+#define ASSEMBLE_MOVW(condition, destination_reg, _immediate) \
+    condition << 28 | 1 << 25 | 1 << 24 | destination_reg << 16 | _immediate
 
 #define ASSEMBLE_DATA_NO_SHIFT(condition, operation, flags, destination_reg, \
 first_reg, second_reg) \
@@ -24,9 +48,26 @@ first_reg, second_reg) \
     | destination_reg << 12 | second_reg
 
 /*
- * Offset is always considered negative and should be no bigger than a u12.
- * "ldr_or_str" and "byte_or_word" are in the form of "true_or_false" so true
- * in "ldr_or_str" would mean the first value or "ldr".
+ * This preforms a ROR on "input" by "shift_count". "shift_count" should be
+ * under a value of 32.
+ */
+#define ROR(input, shift_count) \
+    ((u32)input >> (u32)shift_count) + ((u32)input << (32 - (u32)shift_count))
+
+/*
+ * This macros gets the rotate needed for "const".
+ */
+#define GET_ROR_OF_CONST(_const) \
+    current_rotate = 0; \
+    for (; current_rotate < 18; current_rotate += 2) { \
+        if (ROR(_const, current_rotate) < __UINT8_MAX__+1) \
+            break; \
+    }
+
+/*
+ * Offset should be no bigger than a u12. "ldr_or_str" and "byte_or_word" are
+ * in the form of "true_or_false" so true in "ldr_or_str" would mean the first
+ * value or "ldr".
  */
 #define ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(condition, neg, offset, ldr_or_str, \
 destination_or_source_reg, byte_or_word, write_back) \
@@ -39,6 +80,7 @@ void clear_registers();
 static inline u8 get_register_with_value(intermediate _intermediate);
 static inline void ARMv7_process_intermediate(intermediate _intermediate);
 static inline void ARMv7_add_asm(u32 machine_code_to_add);
+static u32 get_immediate_of_const(u32 _const);
 
 /*
  * This returns a "bin" which contains the outputed ARMv7 machine code from the
@@ -60,11 +102,6 @@ bin intermediates_into_binary(vector* intermediates)
 static inline void ARMv7_add_asm(u32 machine_code_to_add)
 {
     vector_append(&output_bin.contents, &machine_code_to_add);
-    // for (u32 i=0; i < 4; i++)
-        // printf("%u\n", i);
-        // printf("%u\n", &machine_code_to_add + (u32*)i);
-        // printf("### %u\n", *(char*)((u32)(&machine_code_to_add) + i));
-        // vector_append(&output_bin.contents, &(machine_code_to_add) + i);
 }
 
 /*
@@ -79,18 +116,8 @@ static inline void save_register(u8 reg_index)
 
     variable_symbol* _var = get_variable_symbol("",regs[reg_index].content.ptr);
 
-    if (_var->stack_location == __UINT32_MAX__)
-        _var->stack_location = stack_pointer_location;
-        stack_pointer_location -= type_sizes[_var->type.kind];
-
     ARMv7_add_asm(ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(14, true, \
     _var->stack_location, true, reg_index, true, false));
-}
-
-static inline void process_register_instruction(intermediate _intermediate)
-{
-    variable_locations.apparent_size = 0;
-    variable_priorities = *(vector*)_intermediate.ptr;
 }
 
 /*
@@ -98,124 +125,141 @@ static inline void process_register_instruction(intermediate _intermediate)
  */
 static inline void ARMv7_process_intermediate(intermediate _intermediate)
 {
-    // TODO: A lot of this is repative and can be done better. An array with the
-    // intermediate token types and the ARM ASM types can make for O(1).
-
-    switch (_intermediate.type)
+    // TODO: I'm pretty sure "_var" and "_first" can be the same variable.
+    // "_first" should be defined to the stop of the operand stack at the top
+    // instead of repeating the line a bunch of times.
+    value_location* _first = 0;
+    value_location* _second = 0;
+    value_location* _var = 0;
+    switch(_intermediate.type)
     {
-    case INC:
-    case DEC:
-        /* ADD operational_register, operational_register, #1 */
-        ARMv7_add_asm(14 << 28 | 1 << 25 \
-        | 3 + (_intermediate.type == INC) << 21 | operational_register << 16 \
-        | operational_register << 12 | 1);
-        break;
-    case NOT:
-        /* CLZ operational_register, operational_register */
-        ARMv7_add_asm(operational_register<<12|operational_register|0xe16f0f10);
-        /* LSL operational_register, #5 */
-        ARMv7_add_asm(14 << 28 | 13 << 21 | operational_register << 16
-        | operational_register << 12 | operational_register | 5 << 7);
-
-        regs[operational_register].content.type = BOOL_TYPE;
-        break;
-    case COMPLEMENT:
+    case CLEAR_STACK:
+        while (!(STACK_IS_EMPTY(value_locations)))
+            free(stack_pop(&value_locations));
         break;
     case NEG:
-        // TODO: Make sure "NEG" checks if the number is negative
-        ARMv7_add_asm(14 << 28 | 1 << 25 | 15 << 21 |
-        operational_register << 16 | operational_register << 12 | 1);
-        regs[operational_register].content.type = VAR_RETURN;
-        break;
-    case ADD:
-        printf("%u : %u\n", operational_register, second_operational_register);
-        ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, 4, 0, operational_register, \
-        second_operational_register, operational_register));
-        regs[operational_register].content.type = VAR_RETURN;
-        break;
-    case SUB:
-        ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, 2, 0, operational_register, \
-        second_operational_register, operational_register));
-        regs[operational_register].content.type = VAR_RETURN;
-        break;
-    case MUL:
-        break;
-    case DIV:
-        break;
-    case AND:
-        ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, 0, 0, operational_register, \
-        second_operational_register, operational_register));
-        regs[operational_register].content.type = VAR_RETURN;
-        second_operational_register = __UINT8_MAX__;
-        break;
-    case XOR:
-        ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, 1, 0, operational_register, \
-        second_operational_register, operational_register));
-        regs[operational_register].content.type = VAR_RETURN;
-        second_operational_register = __UINT8_MAX__;
-        break;
-    case OR:
-        ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, 12, 0, operational_register, \
-        second_operational_register, operational_register));
-        regs[operational_register].content.type = VAR_RETURN;
-        second_operational_register = __UINT8_MAX__;
-        break;
-    case LSL:
-        break;
-    case LSR:
-        break;
-    case MOD:
-        break;
-    case IS_EQUAL:
-        break;
-    case NOT_EQUAL:
-        break;
-    case GREATER_THAN:
-        break;
-    case GREATER_THAN_EQUAL:
-        break;
-    case LESS_THAN:
-        break;
-    case LESS_THAN_EQUAL:
-        break;
-    case EQUAL:
-        break;
-    case VAR_ASSIGNMENT:
-    case VAR_ACCESS:
-        if (operational_register == __UINT8_MAX__)
-            operational_register = get_register_with_value(_intermediate);
-        else
-            second_operational_register =get_register_with_value(_intermediate);
-        break;
-    case VAR_MEM:
-        break;
-    case MEM_LOCATION:
-        break;
-    case MEM_ACCESS:
-        break;
-    case IF:
-        break;
-    case ELSE:
-        break;
-    case LOOP:
-        break;
-    case END:
-        break;
-    case CONTINUE:
-        break;
-    case BREAK:
-        break;
-    case FUNC_CALL:
-        break;
-    case GOTO:
+        // TODO: This needs to be a reverse subtraction.
+        _first = stack_top(&value_locations);
+        if (_first->type == REG_INDEX)
+            ARMv7_add_asm(14 << 28 | 1 << 25 | 3 << 21 | _first->first << 16 \
+            | _first->first << 12 | 1);
+    case COMPLEMENT:
+        if (_first->type == COMPLEMENT)
+            ARMv7_add_asm(14 << 28 | 1 << 25 | 15 << 21 | _first->first << 16 \
+            | _first->first << 12 | _first->first);
         break;
     case CONST:
-    case CONST_PTR:
-        if (operational_register == __UINT8_MAX__)
-            operational_register = get_register_with_value(_intermediate);
-        else
-            second_operational_register =get_register_with_value(_intermediate);
+        _var = malloc(sizeof(value_location));
+        if (_var == 0)
+            handle_error(0);
+        #if VOID_PTR_64BIT
+        u32 immediate = get_immediate_of_const((u64)_intermediate.ptr);
+        if (immediate != __UINT32_MAX__) {
+            _var->type = IMMEDIATE;
+            _var->value_type.ptr = 0;
+            _var->first = (i64)_intermediate.ptr;
+            _var->value_type.kind = get_lowest_type((i64)_intermediate.ptr);
+        }
+        #else
+        u32 immediate = get_immediate_of_const((u64)_intermediate.ptr);
+        if (immediate != __UINT32_MAX__) {
+            _var->type = IMMEDIATE;
+            _var->first = (u32)_intermediate.ptr;
+        }
+        #endif
+        else {
+            _var->type = REGISTER;
+            _var->first = get_register_with_value(_intermediate);
+        }
+        stack_push(&value_locations, _var);
         break;
+    case LSL:
+    case LSR:
+        /* The first operand is either an immediate or a register. */
+        _first = stack_pop(&value_locations);
+        printf("%u\n", _first->type);
+
+        value_location* _second = stack_top(&value_locations);
+
+        if (_first->type == REG_INDEX)
+            ARMv7_add_asm(14 << 28 | 13 << 21 | _first->first << 16 \
+            | _first->first << 12 | 0 + (_intermediate.type == LSR) * \ 
+            (IS_TYPE_NEG(_first->value_type) || \
+            IS_TYPE_NEG(_second->value_type)) << 5 \
+            | _first->first);
+        else if (_first->type == IMMEDIATE)
+            ARMv7_add_asm(14 << 28 | 13 << 21 | _first->first << 16 \
+            | _first->first << 12 | 0 + (_intermediate.type == LSR) * \
+            (IS_TYPE_NEG(_first->value_type) || \
+            IS_TYPE_NEG(_second->value_type)) << 8 \
+            | _first->first);
+        free(_first);
+        break;
+    case CONST_PTR:
+        // TODO: Add constant pointer things here
+        break;
+    case VAR_ACCESS:
+    case VAR_ASSIGNMENT:
+        _var = malloc(sizeof(value_location));
+        if (_var == 0)
+            handle_error(0);
+
+        _var->value_type = ((variable_symbol*) \
+            get_variable_symbol("",(u32)_intermediate.ptr))->type;
+
+        _var->type = REG_INDEX;
+        _var->first = get_register_with_value(_intermediate);
+        stack_push(&value_locations, _var);
+        break;
+    case REGISTER:
+        variable_priorities = *(vector*)_intermediate.ptr;
+        break;
+    case NOT:
+        _first = stack_top(&value_locations);
+        if (_first->type == REG_INDEX) {
+            /* CLZ rx, rx */
+            ARMv7_add_asm((u32)value_locations.top->value << 12 \
+            | _first->first | 0xe16f0f10);
+            /* LSL rx, #5 */
+            ARMv7_add_asm(14 << 28 | 13 << 21 | _first->first << 16 \
+            | _first->first << 12 | 5 << 4 | _first->first);
+
+            regs[_first->first].content.type = BOOL_TYPE;
+        }
+        break;
+    case INC:
+    case DEC:
+        _first = stack_top(&value_locations);
+        if (_first->type == REG_INDEX)
+            ARMv7_add_asm(14 << 28 | 1 << 25 \
+            | 3 + (_intermediate.type == INC) << 21 | _first->first << 16 \
+            | _first->first << 12 | 1);
+        break;
+    case CAST:
+        _first = stack_top(&value_locations);
+        #if VOID_PTR_64BIT
+        _first->value_type = *((type*)&_intermediate.ptr);
+        #else
+        _first->value_type = *((type*)_intermediate.ptr);
+        #endif
+    }
+
+    if ((_intermediate.type >= ADD) && (_intermediate.type <= OR)) {
+        // printf("%u\n", (*(value_location*)stack_top(&value_locations)).type);
+        value_location* _first = stack_pop(&value_locations);
+        value_location* _second = stack_top(&value_locations);
+        u8 operational_codes[] = { 4,2,0,0,0,1,12 };
+        if (_first->type == REG_INDEX)
+            ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, \
+            (operational_codes[((u8)_intermediate.type - ADD)]), false, \
+            _first->first, _first->first, _second->first));
+        else if (_first->type == IMMEDIATE) {
+            ARMv7_add_asm(14 << 28 | true << 25 \
+            | operational_codes[((u8)_intermediate.type - ADD)] << 21 \
+            | _second->first << 16 | _second->first << 12 | \
+            get_immediate_of_const(_first->first));
+        }
+        free(_first);
     }
 }
 
@@ -232,11 +276,46 @@ static inline u32 get_variable_priority(u32 variable_id)
 }
 
 /*
+ * This returns the 12 bit immediate of the inputed 32 bit constant.
+ */
+static u32 get_immediate_of_const(u32 _const)
+{
+    u8 current_rotate = 0;
+    GET_ROR_OF_CONST(_const);
+    if (current_rotate == 18)
+        return __UINT32_MAX__;
+    return current_rotate << 8 | ROR(_const, (32 - current_rotate));
+}
+
+/*
  * This puts the inputed constant into the desired register.
  */
-static inline void put_const_into_register(i64 const_value, u8 _reg)
+static inline void put_u32_const_into_register(u32 _const, u8 _reg)
 {
-    printf("Put %u into %u\n", const_value, _reg);
+    // TODO: This doesn't clear the register before MOVW
+    if (_const < 65536)
+        ARMv7_add_asm(ASSEMBLE_MOVW(14, _reg, _const));
+
+    bool is_complement = false;
+
+    u32 immediate_result = __UINT32_MAX__;
+
+    printf("Put %u into %u\n", _const, _reg);
+
+    if ((_const < __UINT32_MAX__)) {
+        is_complement = true;
+        _const = ~_const;
+        immediate_result = get_immediate_of_const(_const);
+    }
+
+    if (immediate_result == __UINT32_MAX__) {
+        ARMv7_add_asm(ASSEMBLE_MOVT(14, _reg, (_const >> 16)));
+        ARMv7_add_asm(ASSEMBLE_MOVW(14, _reg, ((_const << 16) >> 16)));
+        return;
+    }
+
+    ARMv7_add_asm(14 << 28 | true << 25 | 15 << 21 | _reg << 15 | _reg << 12 | \
+    immediate_result);
 }
 
 // TODO: Variables can be swapped if they're the same size to use less memory.
@@ -251,11 +330,24 @@ static inline u8 get_register_with_value(intermediate _intermediate)
     /* This puts the desired variable into a valid register. */
     u8 lowest_priority_reg = __UINT8_MAX__;
     for (u32 i=0; i != GENERAL_REGISTER_COUNT; i++) {
-        if (i == operational_register)
-            continue;
+        // if (i == operational_register)
+            // continue;
  
-        if (regs[i].content.type == CONST)
+        if (regs[i].content.type == CONST) {
             lowest_priority_reg = i;
+            if (_intermediate.type == CONST
+            && _intermediate.ptr == regs[i].content.ptr)
+                return i;
+        }
+
+        #if VOID_PTR_64BIT
+        if (regs[i].content.type == CONST_PTR) {
+            lowest_priority_reg = i;
+            if (_intermediate.type == CONST_PTR
+            && *(i64*)_intermediate.ptr == *(i64*)regs[i].content.ptr)
+                return i;
+        }
+        #endif
 
         if (regs[i].content.type == VAR_RETURN) {
             lowest_priority_reg = i;
@@ -263,10 +355,10 @@ static inline u8 get_register_with_value(intermediate _intermediate)
         }
 
         if (regs[i].content.type == VAR_ACCESS
-        && _intermediate.type == VAR_ACCESS
+        && (_intermediate.type == VAR_ACCESS
+        || _intermediate.type == VAR_ASSIGNMENT)
         && _intermediate.ptr == regs[i].content.ptr)
             return i;
-
     }
 
     if (lowest_priority_reg != __UINT8_MAX__)
@@ -289,11 +381,13 @@ static inline u8 get_register_with_value(intermediate _intermediate)
 
     ARMv7_get_register_with_value_put_in_register_label:
 
+    regs[lowest_priority_reg].content = _intermediate;
+
     if (_intermediate.type == CONST) {
         #if VOID_PTR_64BIT
-        put_const_into_register((i64)_intermediate.ptr, lowest_priority_reg);
+        put_u32_const_into_register((u32)_intermediate.ptr, lowest_priority_reg);
         #else
-        put_const_into_register(*(i64*)_intermediate.ptr, lowest_priority_reg);
+        put_u32_const_into_register(*(u32*)_intermediate.ptr, lowest_priority_reg);
         #endif
         return lowest_priority_reg;
     } else if (_intermediate.type == VAR_ACCESS
@@ -311,8 +405,9 @@ static inline u8 get_register_with_value(intermediate _intermediate)
 void clear_registers()
 {
     intermediate _intermediate = { VAR_RETURN, 0 };
-    for (u32 i=0; i < GENERAL_REGISTER_COUNT; i++)
+    for (u32 i=0; i < GENERAL_REGISTER_COUNT; i++) {
         regs[i].content = _intermediate;
+    }
 }
 
 /*
@@ -320,6 +415,13 @@ void clear_registers()
  */
 void ARMv7_free_all()
 {
-    free(variable_locations.contents);
-    free(variable_priorities.contents);
+    while (!(STACK_IS_EMPTY(value_locations)))
+        free(stack_pop(&value_locations));
 }
+
+#undef ASSEMBLE_MOVT
+#undef ASSEMBLE_MOVW
+#undef ASSEMBLE_DATA_NO_SHIFT
+#undef ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE
+#undef ROR
+#undef GET_ROR_OF_CONST

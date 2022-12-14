@@ -18,7 +18,7 @@ typedef enum intermediate_type {
     DEC,                    // --
     NOT,                    // !
     COMPLEMENT,             // ~
-    NEG,                    // -    // This takes the negative of a value.
+    NEG,                    // -
     // Two operands required
     ADD,                    // +
     SUB,                    // -
@@ -32,7 +32,7 @@ typedef enum intermediate_type {
     MOD,                    // %
 
     // Comparisons, two operands
-    IS_EQUAL,               // =
+    IS_EQUAL,               // ==
     NOT_EQUAL,              // !=
     GREATER_THAN,           // >
     GREATER_THAN_EQUAL,     // >=

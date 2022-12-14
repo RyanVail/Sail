@@ -133,10 +133,7 @@ void set_type_of_operand(operand* _operand)
     #if DEBUG
     if (_operand->intermediate.type >= INC
     && _operand->intermediate.type <= LESS_THAN_EQUAL) {
-        printf("Cannot get the type of intermediate: %u", \
-            _operand->intermediate.type);
-
-        abort();
+        send_error("Cannot get the type of invalid intermediate");
     }
     #endif
     type _type = { 0, VOID_TYPE };
@@ -189,7 +186,7 @@ void add_operand(intermediate _intermediate, bool inited)
  */
 void clear_operand_stack()
 {
-    while (!(stack_is_empty(operand_stack)))
+    while (!(STACK_IS_EMPTY(operand_stack)))
         free((char*)stack_pop(&operand_stack));
 }
 
@@ -198,7 +195,7 @@ void clear_operand_stack()
  */
 void free_intermediates()
 {
-    while (intermediates_vector.size != 0) {
+    while (intermediates_vector.apparent_size != 0) {
         register intermediate* _intermediate = vector_pop(&intermediates_vector);
         #if !VOID_PTR_64BIT
         if (_intermediate->type == CONST_PTR || _intermediate->type == CAST)
@@ -245,18 +242,9 @@ void print_intermediates()
         if (_intermediate->type == REGISTER)
         {
             vector* _tmp_vec = _intermediate->ptr;
-            for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++) {
-                printf("%u\n",*(u32*)vector_at((vector*)_intermediate->ptr,y,0));
-            }
-            // printf("%u\n", *(u32*)vector_at((vector*)_intermediate->ptr, 0, false));
-            // printf("%s\n", (((variable_symbol*)_intermediate->ptr)[0]).name);
-            // printf("%s\n", ((variable_symbol*)_intermediate->ptr)->name);
+            for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++)
+                printf("%u\n",*(u32*)vector_at(_intermediate->ptr,y,0));
         }
-
-        // if (_intermediate->type == REGISTER) {
-            // variable_symbol* _vars = _intermediate->ptr;
-            // printf("%s\n", _vars->name);
-        // }
     }
 }
 

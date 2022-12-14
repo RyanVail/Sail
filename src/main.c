@@ -15,18 +15,14 @@
 int main(i32 argc, char* args[])
 {
     #if DEBUG
-    #if VOID_PTR_64BIT
-    /* This is a secondary fail safe. */
-    if (sizeof(void*) != 8)
-        send_error( \
-        "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to false and recompile");
-    #else
-    if (sizeof(void*) >= 8)
-        send_error( \
-        "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to true and recompile");
+        #if VOID_PTR_64BIT
+            /* This is a fail safe. */
+            if (sizeof(void*) != 8)
+                send_error( \
+                "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to false and recompile");
+        #endif
     #endif
-    #endif
-    // TOOD: Symbol table ids cannot be stored inside void pointers on 16bit
+    // TOOD: Symbol table ids cannot be stored inside void pointers on 16 bit
     // machines which may be a problem.
 
     // process_cli_options(argc, args);
@@ -57,7 +53,7 @@ int main(i32 argc, char* args[])
 
     free(sadfdf.contents.contents);
     free(sadfdf.labels.contents);
-    // ARMv7_free_all();
+    ARMv7_free_all();
 
     // type _a = { 0, U8_TYPE };
     // type _b = { 0, I8_TYPE };

@@ -10,7 +10,7 @@ static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "i8", "u8", "i16", "u16",
 static u32 DEFAULT_TYPE_SIZES[] = { 0, 1, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8};
 
 static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
-static u32* TYPE_SIZES = &DEFAULT_TYPE_SIZES;
+static u32* TYPE_SIZES = DEFAULT_TYPE_SIZES;
 
 // TODO: The below function should change based on TYPE_SIZES rather than using
 // hard coded values.
@@ -23,7 +23,15 @@ type_kind get_lowest_type(i64 value)
         return BOOL_TYPE;
 
     if (value > 0)
-        goto get_lowest_type_unsigned_label;
+        if (value <= __UINT8_MAX__)
+        return U8_TYPE;
+        if (value <= __UINT16_MAX__)
+            return U16_TYPE;
+        if (value <= __UINT32_MAX__)
+            return U32_TYPE;
+        if (value <= __UINT64_MAX__)
+            return U64_TYPE;
+        return U32_TYPE;
 
     if (value <= __INT8_MAX__ && value >= ~__INT8_MAX__)
         return I8_TYPE;
@@ -34,18 +42,6 @@ type_kind get_lowest_type(i64 value)
     if (value <= __INT64_MAX__ && value >= ~__INT64_MAX__)
         return I64_TYPE;
     return I32_TYPE;
-
-    get_lowest_type_unsigned_label:
-
-    if (value <= __UINT8_MAX__)
-        return U8_TYPE;
-    if (value <= __UINT16_MAX__)
-        return U16_TYPE;
-    if (value <= __UINT32_MAX__)
-        return U32_TYPE;
-    if (value <= __UINT64_MAX__)
-        return U64_TYPE;
-    return U32_TYPE;
 }
 
 // TODO: The error input of the below function was only used for debug things I'm

@@ -3,12 +3,12 @@
 
 #include<common.h>
 
-#define stack_is_empty(_stack) _stack.top == 0
+#define STACK_IS_EMPTY(_stack) (_stack.top == 0)
 
 typedef struct link link;
 
 /* struct link - This is a singly linked link
- * @next: The link after this one
+ * @next: A pointer to the link after this one
  * @value: A pointer to the value of this link
  */
 typedef struct link {
@@ -18,7 +18,7 @@ typedef struct link {
 
 /* struct stack - This is a simple stack data type
  * @top: This is the value on the top of the stack
- * @type_size: This is the size of the value in one link on the stack
+ * @type_size: This is the size of the values inside the links
  */
 typedef struct stack {
     link* top;
@@ -28,6 +28,8 @@ typedef struct stack {
 /*
  * This adds a value onto the stack.
  */
+// TODO: The allocation and transfter of data should be done in "stack_push"
+// to remove a large chunk of repetative code.
 void stack_push(stack* _stack, void* value);
 
 /*

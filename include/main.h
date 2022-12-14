@@ -8,7 +8,7 @@
  */
 #define DEBUG 1
 
-/* This flag determines if we store values that are 8 bytes long inside void
+/* This flag determines if we store values that are eight bytes long inside void
  * pointers or on the heap. If this flag is set to false it will still compile
  * on 64 bit but will use more memory and call more mallocs.
  */
@@ -19,8 +19,10 @@
 		#define VOID_PTR_64BIT 0
 	#endif
 #else
+
 #define VOID_PTR_64BIT (__UINTPTR_MAX__ == 0xffffffffffffffff)
-// #define VOID_PTR_64BIT 0 // This is used for testing
+// #define VOID_PTR_64BIT 0
+
 #endif
 
 #define FILE_BUFFER_SIZE 4096
