@@ -126,7 +126,7 @@ static inline void goto_start_of_next_basic_block()
 {
     for (; location < VECTOR_SIZE(intermediates); location++) {
         intermediate* _current = vector_at(&intermediates, location, 0);
-        if ( (_current->type < IF) || (_current->type > GOTO) )
+        if (_current->type < IF || _current->type > GOTO)
             return;
         vector_append(&output_intermediates, _current);
     }
