@@ -2,6 +2,7 @@
 #include<cli.h>
 #include<types.h>
 #include<datastructures/stack.h>
+#include<datastructures/hashtable.h>
 #include<frontend/salmon/salmon.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/salmon/preprocessor.h>
@@ -9,7 +10,8 @@
 #include<frontend/common/preprocessor.h>
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
-#include<backend/intermediate/optimization/firstpass.h>
+#include<backend/intermediate/optimization/registerpass.h>
+#include<backend/intermediate/optimization/usescopepass.h>
 #include<backend/asm/ARMv7.h>
 
 int main(i32 argc, char* args[])
@@ -39,17 +41,21 @@ int main(i32 argc, char* args[])
         printf("%s\n", *(char**)vector_at(&c_file, i, 0));
     }*/
 
+    #include<time.h>
+
+    init_symbol_table(8, 8);
+
     salmon_file_into_intermediate("../tests/loop.sal");
     // free_tokenized_file_vector(&_tmp);
 
-    optimization_do_first_pass();
+    optimization_do_register_pass();
+    optimizaiton_do_use_scope_pass();
     print_intermediates();
 
     bin sadfdf = intermediates_into_binary(get_intermediate_vector());
 
-    for (u32 i=0; i < VECTOR_SIZE(sadfdf.contents); i++) {
+    for (u32 i=0; i < VECTOR_SIZE(sadfdf.contents); i++)
         printf("%08x\n", *(u32*)vector_at(&(sadfdf.contents), i, 0));
-    }
 
     free(sadfdf.contents.contents);
     free(sadfdf.labels.contents);

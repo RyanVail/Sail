@@ -31,15 +31,12 @@ void pop_operand(bool dual, bool comparison)
     if (stack_size(&operand_stack) < (u32)dual+1)
         send_error("Not enough operands to perform operation");
 
-    operand* _first_operand;
-
-    if (dual || comparison)
-        _first_operand = stack_pop(&operand_stack);
-    else
-        _first_operand = stack_top(&operand_stack);
+    operand* _first_operand = \
+    dual || comparison ? stack_pop(&operand_stack) : stack_top(&operand_stack);
 
     if (!_first_operand->inited)
         add_operand_to_intermediates(_first_operand->intermediate);
+
     _first_operand->inited = true;
 
     if (!dual) {
@@ -52,23 +49,19 @@ void pop_operand(bool dual, bool comparison)
         return;
     }
 
-    operand* _second_operand;
-
-    if (comparison)
-        _second_operand = stack_pop(&operand_stack);
-    else
-        _second_operand = stack_top(&operand_stack);
+    operand* _second_operand = \
+    comparison ? stack_pop(&operand_stack) : stack_top(&operand_stack);
 
     if (_second_operand->intermediate.type == VAR_RETURN)
         goto pop_operand_second_operand_is_place_holder_label;
 
     if (!_second_operand->inited)
         add_operand_to_intermediates(_second_operand->intermediate);
+
     _second_operand->inited = true;
 
     pop_operand_second_operand_is_place_holder_label:
 
-    // printf("%u : %u\n", _first_operand->type.kind, _second_operand->type.kind);    
     type_can_implicitly_cast_to(_first_operand->type, _second_operand->type, 1);
 
     if (dual)
@@ -93,6 +86,7 @@ void process_operation(intermediate_type _operation)
         exit(-1);
     }
     #endif
+
     if (_operation == EQUAL)
         pop_operand(true, false);
     if (_operation == CLEAR_STACK)
@@ -103,6 +97,7 @@ void process_operation(intermediate_type _operation)
         pop_operand(true, true);
     if (_operation >= INC && _operation <= NEG)
         pop_operand(false, false);
+
     intermediate _intermediate = { _operation, 0 };
     add_intermediate(_intermediate);
 }
@@ -136,6 +131,7 @@ void set_type_of_operand(operand* _operand)
         send_error("Cannot get the type of invalid intermediate");
     }
     #endif
+
     type _type = { 0, VOID_TYPE };
     switch (_operand->intermediate.type) {
         case CONST_PTR:
@@ -145,6 +141,10 @@ void set_type_of_operand(operand* _operand)
         case CONST:
             _type.kind = get_lowest_type((i64)_operand->intermediate.ptr);
             _operand->type = _type;
+            break;
+        case VAR_DECLERATION:
+            _operand->type = \
+                ((variable_symbol*)_operand->intermediate.ptr)->type;
             break;
         case VAR_ASSIGNMENT:
         case VAR_RETURN:
@@ -173,7 +173,7 @@ void set_type_of_operand(operand* _operand)
 void add_operand(intermediate _intermediate, bool inited)
 {
     operand* _operand = malloc(sizeof(operand));
-    if (_operand == 0)
+    if (_operand == NULLPTR)
         handle_error(0);
     _operand->intermediate = _intermediate;
     _operand->inited = inited;
@@ -197,10 +197,12 @@ void free_intermediates()
 {
     while (intermediates_vector.apparent_size != 0) {
         register intermediate* _intermediate = vector_pop(&intermediates_vector);
+
         #if !VOID_PTR_64BIT
         if (_intermediate->type == CONST_PTR || _intermediate->type == CAST)
             free(_intermediate->ptr);
         #endif
+
         if (_intermediate->type == REGISTER) {
             free(((vector*)_intermediate->ptr)->contents);
             free(_intermediate->ptr);
@@ -226,11 +228,11 @@ vector* get_intermediate_vector()
 // TODO: Replace the bellow array with something less temperary.
 const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", \
 "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", \
-"LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var assignment", \
-"Var access", "Var mem", "Mem location", "Mem access", "If", "Else", "Loop", \
-"End", "Continue", "Break", "Func call", "Goto", "Const", "Const_ptr", \
-"Func return", "Mem return", "Comparison return", "Var return", "Cast", \
-"Register", "Clear stack"};
+"LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var decleration", \
+"Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", \
+"Else", "Loop", "End", "Continue", "Break", "Func def", "Func call", "Goto", \
+"Const", "Const_ptr", "Func return", "Mem return", "Comparison return", \
+"Var return", "Cast", "Register", "Ignore", "Var use", "Clear stack"};
 
 void print_intermediates()
 {
@@ -239,11 +241,11 @@ void print_intermediates()
 
         printf("INTER: %s\n",INTERMEDIATES_TEXT[_intermediate->type]);
 
-        if (_intermediate->type == REGISTER)
+        if (_intermediate->type == REGISTER || _intermediate->type == VAR_USE)
         {
             vector* _tmp_vec = _intermediate->ptr;
             for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++)
-                printf("%u\n",*(u32*)vector_at(_intermediate->ptr,y,0));
+                printf("%08x\n",*(u32*)vector_at(_intermediate->ptr,y,0));
         }
     }
 }

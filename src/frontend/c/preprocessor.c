@@ -118,7 +118,7 @@ static inline u32 C_get_macro(vector* file, char* macro_name)
  */
 static inline void C_add_macro(vector* file, u32* i)
 {
-    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) != 0)
+    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) != NULLPTR)
         vector_append(&defined, i);
     *i = C_get_end_of_line(file, *i);
 }
@@ -148,7 +148,7 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
         for (; macro_index <= macro_end_index; macro_index++) {
             current_token = *(char**)vector_at(file, macro_index, 0);
 
-            if (current_token == 0)
+            if (current_token == NULLPTR)
                 continue;
 
             vector_append(new_file, &current_token);

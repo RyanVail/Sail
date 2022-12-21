@@ -1,13 +1,13 @@
 #include<common.h>
 #include<datastructures/vector.h>
-
+    
 /*
  * This makes sure that a vector has been initialized.
  */
-void vector_test_valid(vector *_vector)
+static inline void vector_test_valid(vector *_vector)
 {
     #if DEBUG
-    if (_vector->contents == 0) {
+    if (_vector->contents == NULLPTR) {
         printf("Vector has no contents.\n");
         abort();
     } else if (_vector->type_size == 0) {
@@ -15,7 +15,7 @@ void vector_test_valid(vector *_vector)
         abort();
     }
     #else
-    if (_vector->contents == 0 || _vector->type_size == 0)
+    if (_vector->contents == NULLPTR || _vector->type_size == 0)
         exit(-1);
     #endif
 }
@@ -32,7 +32,7 @@ void vector_try_to_shrink(vector *_vector)
         _vector->size--;
         _vector->contents = realloc( \
             _vector->contents, (1 << _vector->size) * _vector->type_size);
-        if (_vector->contents == 0)
+        if (_vector->contents == NULLPTR)
             handle_error(1);
     }
 }
@@ -53,7 +53,7 @@ vector vector_init_with(u8 size_of_items, u8 size)
  */
 void vector_try_to_expand(vector *_vector)
 {
-    if (_vector->contents == 0) {
+    if (_vector->contents == NULLPTR) {
         if (_vector->type_size == 0) {
             #if DEBUG
             printf("Vector doesn't have type size yet.\n");
@@ -63,14 +63,14 @@ void vector_try_to_expand(vector *_vector)
         }
         _vector->size = 1;
         _vector->contents = malloc(_vector->type_size);
-        if (_vector->contents == 0)
+        if (_vector->contents == NULLPTR)
             handle_error(1);
     }
     else if (1 << _vector->size < _vector->apparent_size + 1) {
         _vector->size++;
         _vector->contents = realloc( \
             _vector->contents, (1 << _vector->size) * _vector->type_size);
-        if (_vector->contents == 0)
+        if (_vector->contents == NULLPTR)
             handle_error(1);
     }
 }
@@ -138,7 +138,7 @@ void* vector_pop(vector *_vector)
     vector_test_valid(_vector);
 
     void* _tmp = malloc(_vector->type_size);
-    if (_tmp == 0)
+    if (_tmp == NULLPTR)
         send_error(0);
 
     memcpy(_tmp, vector_at(_vector, _vector->apparent_size-1, false), \

@@ -17,14 +17,17 @@ add_executable(Sail
 	src/cli.c
 	src/datastructures/vector.c
 	src/datastructures/stack.c
+	src/datastructures/hashtable.c
 	src/frontend/common/preprocessor.c
 	src/frontend/common/tokenizer.c
 	src/frontend/common/parser.c
 	src/frontend/salmon/preprocessor.c
 	src/frontend/salmon/salmon.c
 	src/frontend/c/preprocessor.c
-	src/backend/intermediate/optimization/firstpass.c
+	src/backend/intermediate/optimization/registerpass.c
 	src/backend/intermediate/optimization/secondpass.c
+	src/backend/intermediate/optimization/ignorepass.c
+	src/backend/intermediate/optimization/usescopepass.c
 	src/backend/intermediate/intermediate.c
 	src/backend/intermediate/symboltable.c
 	src/backend/asm/ARMv7.c

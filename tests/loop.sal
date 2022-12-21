@@ -3,11 +3,15 @@
  * TODO: '\x234' this causes a seg fault.
  */
 
-fn test u32 <- $main$ -> u32 {}
-let c u8 10 u8 =
-let a i32 -213 i32 =
-let b u8 -257 u8 = ;
-c u8 c u8 3 u8 << =
+fn $main$ -> u32 {
+    let c u8 10 u8 =
+    let a i32 -213 i32 =
+    let abc u8 -257 u8 = ;
+    loop {
+        c u8 c u8 3 u8 << =
+    }
+}
+fn $test$ -> void { let abc i32 295 i32 = }
 /*let file_handle %void% "test.txt" "r" $fopen$ =
 file_handle ! if $end$
 

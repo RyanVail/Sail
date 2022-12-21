@@ -30,10 +30,29 @@ typedef struct value_location {
     type value_type;
 } value_location;
 
+/* struct value_on_stack - This holds the stack location of variables
+ * @size: This is the size of the variable, either 8, 32, or 64 bits.
+ * @first: This is the first half of the variable
+ * @second: This is the second half of the variable
+ * @variable_id: This is the variable id that is held in this stack location
+ */
+typedef struct value_on_stack {
+    u8 size;
+    u16 first;
+    u16 second;
+    u32 variable_id;
+} value_on_stack;
+
 static bin output_bin = { 0, 0 };
 static reg regs[GENERAL_REGISTER_COUNT];
 static vector variable_priorities = { 0, 0, 0, 0 };
+
+/*
+ * This is the operand stack which just holds the locations of operands and
+ * their types.
+ */
 static stack value_locations = { 0, sizeof(value_location) };
+static stack values_on_stack = { 0, sizeof(value_on_stack) };
 
 #define ASSEMBLE_MOVT(condition, destination_reg, _immediate) \
     condition << 28 | 1 << 25 | 1 << 24 | 1 << 22 | destination_reg << 16 \
@@ -46,6 +65,11 @@ static stack value_locations = { 0, sizeof(value_location) };
 first_reg, second_reg) \
     condition << 28 | operation << 21 | (bool)flags << 20 | first_reg << 16 \
     | destination_reg << 12 | second_reg
+
+#define ASSEMBLE_SWP(condition, byte_or_word, base_reg, destination_reg, \
+source_reg) \
+    condition << 28 | 2 << 23 | byte_or_word << 22 | base_reg << 16 \
+    | destination_reg << 12 | 9 << 4 | source_reg
 
 /*
  * This preforms a ROR on "input" by "shift_count". "shift_count" should be
@@ -104,8 +128,11 @@ static inline void ARMv7_add_asm(u32 machine_code_to_add)
     vector_append(&output_bin.contents, &machine_code_to_add);
 }
 
+// TODO: If there is a const in a register with the perfect value a SWP can be
+// preformed to get lower memory use and some more speed.
 /*
- * This saves the variable inside "reg_index" to its stack location.
+ * This saves the variable inside "reg_index" to the stack. If there is no
+ * variable this just returns and does nothing.
  */
 static inline void save_register(u8 reg_index)
 {
@@ -117,7 +144,7 @@ static inline void save_register(u8 reg_index)
     variable_symbol* _var = get_variable_symbol("",regs[reg_index].content.ptr);
 
     ARMv7_add_asm(ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(14, true, \
-    _var->stack_location, true, reg_index, true, false));
+    0, true, reg_index, true, false));
 }
 
 /*
@@ -133,6 +160,9 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     value_location* _var = 0;
     switch(_intermediate.type)
     {
+    case FUNC_DEF:
+        clear_variables_in_scope();
+        break;
     case CLEAR_STACK:
         while (!(STACK_IS_EMPTY(value_locations)))
             free(stack_pop(&value_locations));
@@ -150,7 +180,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         break;
     case CONST:
         _var = malloc(sizeof(value_location));
-        if (_var == 0)
+        if (_var == NULLPTR)
             handle_error(0);
         #if VOID_PTR_64BIT
         u32 immediate = get_immediate_of_const((u64)_intermediate.ptr);
@@ -177,7 +207,6 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case LSR:
         /* The first operand is either an immediate or a register. */
         _first = stack_pop(&value_locations);
-        printf("%u\n", _first->type);
 
         value_location* _second = stack_top(&value_locations);
 
@@ -198,10 +227,13 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case CONST_PTR:
         // TODO: Add constant pointer things here
         break;
+    case VAR_DECLERATION:
+        add_variable_symbol_ptr((variable_symbol*)_intermediate.ptr);
+        break;
     case VAR_ACCESS:
     case VAR_ASSIGNMENT:
         _var = malloc(sizeof(value_location));
-        if (_var == 0)
+        if (_var == NULLPTR)
             handle_error(0);
 
         _var->value_type = ((variable_symbol*) \
@@ -300,7 +332,7 @@ static inline void put_u32_const_into_register(u32 _const, u8 _reg)
 
     u32 immediate_result = __UINT32_MAX__;
 
-    printf("Put %u into %u\n", _const, _reg);
+    // printf("Put %u into %u\n", _const, _reg);
 
     if ((_const < __UINT32_MAX__)) {
         is_complement = true;
@@ -377,6 +409,12 @@ static inline u8 get_register_with_value(intermediate _intermediate)
         }
     }
 
+    if (regs[lowest_priority].content.type == VAR_ACCESS
+    && (_intermediate.type == VAR_ACCESS
+    || _intermediate.type == VAR_ASSIGNMENT)) {
+        //
+    }
+
     save_register(lowest_priority_reg);
 
     ARMv7_get_register_with_value_put_in_register_label:
@@ -394,7 +432,7 @@ static inline u8 get_register_with_value(intermediate _intermediate)
     || _intermediate.type == VAR_ASSIGNMENT) {
         variable_symbol* _var = get_variable_symbol("",(u32)_intermediate.ptr);
         ARMv7_add_asm(ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(14, true, \
-        _var->stack_location, false, lowest_priority_reg, false, false));
+        0, false, lowest_priority_reg, false, false));
     }
     return lowest_priority_reg;
 }

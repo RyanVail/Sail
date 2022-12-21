@@ -1,7 +1,7 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#define VECTOR_SIZE(_vector) _vector.apparent_size / sizeof(_vector.type_size)
+#define VECTOR_SIZE(_vector) (_vector.apparent_size / sizeof(_vector.type_size))
 
 /* struct vector - This is a dynamicly allocated array
  * @contents: This is a pointer to the start of the string
@@ -15,11 +15,6 @@ typedef struct vector {
     u8 size;
     u8 type_size;
 } vector;
-
-/*
- * This makes sure that a vector has been initialized.
- */
-void vector_test_valid(vector *_vector);
 
 /*
  * This attempts shrink the real size of the vector down.

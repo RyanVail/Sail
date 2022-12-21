@@ -3,66 +3,52 @@
  * be used during the tokens to intermediate stage.
  */
 
+#include<datastructures/hashtable.h>
 #include<backend/intermediate/symboltable.h>
+#include<types.h>
 
-vector function_symbols = { 0, 0, 0, sizeof(function_symbol) };
-vector variable_symbols = { 0, 0, 0, sizeof(variable_symbol) };
+#if DEBUG
+#define CHECK_HASH_TABLES_HAVE_BEEN_INITED() \
+    if (function_symbols.contents == NULLPTR) \
+        send_error("Function's symbol hash table hasn't been inited"); \
+    if (variable_symbols.contents == NULLPTR) \
+        send_error("Variable's symbol hash table hasn't been inited");
+#else
+#define CHECK_HASH_TABLES_HAVE_BEEN_INITED()
+#endif
 
-/* 
- * This is a vector of all variables names in order of ids for those O(1) times. 
- * This is used to print the name of a variable if it was used outside of its
- * scope.
- */
-vector variable_names = { 0, 0, 0, sizeof(char*) };
+hash_table function_symbols = { 0, 0 };
+hash_table variable_symbols = { 0, 0 };
+
 
 /*
  * This returns a pointer to the function symbol if found or a null pointer
  */
-function_symbol* get_function_symbol(char* name, u32 id)
+function_symbol* get_function_symbol(char* name, u32 hash)
 {
-    if (name != NULL) {
-        for (u32 i=0; i < VECTOR_SIZE(function_symbols); i++) {
-            function_symbol* _func = \
-                (function_symbol*)vector_at(&function_symbols, i, false);
+    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
 
-            if (!strcmp(_func->name, name))
-                return _func;
-        }
-    } else {
-        for (u32 i=0; i < VECTOR_SIZE(function_symbols); i++) {
-            function_symbol* _func = \
-                (function_symbol*)vector_at(&function_symbols, i, false);
+    /* Does one get fired for writing code like this? */
+    hash_table_bucket* function_bucket = name[0] == '\0' ? \
+    hash_table_at_hash(&function_symbols, hash) : \
+    hash_table_at_string(&function_symbols, name);
 
-            if (_func->id == id)
-                return _func;
-        }
-    }
-    return NULL;
+    return function_bucket == NULLPTR ? NULL : function_bucket->value;
 }
 
 /*
  * This returns a pointer to the variable symbol if found or a null pointer
  */
-variable_symbol* get_variable_symbol(char* name, u32 id)
+variable_symbol* get_variable_symbol(char* name, u32 hash)
 {
-    if (strcmp(name,"")) {
-        for (u32 i=0; i < VECTOR_SIZE(variable_symbols); i++) {
-            variable_symbol* _var = \
-                (variable_symbol*)vector_at(&variable_symbols, i, false);
-            
-            if (!strcmp(_var->name, name))
-                return _var;
-        }
-    } else {
-        for (u32 i=0; i < VECTOR_SIZE(variable_symbols); i++) {
-            variable_symbol* _var = \
-                (variable_symbol*)vector_at(&variable_symbols, i, false);
+    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
 
-            if (_var->id == id)
-                return _var;
-        }
-    }
-    return NULL;
+    /* Does one get fired for writing code like this? */
+    hash_table_bucket* variable_bucket = name[0] == '\0' ? \
+    hash_table_at_hash(&variable_symbols, hash) : \
+    hash_table_at_string(&variable_symbols, name);
+
+    return variable_bucket == NULLPTR ? NULL : variable_bucket->value;
 }
 
 /*
@@ -71,23 +57,36 @@ variable_symbol* get_variable_symbol(char* name, u32 id)
  */
 bool add_variable_symbol(char* name, type type, u8 flags)
 {
-    if (VECTOR_SIZE(variable_symbols) && get_variable_symbol(name, 0))
+    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
+
+    if (get_variable_symbol(name, 0))
         return false;
 
-    u32 id = VECTOR_SIZE(variable_names);
+    variable_symbol* _variable = malloc(sizeof(variable_symbol));
+    if (_variable == NULLPTR)
+        send_error(0);
 
-    char* _name = malloc(strlen(name) + 1);
-    if (_name == NULL)
-        handle_error(0);
-    strcpy(_name, name);
-    _name[strlen(name)] = '\0';
+    _variable->flags = flags;
+    _variable->uses = 0;
+    _variable->type = type;
 
-    variable_symbol _variable = { _name, type, id, flags, 0 };
+    hash_table_bucket* variable_bucket = \
+        hash_table_insert_string(&variable_symbols, name);
 
-    vector_append(&variable_symbols, &_variable);
-    vector_append(&variable_names, &_name);
-
+    _variable->hash = variable_bucket->hash;
+    variable_bucket->value = _variable;
     return true;
+}
+
+/*
+ * This adds a variable symbol pointer to the symbol table.
+ */
+void add_variable_symbol_ptr(variable_symbol* _variable_symbol)
+{
+    hash_table_bucket* variable_bucket = \
+        hash_table_insert_hash(&variable_symbols, _variable_symbol->hash);
+
+    variable_bucket->value = _variable_symbol;
 }
 
 /*
@@ -96,20 +95,50 @@ bool add_variable_symbol(char* name, type type, u8 flags)
  */
 bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
 {
+    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
+
     if (get_function_symbol(name, 0))
         return false;
 
-    char* _name = malloc(strlen(name) + 1);
-    if (_name == NULL)
-        handle_error(0);
-    strcpy(_name, name);
-    _name[strlen(name)] = '\0';
+    function_symbol* _function = malloc(sizeof(function_symbol));
+    if (_function == NULLPTR)
+        send_error(0);
 
-    u32 id = VECTOR_SIZE(function_symbols);
+    _function->inputs = inputs;
+    _function->return_type = _return;
+    _function->calls = 0;
+    _function->defintion = defintion;
 
-    function_symbol _function = { _name, inputs, _return, 0, defintion, id };
-    vector_append(&function_symbols, &_function);
+    hash_table_bucket* function_bucket = \
+        hash_table_insert_string(&function_symbols, name);
+
+    _function->hash = function_bucket->hash;
+    function_bucket->value = _function;
     return true;
+}
+
+/*
+ * This clears all variables from the symbol table that are in scope without
+ * freeing their variable symbol structs since they should be pointed to by the
+ * "VAR_DECLERATION" intermediates.
+ */
+void clear_variables_in_scope()
+{
+    hash_table_bucket* current_bucket = variable_symbols.contents;
+    for (u32 i=0; i < (1 << variable_symbols.size); i++) {
+        current_bucket->next = 0;
+        current_bucket->hash = 0;
+        current_bucket++;
+    }
+}
+
+/*
+ * This inits the symbol table.
+ */
+void init_symbol_table(u8 function_init_size, u8 variable_init_size)
+{
+    function_symbols = hash_table_init(function_init_size);
+    variable_symbols = hash_table_init(variable_init_size);
 }
 
 /*
@@ -117,7 +146,28 @@ bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
  */
 void free_symbol_table()
 {
-    if (variable_names.contents != NULL) {
+    hash_table_bucket* current_bucket = function_symbols.contents;
+    hash_table_bucket* _bucket = 0;
+    // for (u32 i=0; i < (1 << function_symbols.size); i++) {
+    //     if (current_bucket->hash != 0) {
+    //         free(current_bucket->value);
+    //         if (current_bucket->next != 0) {
+    //             while (true) {
+    //                 _bucket = current_bucket->next;
+    //                 if (_bucket == 0)
+    //                     break;
+    //                 _bucket = _bucket->next;
+    //             }
+    //         }
+    //     }
+    //     current_bucket += sizeof(hash_table_bucket);
+    // }
+    free(function_symbols.contents);
+    free(variable_symbols.contents);
+    // TODO: This freeing needs to be rewritten to work with a hash table
+    // instead of a vector.
+
+    /*if (variable_names.contents != NULL) {
         // TODO: Benchmark this against a for loop through every item
         while (VECTOR_SIZE(variable_names)) {
             char** _t = vector_pop(&variable_names);
@@ -136,12 +186,5 @@ void free_symbol_table()
             free(_t);
         }
         free(function_symbols.contents);
-    }
-
-    /*
-     * The variable names are the same as in "variable_names" so we don't need
-     * to free them twice. 
-     */
-    if (variable_symbols.contents != NULL)
-        free(variable_symbols.contents);
+    }*/
 }

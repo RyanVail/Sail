@@ -12,6 +12,8 @@
 #include<backend/intermediate/symboltable.h>
 
 // TODO: Spell comparsion right!
+// TODO: There should be another intermediate called scope which starts a new
+// scope for programming languages that support that.
 typedef enum intermediate_type {
     // One operand required
     INC,                    // ++
@@ -42,9 +44,10 @@ typedef enum intermediate_type {
                                     // into "process_operation".
 
     // Variable intermediates
-    VAR_ASSIGNMENT,         // The variable id in the "ptr"
-    VAR_ACCESS,             // The variable id in the "ptr"
-    VAR_MEM,                // The variable id in the "ptr"
+    VAR_DECLERATION,        // The variable symbol is in the "ptr"
+    VAR_ASSIGNMENT,         // The variable hash is in the "ptr"
+    VAR_ACCESS,             // The variable hash is in the "ptr"
+    VAR_MEM,                // The variable hash is in the "ptr"
     // Memory intermediates
     MEM_LOCATION,           // *ptr = 8
     MEM_ACCESS,             // *ptr
@@ -56,6 +59,7 @@ typedef enum intermediate_type {
     END,                    // }
     CONTINUE,               // Continue
     BREAK,                  // Break
+    FUNC_DEF,               // fn func() {}
     FUNC_CALL,              // The function id is in "ptr"
     GOTO,                   // "ptr" is a "char*" to the label name
 
@@ -79,7 +83,14 @@ typedef enum intermediate_type {
                             // contains a pointer to a vector which contains in
                             // order the highest priority variables for
                             // register subsitution.
-    CLEAR_STACK             // ;
+    IGNORE,                 // This is used to tell the compiler which variables
+                            // aren't going to be used again within the current
+                            // scope. The variable id is inside the intermediate
+                            // ptr.
+    VAR_USE,                // This tells the compile what variables are used
+                            // inside a scope. This contains a pointer to a
+                            // vector of variable ids.
+    CLEAR_STACK,            // ;
 } intermediate_type;
 
 /* struct intermediate - This struct represents one intermediate token

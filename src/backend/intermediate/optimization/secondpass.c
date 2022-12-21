@@ -99,8 +99,8 @@ void optimization_do_second_pass()
             #else
             if (_first->intermediate.type == CONST
             && _second->intermediate.type == CONST) {
-                i64 _first_value = _first->intermediate.ptr;
-                i64 _second_value = _second->intermediate.ptr;
+                i64 _first_value = (i64)_first->intermediate.ptr;
+                i64 _second_value = (i64)_second->intermediate.ptr;
             #endif
                 second_pass_shrink_const(second_pass_evaluate_const( \
                     _intermediate->type, _first_value, _second_value), \

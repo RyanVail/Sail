@@ -6,11 +6,11 @@
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
 
-static char white_space_salmon[] = { ' ', '\t', '\n' };
-static char special_salmon[] = { '*', '/', '{', '}', ';', '^', '!', '&', '|', ',', '(', \
-')', '$', '%', '@', '#', '\\', '.', '\"', '\'', '~' };
+static char white_space_salmon[] = { ' ', '\t', '\n', '\0' };
+static char special_salmon[] = { '*', '/', '{', '}', ';', '^', '!', '&', '|', \
+',', '(', ')', '$', '%', '@', '#', '\\', '.', '\"', '\'', '~', '\0' };
 
-/* 
+/*
  * This takes in a file name and returns the preprocessed version of it.
  */
 vector salmon_preprocess_file(char* file_name)
@@ -25,10 +25,13 @@ vector salmon_preprocess_file(char* file_name)
 
         replace_C_const_chars(&tokenized_file, i);
         replace_C_escape_codes(&tokenized_file, &i);
+
+        // TODO: This /* */ code /* */ compiles the second comment because
+        // skipping comments isn't done at the end of comments.
         skip_C_comments(&tokenized_file, &i);
         if (i == VECTOR_SIZE(tokenized_file))
             break;
-
+        // printf("%s\n", *(char**)vector_at(&tokenized_file, i, false));
         vector_append(&new_file, vector_at(&tokenized_file, i, false));
     }
 

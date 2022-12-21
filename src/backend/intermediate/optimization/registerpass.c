@@ -1,24 +1,24 @@
 /*
- * This does the first pass of intermediate optimization which invloves the
- * analysis of basic blocks.
+ * This optimization pass goes through intermediates counting up variable
+ * uses between control flow operators and adding REGISTER intermediates.
+ * basically splitting the intermediates into basic blocks.
  */
 
-#include<backend/intermediate/optimization/firstpass.h>
+#include<backend/intermediate/optimization/registerpass.h>
 #include<backend/intermediate/intermediate.h>
 
-static vector intermediates = { 0, 0, 0, sizeof(intermediate) };
-static vector output_intermediates = { 0, 0, 0, sizeof(intermediate) };
-static u32 location = 0;
+static inline void goto_start_of_next_basic_block(u32* location, \
+vector* intermediates, vector* output_intermediates);
 
-static inline void goto_start_of_next_basic_block();
 static inline void process_basic_block(vector* ptrs, vector* uses, u32 start, \
-u32 end);
+u32 end, vector* intermediates, vector* output_intermediates);
 
 /*
- * This function performs the first intermediate optimization pass. This returns
- * a pointer to the optimized intermediates.
+ * This function goes through intermediates counting variable uses between
+ * control flow operators and adds "REGISTER" intermediates. This also counts
+ * variable uses in the symbol table.
  */
-void optimization_do_first_pass()
+void optimization_do_register_pass()
 {
     /*
      * This goes between basic blocks which lack control flow and do
@@ -29,27 +29,38 @@ void optimization_do_first_pass()
      * symbol.
      */
 
-    intermediates = *get_intermediate_vector();
-    output_intermediates = \
-        vector_init_with(sizeof(intermediate), intermediates.size);
+    vector* intermediates;
+
+    intermediates = get_intermediate_vector();
+    vector output_intermediates = \
+        vector_init_with(sizeof(intermediate), intermediates->size);
 
     vector ptrs = vector_init_with(sizeof(u32), 4);
     vector uses = vector_init_with(sizeof(u8), 4);
 
+    u32 location = 0;
     u32 start = 0;
 
-    for (; location < VECTOR_SIZE(intermediates);) {
-        intermediate* _current = vector_at(&intermediates, location, 0);
+    intermediate* start_scope_ptr = 0;
 
-        if ( (_current->type >= IF) && (_current->type <= GOTO) ) {
-            goto_start_of_next_basic_block();
-            process_basic_block(&ptrs, &uses, start, location);
+    for (; location < VECTOR_SIZE((*intermediates));) {
+        intermediate* _current = vector_at(intermediates, location, 0);
+
+        if ((_current->type >= IF) && (_current->type <= GOTO)) {
+            process_basic_block(&ptrs, &uses, start, location, \
+                intermediates, &output_intermediates);
+
+            goto_start_of_next_basic_block(&location, \
+                intermediates, &output_intermediates);
+
             start = location;
             continue;
         }
 
-        if (_current->type == VAR_ASSIGNMENT || _current->type == VAR_ACCESS) {
-            get_variable_symbol("", *(u32*)&_current->ptr)->uses++;
+        if (_current->type >= VAR_ASSIGNMENT && _current->type <= VAR_MEM) {
+            // TODO: This should be reimplemented some how.
+            // get_variable_symbol("", *(u32*)&_current->ptr)->uses++;
+
             for (u32 i=0; i < VECTOR_SIZE(ptrs); i++) {
                 if (*(u32*)vector_at(&ptrs, i, 0) == *(u32*)(&_current->ptr)) {
                     *(u8*)vector_at(&uses, i, 0) += 1;
@@ -60,13 +71,10 @@ void optimization_do_first_pass()
             vector_append(&ptrs, (u32*)&_current->ptr);
             vector_append(&uses, &(_tmp_uses));
         }
-        
+
         optimization_first_pass_next_intermediate_label:
         location++;
     }
-
-    /* If we don't end with a control flow, save the left over intermediates. */
-    process_basic_block(&ptrs, &uses, start, location);
 
     free(uses.contents);
     free(ptrs.contents);
@@ -76,16 +84,17 @@ void optimization_do_first_pass()
 
 /*
  * This goes through the variable uses and orders them by the number of uses.
- * Aswell as copying over the basic block.
  */
 static inline void process_basic_block(vector* ptrs, vector* uses, u32 start, \
-u32 end)
+u32 end, vector* intermediates, vector* output_intermediates)
 {
     if (VECTOR_SIZE((*ptrs)) == 0)
         goto optimization_first_pass_process_basic_block_label;
 
     /* This reorders ptrs from highest to lowest uses badly. */
     vector* new_ptrs = malloc(sizeof(vector));
+    if (new_ptrs == NULLPTR)
+        handle_error(0);
     *new_ptrs = vector_init_with(sizeof(u32), ptrs->size);
 
     // TODO: Replace this with something that isn't O(n^2)!
@@ -108,26 +117,27 @@ u32 end)
     }
 
     intermediate _intermediate = { REGISTER, new_ptrs };
-    vector_append(&output_intermediates, &_intermediate);
+    vector_append(output_intermediates, &_intermediate);
     ptrs->apparent_size = 0;
     uses->apparent_size = 0;
 
     optimization_first_pass_process_basic_block_label:
     // TODO: Using "memcpy" instead of appending can increase the speed of this.
     for (; start < end; start++)
-        vector_append(&output_intermediates, vector_at(&intermediates,start,0));
+        vector_append(output_intermediates, vector_at(intermediates,start,0));
 }
 
 /*
- * This goes through and finds the next basic block adding the control flow
- * operators to "new_intermediates" along the way.
+ * This incraments "location" adding all control flow operators till it reaches
+ * a token that isn't a control flow operator.
  */
-static inline void goto_start_of_next_basic_block()
+static inline void goto_start_of_next_basic_block(u32* location, \
+vector* intermediates, vector* output_intermediates)
 {
-    for (; location < VECTOR_SIZE(intermediates); location++) {
-        intermediate* _current = vector_at(&intermediates, location, 0);
+    for (; (*location) < VECTOR_SIZE((*intermediates)); *location += 1) {
+        intermediate* _current = vector_at(intermediates, *location, 0);
         if (_current->type < IF || _current->type > GOTO)
             return;
-        vector_append(&output_intermediates, _current);
+        vector_append(output_intermediates, _current);
     }
 }

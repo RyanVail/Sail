@@ -55,7 +55,6 @@ vector tokenize_file(char* file_name)
         handle_error(2);
 
     vector file_vector = vector_init_with(sizeof(char*), 8);
-    // vector file_vector = { NULL, 0, 0, sizeof(char*) };
 
     char file_buffer[FILE_BUFFER_SIZE];
     char token_buffer[512];

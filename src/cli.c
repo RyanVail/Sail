@@ -6,6 +6,7 @@
 #include<main.h>
 
 /* If we're in debug mode we add the "--time" cli option. */
+// TODO: Add "--func-hash-table" and "--var-hash-table"
 #if DEBUG
 const char help_message[] = "Usage: Sail [options] files...\n\nOptions:\n\t-h\
 \t\t\t--help\t\t\tDisplays help\n\t-t\t\t\t--time\t\t\tTimes compilation proc\

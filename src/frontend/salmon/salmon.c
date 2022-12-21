@@ -22,6 +22,7 @@ static inline void salmon_parse_fn(vector* file, u32* location);
 static inline bool salmon_parse_flow_operators(char* string);
 static inline bool salmon_parse_operation(char* string);
 
+// TODO: Remove this syntax tree when it isn't needed anymore.
 // #
     // #include
     // #asm
@@ -71,7 +72,7 @@ void salmon_file_into_intermediate(char* file_name)
         if (!is_invalid_name(current_token)
         && get_variable_symbol(current_token, 0)) {
             intermediate _tmp_intermediate = \
-                { VAR_ACCESS, (void*)get_variable_symbol(current_token, 0)->id };
+            { VAR_ACCESS, (void*)get_variable_symbol(current_token, 0)->hash };
 
             add_operand(_tmp_intermediate, false);
         }
@@ -88,7 +89,7 @@ void salmon_file_into_intermediate(char* file_name)
             if (_const_num < ~((i64)1 << ((sizeof(void*) << 3))-1) + 1
             || _const_num > ((i64)1 << ((sizeof(void*) << 3)-1))-1) {
                 const_num = malloc(sizeof(i64));
-                if (const_num == 0)
+                if (const_num == NULLPTR)
                     handle_error(0);
                 memcpy(const_num, &_const_num, sizeof(i64));
                 intermediate _operand = { CONST_PTR, const_num };
@@ -103,6 +104,7 @@ void salmon_file_into_intermediate(char* file_name)
             add_operand(_operand, false);
         }
     }
+    
     clear_operand_stack();
     free_tokenized_file_vector(&file);
 }
@@ -148,10 +150,12 @@ inline void salmon_parse_else(vector* file, u32* location)
 }
 inline void salmon_parse_fn(vector* file, u32* location)
 {
-    *location += 1;
-    
-    if (**(char**)vector_at(file, *location, false) == '$')
+    clear_variables_in_scope();
+
+    if (**(char**)vector_at(file, (*location)+1, false) == '$')
         goto salmon_parse_fn_read_fn_name_label;
+
+    *location += 1;
 
     /* This reads through the input variables. */
     vector inputs = { 0, 0, 0, sizeof(type) };
@@ -199,14 +203,19 @@ inline void salmon_parse_fn(vector* file, u32* location)
         return_type = parse_type((char**)vector_at(file, *location+1, false));
 
     if (!add_function_symbol(fn_name, inputs, return_type, 0))
-        send_error("Function name already used.");
+        send_error("Function name already used");
 
-    for (; *location < VECTOR_SIZE((*file)); *location += 1)
-        if (**(char**)(vector_at(file, *location, false)) == '}')
-            break;
+    // for (; *location < VECTOR_SIZE((*file)); *location += 1)
+        // if (**(char**)(vector_at(file, *location, false)) == '}')
+            // break;
 
-    // TODO: Add a function that reads the internals of the functions and saves
-    // it to somewhere.
+    *location += 2;
+
+    clear_operand_stack();
+
+    intermediate _intermediate = { FUNC_DEF, 0 };
+    add_intermediate(_intermediate);
+
 }
 inline void salmon_parse_let(vector* file, u32* location)
 {
@@ -234,11 +243,14 @@ inline void salmon_parse_let(vector* file, u32* location)
     *location += \
         _type.ptr << ((bool)type_names[0xc][0] + (bool)type_names[0xd][0] - 1);
 
+    variable_symbol* new_var_symbol = get_variable_symbol(name, 0);
+
     intermediate _decleration = \
-        { VAR_ASSIGNMENT, (void*)get_variable_symbol(name,0)->id };
+        { VAR_DECLERATION, new_var_symbol };
     
     add_intermediate(_decleration);
     _decleration.type = VAR_RETURN;
+    _decleration.ptr = new_var_symbol->hash;
     add_operand(_decleration, false);
 }
 inline void salmon_parse_loop(vector* file, u32* location)
@@ -274,7 +286,7 @@ static inline bool salmon_parse_type(vector* file, u32* location)
     intermediate _tmp_intermediate = { CAST, *((void**)&_type) };
     #else
     type* _tmp_type = malloc(sizeof(type));
-    if (_tmp_type == 0)
+    if (_tmp_type == NULLPTR)
         handle_error(0);
     *_tmp_type = *(type*)&_type;
     intermediate _tmp_intermediate = { CAST, (void*)_tmp_type };
