@@ -57,8 +57,9 @@ typedef enum intermediate_type {
     ELSE,                   // else
     LOOP,                   // loop
     END,                    // }
-    CONTINUE,               // Continue
-    BREAK,                  // Break
+    CONTINUE,               // continue
+    RETURN,                // return
+    BREAK,                  // break
     FUNC_DEF,               // fn func() {}
     FUNC_CALL,              // The function id is in "ptr"
     GOTO,                   // "ptr" is a "char*" to the label name
@@ -117,7 +118,7 @@ typedef struct operand {
 /*
  * This frees "intermediates_vector".
  */
-void free_intermediates();
+void free_intermediates(bool free_variable_symbols, bool free_var_vectors);
 
 /*
  * This clears the operand stack
@@ -149,6 +150,14 @@ void cast_top_operand(type _type);
  * This returns a pointer to the intermediate vector.
  */
 vector* get_intermediate_vector();
+
+// TODO: This function should be in a common frontend file I don't know which
+// right now but it really shouldn't be here.
+/*
+ * If the ASCII number at the inputed token is valid it adds it to the
+ * intermediates. Return if it added the number.
+ */
+bool add_if_ascii_num(char* token);
 
 /*
  * This prints the intermediates.

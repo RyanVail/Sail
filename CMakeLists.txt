@@ -4,7 +4,7 @@ set(CMAKE_C_REQUIRED True)
 
 set(CMAKE_BUILD_TYPE Debug)
 # set(CMAKE_BUILD_TYPE Release)
-# set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+# set(CMAKE_CXX_FLAGS_RELEASE "z-O2")
 
 project(Sail)
 
@@ -24,8 +24,8 @@ add_executable(Sail
 	src/frontend/salmon/preprocessor.c
 	src/frontend/salmon/salmon.c
 	src/frontend/c/preprocessor.c
+	src/frontend/c/parser.c
 	src/backend/intermediate/optimization/registerpass.c
-	src/backend/intermediate/optimization/secondpass.c
 	src/backend/intermediate/optimization/ignorepass.c
 	src/backend/intermediate/optimization/usescopepass.c
 	src/backend/intermediate/intermediate.c

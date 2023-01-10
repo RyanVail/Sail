@@ -41,6 +41,9 @@ void optimizaiton_do_use_scope_pass()
 
         if (_current->type == FUNC_DEF || i == 0
         || i == VECTOR_SIZE(intermediates) - 1) {
+            if (!i)
+                goto optimizaiton_do_use_scope_pass_put_intermediate_label;
+
             vector* new_scope_uses = malloc(sizeof(vector));
             if (new_scope_uses == NULLPTR)
                 handle_error(0);
@@ -56,10 +59,11 @@ void optimizaiton_do_use_scope_pass()
             // vectors might need to be shrinked because if there is one scope
             // that uses a lot of variables every "REGISTER" intermediate and
             // "VAR_USE" is going to use a lot of memory.
-            // printf("%p\n", start_scope_ptr);
-            
+
             if (start_scope_ptr)
                 start_scope_ptr->ptr = new_scope_uses;
+
+            optimizaiton_do_use_scope_pass_put_intermediate_label: ;
 
             if (i != VECTOR_SIZE(intermediates) - 1) {
                 intermediate _intermediate = { VAR_USE, 0 };
@@ -70,5 +74,6 @@ void optimizaiton_do_use_scope_pass()
         }
     }
     free(scope_uses.contents);
+    free_intermediates(false, false);
     *get_intermediate_vector() = output_intermediates;
 }

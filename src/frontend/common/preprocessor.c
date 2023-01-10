@@ -15,42 +15,40 @@ void skip_C_comments(vector* file, u32* current_index)
     #if DEBUG
     if (!is_special_char('/') && !is_special_char('*'))
         send_error( \
-            "'/' or '*' should be a special char for C style comment removal");
+        "'/' and '*' should be a special chars for C style comment removal");
     if (is_white_space_char('/'))
         send_error("'/' can't be white space for C style comment removal");
     if (is_white_space_char('*'))
         send_error("'*' can't be white space for C style comment removal");
     #endif
 
-    if (*current_index <= VECTOR_SIZE((*file))-2
-    && (*(char**)vector_at(file, *current_index, false) == NULL
-    || *(char**)vector_at(file, *current_index+1, false) == NULL))
-        return;
-
     // TODO: Comments in comments are broken becaues /*/ would count as both
     // opening and closing a comment.
-    u32 depth = 0;
-    for (; *current_index <= VECTOR_SIZE((*file))-2; *current_index += 1) {
 
+    if (*(char**)vector_at(file, *current_index, false) == NULL
+    || **(char**)vector_at(file, *current_index, false) != '/')
+        return;
+
+    u32 tmp_index = *current_index;
+    find_next_valid_token(file, &tmp_index);
+    if (**(char**)vector_at(file, tmp_index, false) != '*')
+        return;
+
+    for (; *current_index <= VECTOR_SIZE((*file))-2;) {
         char first_token = **(char**)vector_at(file, *current_index, false);
-        char second_token = **(char**)vector_at(file, *current_index+1, false);
-
-        if (first_token == '/' && second_token == '*')
-            depth++;
-        else if (!depth)
-            return;
 
         free(*(char**)vector_at(file, *current_index, false));
         *(char**)vector_at(file, *current_index, false) = NULL;
 
+        find_next_valid_token(file, current_index);
+        char second_token = **(char**)vector_at(file, *current_index, false);
+
         if (first_token == '*' && second_token == '/') {
-            depth--;
-            if (!depth) {
-                free(*(char**)vector_at(file, *current_index+1, false));
-                *(char**)vector_at(file, *current_index+1, false) = NULL;
-                (*current_index) += 2;
-                return;
-            }
+            printf("HERE.\n");
+            free(*(char**)vector_at(file, *current_index, false));
+            *(char**)vector_at(file, *current_index, false) = NULL;
+            find_next_valid_token(file, current_index);
+            return;
         }
     }
 }
@@ -85,19 +83,28 @@ void replace_C_const_chars(vector* file, u32 current_index)
 
         char* first_token = *(char**)vector_at(file, current_index, false);
 
-        if (first_token == NULL)
+
+        if (first_token == NULLPTR)
             continue;
+
+        if (*first_token == '\'') {
+            free(first_token);
+            *(char**)vector_at(file, current_index, false) = NULLPTR;
+            break;
+        }
+
+        printf("%s\n", first_token);
 
         _result += (u64)(*first_token);
 
         free(first_token);
-        *(char**)vector_at(file, current_index, false) = NULL;
+        *(char**)vector_at(file, current_index, false) = NULLPTR;
     }
 
     /* This turns the "_result" into decimal chars. */
     u32 length = snprintf(NULL, 0, "%llu", _result);
     char* destination = malloc(length + 1);
-    if (destination == NULL)
+    if (destination == NULLPTR)
         handle_error(0);
     snprintf(destination, length + 1, "%llu", _result);
     *(char**)vector_at(file, _initial_index, false) = destination;
@@ -155,9 +162,6 @@ void replace_C_escape_codes(vector* file, u32* current_index)
                 break;
             case '\"':
                 _next = '\"';
-                break;
-            case '0':
-                _next = '0';
                 break;
             case 'o':
                 _next = 8;

@@ -2,12 +2,14 @@
 #if 0
     int foo = 3;
 #else
-    #if 0
+    #if 1
         int abc = 32;
     #else
         int test = 3;
     #endif
 #endif
+
+int a = 3;
 
 //#include<stdio.h>
 #define MAX_DEPTH 16 - 2 * 2

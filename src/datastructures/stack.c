@@ -8,7 +8,7 @@ void stack_push(stack* _stack, void* value)
 {
     link* _tmp = _stack->top;
     link* _new_top = malloc(sizeof(link));
-    if (_new_top == NULL)
+    if (_new_top == NULLPTR)
         send_error(0);
     _new_top->next = _tmp;
     _new_top->value = value;
@@ -20,7 +20,7 @@ void stack_push(stack* _stack, void* value)
  */
 void* stack_top(stack* _stack)
 {
-    if (_stack->top == NULL) {
+    if (_stack->top == NULLPTR) {
         #if DEBUG
         printf("Cannot take the top of a stack with a size of zero.\n");
         abort();
@@ -35,7 +35,7 @@ void* stack_top(stack* _stack)
  */
 void* stack_pop(stack* _stack)
 {
-    if (_stack->top == NULL) {
+    if (_stack->top == NULLPTR) {
         #if DEBUG
         printf("Cannot pop a stack with a size of zero.\n");
         abort();
@@ -56,7 +56,7 @@ u32 stack_size(stack* _stack)
 {
     u32 count = 0;
     link* current = _stack->top;
-    while (current != NULL) {
+    while (current != NULLPTR) {
         count++;
         current = current->next;
     }

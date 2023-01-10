@@ -58,7 +58,7 @@ void optimization_do_register_pass()
         }
 
         if (_current->type >= VAR_ASSIGNMENT && _current->type <= VAR_MEM) {
-            // TODO: This should be reimplemented some how.
+            // TODO: This should be reimplemented somehow.
             // get_variable_symbol("", *(u32*)&_current->ptr)->uses++;
 
             for (u32 i=0; i < VECTOR_SIZE(ptrs); i++) {
@@ -78,7 +78,7 @@ void optimization_do_register_pass()
 
     free(uses.contents);
     free(ptrs.contents);
-    free_intermediates();
+    free_intermediates(false, false);
     *get_intermediate_vector() = output_intermediates;
 }
 

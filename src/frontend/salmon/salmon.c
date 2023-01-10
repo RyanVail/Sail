@@ -77,32 +77,7 @@ void salmon_file_into_intermediate(char* file_name)
             add_operand(_tmp_intermediate, false);
         }
 
-        if (is_ascii_number(current_token)) {
-            i64 _const_num = get_ascii_number(current_token);
-            void* const_num;
-            /*
-             * If we have an i64 larger than the size of a pointer we store the
-             * value on the heap and make the ptr point to the value.
-             */
-            #if !VOID_PTR_64BIT
-            intermediate _operand;
-            if (_const_num < ~((i64)1 << ((sizeof(void*) << 3))-1) + 1
-            || _const_num > ((i64)1 << ((sizeof(void*) << 3)-1))-1) {
-                const_num = malloc(sizeof(i64));
-                if (const_num == NULLPTR)
-                    handle_error(0);
-                memcpy(const_num, &_const_num, sizeof(i64));
-                intermediate _operand = { CONST_PTR, const_num };
-            } else {
-                const_num = (void*)_const_num;
-                intermediate _operand = { CONST, const_num };
-            }
-            #else
-            const_num = (void*)_const_num;
-            intermediate _operand = { CONST, const_num };
-            #endif
-            add_operand(_operand, false);
-        }
+        add_if_ascii_num(current_token);
     }
     
     clear_operand_stack();
@@ -150,6 +125,7 @@ inline void salmon_parse_else(vector* file, u32* location)
 }
 inline void salmon_parse_fn(vector* file, u32* location)
 {
+    vector inputs = { 0, 0, 0, sizeof(type) };
     clear_variables_in_scope();
 
     if (**(char**)vector_at(file, (*location)+1, false) == '$')
@@ -158,7 +134,6 @@ inline void salmon_parse_fn(vector* file, u32* location)
     *location += 1;
 
     /* This reads through the input variables. */
-    vector inputs = { 0, 0, 0, sizeof(type) };
     for (; *location < VECTOR_SIZE((*file)); *location += 1) {
         char* _name = *(char**)vector_at(file, *location, false);
         if (is_invalid_name(_name))

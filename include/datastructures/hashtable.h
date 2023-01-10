@@ -14,7 +14,7 @@
  * newly defined variable "result_hash".
  */
 #define HASH_STRING(_string) \
-    u32 result_hash = 0xFFFFFFFFu; \
+    u32 result_hash = __UINT32_MAX__; \
     for (u32 string_index = 0; _string[string_index] != '\0'; string_index++){\
         result_hash ^= _string[string_index]; \
         result_hash = (result_hash << 6) + (result_hash >> 28); \

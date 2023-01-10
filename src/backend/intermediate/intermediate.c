@@ -4,6 +4,7 @@
  * reverse polish notation.
  */
 #include<backend/intermediate/intermediate.h>
+#include<frontend/common/parser.h>
 
 static stack operand_stack = { 0, sizeof(operand) };
 static vector intermediates_vector = { 0, 0, 0, sizeof(intermediate) };
@@ -191,9 +192,10 @@ void clear_operand_stack()
 }
 
 /*
- * This frees "intermediates_vector".
+ * This frees "intermediates_vector". The symbol table should be in a clean
+ * scope before this function is called.
  */
-void free_intermediates()
+void free_intermediates(bool free_variable_symbols, bool free_var_vectors)
 {
     while (intermediates_vector.apparent_size != 0) {
         register intermediate* _intermediate = vector_pop(&intermediates_vector);
@@ -202,8 +204,12 @@ void free_intermediates()
         if (_intermediate->type == CONST_PTR || _intermediate->type == CAST)
             free(_intermediate->ptr);
         #endif
+    
+        if (free_variable_symbols && _intermediate->type == VAR_DECLERATION)
+            free(_intermediate->ptr);
 
-        if (_intermediate->type == REGISTER) {
+        if (free_var_vectors && _intermediate->type == REGISTER
+        || _intermediate->type == VAR_USE) {
             free(((vector*)_intermediate->ptr)->contents);
             free(_intermediate->ptr);
         }
@@ -221,6 +227,40 @@ vector* get_intermediate_vector()
 }
 
 /*
+ * If the ASCII number at the inputed token is valid it adds it to the
+ * intermediates. Return true if a number was added, otherwise false.
+ */
+bool add_if_ascii_num(char* token)
+{
+    if (is_ascii_number(token)) {
+        i64 _const_num = get_ascii_number(token);
+        /*
+            * If we have an i64 larger than the size of a pointer we store the
+            * value on the heap and make the ptr point to the value.
+            */
+        #if !VOID_PTR_64BIT
+        intermediate _operand;
+        if (_const_num < ~((i64)1 << ((sizeof(void*) << 3))-1) + 1
+        || _const_num > ((i64)1 << ((sizeof(void*) << 3)-1))-1) {
+            const_num = malloc(sizeof(i64));
+            if (const_num == NULLPTR)
+                handle_error(0);
+            memcpy(const_num, &_const_num, sizeof(i64));
+            intermediate _operand = { CONST_PTR, const_num };
+        } else {
+            const_num = (void*)_const_num;
+            intermediate _operand = { CONST, const_num };
+        }
+        #else
+        intermediate _operand = { CONST, (void*)_const_num };
+        #endif
+        add_operand(_operand, false);
+        return true;
+    }
+    return false;
+}
+
+/*
  * This prints the intermediates.
  */
 #if DEBUG
@@ -230,8 +270,8 @@ const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", \
 "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", \
 "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var decleration", \
 "Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", \
-"Else", "Loop", "End", "Continue", "Break", "Func def", "Func call", "Goto", \
-"Const", "Const_ptr", "Func return", "Mem return", "Comparison return", \
+"Else", "Loop", "End", "Continue", "Return", "Break", "Func def", "Func call", \
+"Goto", "Const", "Const ptr", "Func return", "Mem return", "Comparison return",\
 "Var return", "Cast", "Register", "Ignore", "Var use", "Clear stack"};
 
 void print_intermediates()
@@ -239,7 +279,7 @@ void print_intermediates()
     for (u32 i=0; i < VECTOR_SIZE(intermediates_vector); i++) {
         intermediate* _intermediate = vector_at(&intermediates_vector, i, 0);
 
-        printf("INTER: %s\n",INTERMEDIATES_TEXT[_intermediate->type]);
+        printf("INTER: %s\n", INTERMEDIATES_TEXT[_intermediate->type]);
 
         if (_intermediate->type == REGISTER || _intermediate->type == VAR_USE)
         {

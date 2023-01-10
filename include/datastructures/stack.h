@@ -3,7 +3,7 @@
 
 #include<common.h>
 
-#define STACK_IS_EMPTY(_stack) (_stack.top == 0)
+#define STACK_IS_EMPTY(_stack) (_stack.top == NULLPTR)
 
 typedef struct link link;
 

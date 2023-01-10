@@ -12,6 +12,12 @@
  */
 hash_table_bucket* hash_table_insert_hash(hash_table* _hash_table, u32 hash)
 {
+    /* Checking if the hash has already been defined. */
+    #if DEBUG
+    if (hash_table_at_hash(_hash_table,  hash) != NULLPTR)
+        send_error("Hash already found.\n");
+    #endif
+
     /* Getting the index of the first bucket. */
     hash_table_bucket* current_bucket = _hash_table->contents \
         +sizeof(hash_table_bucket) * (hash & ((1 << _hash_table->size) - 1));
@@ -52,8 +58,13 @@ char* _string)
 hash_table_bucket* hash_table_at_hash(hash_table* _hash_table, u32 hash)
 {
     /* Getting the index of the bucket. */
+    #if WIN32
+    hash_table_bucket* current_bucket = (void*)_hash_table->contents \
+        (u64)(+sizeof(hash_table_bucket)*(hash & ((1 <<_hash_table->size)-1)));
+    #else
     hash_table_bucket* current_bucket = _hash_table->contents \
-        +sizeof(hash_table_bucket) * (hash & ((1 <<_hash_table->size) - 1));
+        + sizeof(hash_table_bucket) * (hash & ((1 <<_hash_table->size) - 1));
+    #endif
 
     /* Getting the value from the bucket. */
     while (true)

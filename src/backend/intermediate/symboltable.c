@@ -59,7 +59,7 @@ bool add_variable_symbol(char* name, type type, u8 flags)
 {
     CHECK_HASH_TABLES_HAVE_BEEN_INITED();
 
-    if (get_variable_symbol(name, 0))
+    if (get_variable_symbol(name, 0) != NULLPTR)
         return false;
 
     variable_symbol* _variable = malloc(sizeof(variable_symbol));
@@ -75,6 +75,7 @@ bool add_variable_symbol(char* name, type type, u8 flags)
 
     _variable->hash = variable_bucket->hash;
     variable_bucket->value = _variable;
+
     return true;
 }
 
@@ -114,6 +115,7 @@ bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
 
     _function->hash = function_bucket->hash;
     function_bucket->value = _function;
+
     return true;
 }
 
@@ -125,7 +127,17 @@ bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
 void clear_variables_in_scope()
 {
     hash_table_bucket* current_bucket = variable_symbols.contents;
+    hash_table_bucket* linked_bucket = NULLPTR;
     for (u32 i=0; i < (1 << variable_symbols.size); i++) {
+        if (current_bucket->next != NULLPTR) {
+            linked_bucket = current_bucket->next;
+            do {
+                void* tmp = linked_bucket->next;
+                free(linked_bucket);
+                linked_bucket = tmp;
+            } while (linked_bucket != NULLPTR);
+        }
+        current_bucket->value = 0;
         current_bucket->next = 0;
         current_bucket->hash = 0;
         current_bucket++;
@@ -146,45 +158,29 @@ void init_symbol_table(u8 function_init_size, u8 variable_init_size)
  */
 void free_symbol_table()
 {
-    hash_table_bucket* current_bucket = function_symbols.contents;
-    hash_table_bucket* _bucket = 0;
-    // for (u32 i=0; i < (1 << function_symbols.size); i++) {
-    //     if (current_bucket->hash != 0) {
-    //         free(current_bucket->value);
-    //         if (current_bucket->next != 0) {
-    //             while (true) {
-    //                 _bucket = current_bucket->next;
-    //                 if (_bucket == 0)
-    //                     break;
-    //                 _bucket = _bucket->next;
-    //             }
-    //         }
-    //     }
-    //     current_bucket += sizeof(hash_table_bucket);
-    // }
+    hash_table_bucket* current_bucket = variable_symbols.contents;
+    hash_table_bucket* linked_bucket = NULLPTR;
+
+    current_bucket = function_symbols.contents;
+
+    for (; current_bucket < function_symbols.contents + \
+    sizeof(hash_table_bucket) * (1 << function_symbols.size); current_bucket++)
+    {
+        if (current_bucket->next != 0) {
+            linked_bucket = current_bucket->next;
+            do {
+                free(((function_symbol*)linked_bucket->value)->inputs.contents);
+                free(linked_bucket->value);
+                linked_bucket = linked_bucket->next;
+            } while (linked_bucket->next != NULLPTR);
+        }
+        if (current_bucket->value) {
+            function_symbol* _func = current_bucket->value;
+            if (_func->inputs.contents != NULLPTR)
+                free(_func->inputs.contents);
+            free(current_bucket->value);
+        }
+    }
     free(function_symbols.contents);
     free(variable_symbols.contents);
-    // TODO: This freeing needs to be rewritten to work with a hash table
-    // instead of a vector.
-
-    /*if (variable_names.contents != NULL) {
-        // TODO: Benchmark this against a for loop through every item
-        while (VECTOR_SIZE(variable_names)) {
-            char** _t = vector_pop(&variable_names);
-            free(*_t);
-            free(_t);
-        }
-        free(variable_names.contents);
-    }
-    
-    if (function_symbols.contents != NULL) {
-        // TODO: Benchmark this against a for loop through every item
-        while (VECTOR_SIZE(function_symbols)) {
-            char** _t = vector_pop(&function_symbols);
-            free(((function_symbol*)_t)->inputs.contents);
-            free(((function_symbol*)_t)->name);
-            free(_t);
-        }
-        free(function_symbols.contents);
-    }*/
 }

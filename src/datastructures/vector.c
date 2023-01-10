@@ -1,9 +1,10 @@
 #include<common.h>
 #include<datastructures/vector.h>
-    
+  
 /*
  * This makes sure that a vector has been initialized.
  */
+// TODO: This function shouldn't exist if "DEBUG" isn't set
 static inline void vector_test_valid(vector *_vector)
 {
     #if DEBUG

@@ -36,12 +36,11 @@ int main(i32 argc, char* args[])
     // }
     // free_tokenized_file_vector(&_tmp);
 
-    /*vector c_file = C_preprocess_file("../tests/fib.c");
-    for (u32 i=0; i < VECTOR_SIZE(c_file); i++) {
-        printf("%s\n", *(char**)vector_at(&c_file, i, 0));
-    }*/
-
-    #include<time.h>
+    vector c_file = C_preprocess_file("../tests/fib.c");
+    for (u32 i=0; i < VECTOR_SIZE(c_file); i++)
+        if (*(char**)vector_at(&c_file, i, 0) != NULLPTR)
+            printf("%s\n", *(char**)vector_at(&c_file, i, 0));
+    exit(0);
 
     init_symbol_table(8, 8);
 
@@ -52,7 +51,7 @@ int main(i32 argc, char* args[])
     optimizaiton_do_use_scope_pass();
     print_intermediates();
 
-    bin sadfdf = intermediates_into_binary(get_intermediate_vector());
+    bin sadfdf = ARMv7_intermediates_into_binary(get_intermediate_vector());
 
     for (u32 i=0; i < VECTOR_SIZE(sadfdf.contents); i++)
         printf("%08x\n", *(u32*)vector_at(&(sadfdf.contents), i, 0));
@@ -97,7 +96,7 @@ int main(i32 argc, char* args[])
     // free_tokenized_file_vector(&_tmp);
 
     // printf("%p\n", get_variable_symbol("", 0));
-
+    // clear_variables_in_scope();
     free_symbol_table();
-    free_intermediates();
+    free_intermediates(true, true);
 }
