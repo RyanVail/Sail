@@ -6,6 +6,9 @@
 
 #include<backend/intermediate/optimization/registerpass.h>
 #include<backend/intermediate/intermediate.h>
+#if DEBUG && linux
+#include<time.h>
+#endif
 
 static inline void goto_start_of_next_basic_block(u32* location, \
 vector* intermediates, vector* output_intermediates);
@@ -28,6 +31,10 @@ void optimization_do_register_pass()
      * variable is requested the flag "needs_stack" is set on the variable
      * symbol.
      */
+
+    #if DEBUG && linux
+        clock_t starting_time = clock();
+    #endif
 
     vector* intermediates;
 
@@ -80,6 +87,11 @@ void optimization_do_register_pass()
     free(ptrs.contents);
     free_intermediates(false, false);
     *get_intermediate_vector() = output_intermediates;
+
+    #if DEBUG && linux
+        printf("Took %f ms to do the register pass.\n", \
+            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
+    #endif
 }
 
 /*

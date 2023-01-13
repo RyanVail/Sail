@@ -179,13 +179,15 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     value_location* _first = 0;
     value_location* _second = 0;
     value_location* _var = 0;
+    control_flow* new_control_flow;
+    control_flow* end_control_flow;
     // TODO: These should be in order
     switch(_intermediate.type)
     {
     case IF: // BNE IF_END_LABEL / ELSE_START_LABEL
         ARMv7_add_asm(1 << 28 | 5 << 25);
     case LOOP:
-        control_flow* new_control_flow = malloc(sizeof(control_flow));
+        new_control_flow = malloc(sizeof(control_flow));
         if (new_control_flow == NULLPTR)
             send_error(0);
 
@@ -204,7 +206,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         // else if we go through the "IF".
     case END:
         // TODO: This shouldn't be as nested as it is.
-        control_flow* end_control_flow = NULLPTR;
+        end_control_flow = NULLPTR;
         if (!STACK_IS_EMPTY(control_flow_stack)) {
             end_control_flow = stack_pop(&control_flow_stack);
             if (end_control_flow != NULLPTR) {
@@ -308,9 +310,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case EQUAL:
         _first = stack_pop(&value_locations);
         _second = stack_top(&value_locations);
-        // if (_first->type == REG_INDEX) {
-            // 
-        // }
+        // TODO: This logic still needs to be added
         printf("HERE.\n");
         printf("%u\n", _first->first);
         if (_second->type == REG_INDEX
@@ -384,23 +384,23 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case AND:
     case XOR:
     case OR:
-        if (_intermediate.type >= ADD && _intermediate.type <= OR) {
-            _first = stack_pop(&value_locations);
-            _second = stack_top(&value_locations);
-            u8 operational_codes[] = { 4, 2, 0, 0, 0, 1, 12 };
-            printf("%u\n", _second->first);
-            if (_second->type == REG_INDEX)
-                ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, \
-                (operational_codes[((u8)_intermediate.type - ADD)]), false, \
-                _second->first, _second->first, _first->first));
-            else if (_second->type == IMMEDIATE) {
-                ARMv7_add_asm(14 << 28 | 1 << 25 \
-                | operational_codes[((u8)_intermediate.type - ADD)] << 21 \
-                | _first->first << 16 | _first->first << 12 | \
-                ARMv7_get_immediate_of_const(_second->first));
-            }
-            free(_first);
+        _first = stack_pop(&value_locations);
+        _second = stack_top(&value_locations);
+        // TODO: This logic should be put into a switch statments so the
+        // compiler can optimize it how it likes and it would output the same
+        // thing anyway on most compulation levels.
+        u8 _operational_codes[] = { 4, 2, 0, 0, 0, 1, 12 };
+        if (_second->type == REG_INDEX)
+            ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, \
+            (_operational_codes[((u8)_intermediate.type - ADD)]), false, \
+            _second->first, _second->first, _first->first));
+        else if (_second->type == IMMEDIATE) {
+            ARMv7_add_asm(14 << 28 | 1 << 25 \
+            | _operational_codes[((u8)_intermediate.type - ADD)] << 21 \
+            | _first->first << 16 | _first->first << 12 | \
+            ARMv7_get_immediate_of_const(_second->first));
         }
+        free(_first);
         break;
     }
 }
@@ -587,6 +587,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
 
     regs[lowest_priority_reg].content = _intermediate;
 
+    variable_symbol* _var;
     switch(_intermediate.type)
     {
     case CONST:
@@ -594,7 +595,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
         return lowest_priority_reg;
         break;
     case VAR_ASSIGNMENT:
-        variable_symbol* _var = get_variable_symbol("",(u32)_intermediate.ptr);
+        _var = get_variable_symbol("",(u32)_intermediate.ptr);
         ARMv7_add_asm(ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(14, true, \
         0, false, lowest_priority_reg, false, false));
         break;

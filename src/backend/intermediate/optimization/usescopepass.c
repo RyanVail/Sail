@@ -5,9 +5,16 @@
 
 #include<backend/intermediate/optimization/usescopepass.h>
 #include<backend/intermediate/intermediate.h>
+#if DEBUG && linux
+    #include<time.h>
+#endif
 
 void optimizaiton_do_use_scope_pass()
 {
+    #if DEBUG && linux
+    clock_t starting_time = clock();
+    #endif
+
     vector intermediates = { 0, 0, 0, sizeof(intermediate) };
     vector output_intermediates = { 0, 0, 0, sizeof(intermediate) };
     intermediate* start_scope_ptr = 0;
@@ -76,4 +83,9 @@ void optimizaiton_do_use_scope_pass()
     free(scope_uses.contents);
     free_intermediates(false, false);
     *get_intermediate_vector() = output_intermediates;
+
+    #if DEBUG && linux
+        printf("Took %f ms to do the use scope pass.\n", \
+            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
+    #endif
 }

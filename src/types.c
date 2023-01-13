@@ -19,8 +19,9 @@ static u32* TYPE_SIZES = DEFAULT_TYPE_SIZES;
  */
 type_kind get_lowest_type(i64 value)
 {
-    if (value == 0 || value == 1)
-        return BOOL_TYPE;
+    // TODO: Decide if this should stay in or not.
+    // if (value == 0 || value == 1)
+        // return BOOL_TYPE;
 
     if (value > 0)
         if (value <= __UINT8_MAX__)

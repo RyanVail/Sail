@@ -73,7 +73,7 @@ hash_table_bucket* hash_table_at_hash(hash_table* _hash_table, u32 hash)
             return current_bucket;
 
         if (current_bucket->next == NULLPTR)
-            return NULL;
+            return NULLPTR;
 
         current_bucket = current_bucket->next;
     }

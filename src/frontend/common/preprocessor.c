@@ -132,48 +132,49 @@ void replace_C_escape_codes(vector* file, u32* current_index)
     u8 _next = '\0';
     if (**(char**)vector_at(file, *current_index, false) == '\\') {  
         free(*(char**)vector_at(file, *current_index, false));
-        switch (**(char**)vector_at(file, *current_index+1, false)) {
-            case 'n':
-                _next = '\n';
-                break;
-            case 't':
-                _next = '\t';
-                break;
-            case 'v':
-                _next = '\v';
-                break;
-            case 'b':
-                _next = '\b';
-                break;
-            case 'r':
-                _next = '\r';
-                break;
-            case 'f':
-                _next = '\f';
-                break;
-            case 'a':
-                _next = '\a';
-                break;
-            case '\\':
-                _next = '\\';
-                break;
-            case '\'':
-                _next = '\'';
-                break;
-            case '\"':
-                _next = '\"';
-                break;
-            case 'o':
-                _next = 8;
-                goto escape_codes_numerical_label;
-                break;
-            case 'x':
-                _next = 16;
-                goto escape_codes_numerical_label;
-                break;
-            default:
-                printf("%s\n", *(char**)vector_at(file, *current_index+1, false));
-                send_error("Unknown escape code");
+        switch (**(char**)vector_at(file, *current_index+1, false))
+        {
+        case 'n':
+            _next = '\n';
+            break;
+        case 't':
+            _next = '\t';
+            break;
+        case 'v':
+            _next = '\v';
+            break;
+        case 'b':
+            _next = '\b';
+            break;
+        case 'r':
+            _next = '\r';
+            break;
+        case 'f':
+            _next = '\f';
+            break;
+        case 'a':
+            _next = '\a';
+            break;
+        case '\\':
+            _next = '\\';
+            break;
+        case '\'':
+            _next = '\'';
+            break;
+        case '\"':
+            _next = '\"';
+            break;
+        case 'o':
+            _next = 8;
+            goto escape_codes_numerical_label;
+            break;
+        case 'x':
+            _next = 16;
+            goto escape_codes_numerical_label;
+            break;
+        default:
+            printf("%s\n", *(char**)vector_at(file, *current_index+1, false));
+            send_error("Unknown escape code");
         }
 
         /* This turns the backslash char into the escape code value. */

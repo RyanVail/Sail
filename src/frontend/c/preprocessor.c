@@ -5,6 +5,9 @@
 #include<frontend/c/preprocessor.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
+#if DEBUG && linux
+#include<time.h>
+#endif
 
 static char white_space_c[] = { ' ', '\t' };
 static char special_c[] = { '>', '<', '=', '!', '+', '-', '*', '/', '{', '}', \
@@ -66,12 +69,13 @@ void C_preprocess_line(u32* i)
 
     /* Reads the macros in this line from the first index in this line. */
     bool dont_save = false;
+    u32 index;
     switch(C_read_macro(&tokenized_file, &first_index))
     {
     case DONT_SAVE_LINE:
         dont_save = true;
     case SKIP_TO_NEXT:
-        u32 index = new_file.apparent_size - 1;
+        index = new_file.apparent_size - 1;
         do {
             index--;
             if (*(char**)vector_at(&new_file,index,true) == NULLPTR)
@@ -116,6 +120,10 @@ vector C_preprocess_file(char* file_name)
 
     tokenized_file = tokenize_file(file_name);
 
+    #if DEBUG && linux
+    clock_t starting_time = clock();
+    #endif
+
     for (u32 i=0; i < tokenized_file.apparent_size; i++) {
         if (*(char**)vector_at(&tokenized_file, i, false) == NULL)
             continue;
@@ -126,6 +134,10 @@ vector C_preprocess_file(char* file_name)
         // printf("%s\n", *(char**)vector_at(&new_file, i, false));
 
     free(tokenized_file.contents);
+    #if DEBUG && linux
+    printf("Took %f ms to preprocess file.\n", \
+        (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f);
+    #endif
     return new_file;
 }
 

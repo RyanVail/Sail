@@ -1,5 +1,8 @@
 #include<common.h>
 #include<frontend/common/tokenizer.h>
+#if DEBUG && linux
+#include<time.h>
+#endif
 
 static char* white_space_chars = NULL;
 static char* special_chars = NULL;
@@ -48,6 +51,9 @@ vector tokenize_file(char* file_name)
         printf("\"white_space_chars\" or \"special_chars\" were never set.\n");
         exit(-1);
     }
+    #endif
+    #if DEBUG && linux
+    clock_t starting_time = clock();
     #endif
 
     FILE* file_handle = fopen(file_name, "r");
@@ -106,6 +112,12 @@ vector tokenize_file(char* file_name)
         }
     }
     fclose(file_handle);
+
+    #if DEBUG && linux
+    printf("Took %f ms to tokenize file.\n", \
+        (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f);
+    #endif
+
     return file_vector;
 }
 

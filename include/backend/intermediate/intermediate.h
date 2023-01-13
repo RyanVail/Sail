@@ -40,14 +40,13 @@ typedef enum intermediate_type {
     GREATER_THAN_EQUAL,     // >=
     LESS_THAN,              // <
     LESS_THAN_EQUAL,        // <=
-    EQUAL,                  // =    // This should only be used as an operation
-                                    // into "process_operation".
+    EQUAL,                  // =
 
     // Variable intermediates
-    VAR_DECLERATION,        // The variable symbol is in the "ptr"
-    VAR_ASSIGNMENT,         // The variable hash is in the "ptr"
-    VAR_ACCESS,             // The variable hash is in the "ptr"
-    VAR_MEM,                // The variable hash is in the "ptr"
+    VAR_DECLERATION,        // The variable symbol is in the "ptr".
+    VAR_ASSIGNMENT,         // The variable hash is in the "ptr".
+    VAR_ACCESS,             // The variable hash is in the "ptr".
+    VAR_MEM,                // The variable hash is in the "ptr".
     // Memory intermediates
     MEM_LOCATION,           // *ptr = 8
     MEM_ACCESS,             // *ptr
@@ -58,7 +57,7 @@ typedef enum intermediate_type {
     LOOP,                   // loop
     END,                    // }
     CONTINUE,               // continue
-    RETURN,                // return
+    RETURN,                 // return
     BREAK,                  // break
     FUNC_DEF,               // fn func() {}
     FUNC_CALL,              // The function id is in "ptr"
@@ -116,6 +115,13 @@ typedef struct operand {
 } operand;
 
 /*
+ * This takes either one or two operands off of "operand_stack" based on "dual"
+ * then checks if the operand types are valid for an operation. If comparison
+ * both values get taken off.
+ */
+void pop_operand(bool dual, bool comparison);
+
+/*
  * This frees "intermediates_vector".
  */
 void free_intermediates(bool free_variable_symbols, bool free_var_vectors);
@@ -158,6 +164,9 @@ vector* get_intermediate_vector();
  * intermediates. Return if it added the number.
  */
 bool add_if_ascii_num(char* token);
+
+/* This returns a pointer to the operand stack. */
+stack* get_operand_stack();
 
 /*
  * This prints the intermediates.

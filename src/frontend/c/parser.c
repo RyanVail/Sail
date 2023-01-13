@@ -1,7 +1,12 @@
 #include<frontend/c/parser.h>
 #include<datastructures/stack.h>
 #include<frontend/common/parser.h>
+#include<frontend/c/preprocessor.h>
 #include<backend/intermediate/intermediate.h>
+#if DEBUG && linux
+#include<time.h>
+#endif
+
 
 typedef u8 prio;
 
@@ -9,13 +14,13 @@ typedef u8 prio;
 #define __PRIO_MAX__ ((prio)-1)
 
 /*
- * Operators are "intermediate_kind" expect for "OPENING_PAR" and "CLOSING_PAR"
- * which are just temp anyway.
+ * Operators ids are the same as those of "intermediate_kind" expect for
+ * "OPENING_PAR" and "CLOSING_PAR" which are just temp anyway.
  */
 typedef u8 operator;
 
-#define OPENING_PAR 20
-#define CLOSING_PAR 21
+#define OPENING_PAR 22
+#define CLOSING_PAR 23
 
 
 /* The logically highest value of the "operator" type. */
@@ -25,35 +30,73 @@ typedef u8 operator;
 static stack operator_stack = { NULLPTR, sizeof(operator) };
 
 static inline bool C_parse_operation(vector* file, u32 index);
-static inline prio C_get_operator_prio(operator _operator);
-static inline operator C_get_operator(char* token);
+prio C_get_operator_prio(operator _operator);
+operator C_get_operator(char* token);
+static inline void C_set_operator_associativity(operator *_operator, \
+bool* left_associative, bool* right_associative);
+
+/*
+ * This function reads in the C source file refrenced by "file_name" processes
+ * and turns it into intermediates.
+ */
+void C_file_into_intermediate(char* file_name)
+{
+    // TODO: This should be done outside of this function, preprocessing should
+    // be optional.
+    /* Preprocessing. */
+    vector file = C_preprocess_file(file_name);
+    if (file.contents == NULLPTR) {
+        printf("Failed to preprocess C file: %s", file_name);
+        exit(-1);
+    }
+
+    /* Initial intermediate pass. */
+    #if DEBUG && linux
+        clock_t starting_time = clock();
+    #endif
+
+    for (u32 i=0; i < VECTOR_SIZE(file); i++) {
+        if (*(char**)vector_at(&file, i, 0) != NULLPTR) {
+            if (C_parse_operation(&file, i))
+                break;
+        }
+    }
+
+    #if linux && DEBUG
+        printf("Took %f ms to do the initial intermediate pass.\n", \
+            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
+    #endif
+}
 
 /*
  * This function reads an operand from the file, adds it to the intermediates,
- * and returns the ending index of the operands so the index will have to be
+ * and returns the ending token of the operands so the pointer will have to be
  * incramented once to reach the next token that is not part of the operand.
+ * Returns "__INTPTR_MAX__" if nothing was read.
  */
-u32 C_parse_operand(vector* file, u32 starting_index)
+char** C_parse_operand(char** current_token)
 {
-    char* first_token = vector_at(file, starting_index, false);
-
     /* ASCII numbers */
-    if (add_if_ascii_num(first_token))
-        return starting_index;
+    if (add_if_ascii_num(*current_token)) {
+        pop_operand(false, false);
+        return current_token;
+    }
 
     /* Variables */
-    if (!is_invalid_name(first_token)
-    && get_variable_symbol(first_token, 0)) {
+    if (!is_invalid_name(*current_token)
+    && get_variable_symbol(*current_token, 0)) {
         intermediate _tmp_intermediate = \
-        { VAR_ACCESS, (void*)get_variable_symbol(first_token, 0)->hash };
+        { VAR_ACCESS, (void*)get_variable_symbol(*current_token, 0)->hash };
 
         add_operand(_tmp_intermediate, false);
-        return starting_index;
+
+        pop_operand(false, false);
+        return current_token;
     }
 
     // FUNC CALLS
-    // CASTS
-    // VARIABLES
+
+    return (char**)__INTPTR_MAX__;
 }
 
 /*
@@ -83,31 +126,150 @@ static inline bool C_parse_operation(vector* file, u32 starting_index)
 
     char** starting_token = vector_at(file, starting_index, false);
 
-    for (char** current_token = starting_token ;; current_token++) {
+    /* If the operand is operating on the right operand. */
+    bool right_associative;
+
+    /* If the operand is operating on the left operand. */
+    bool left_associative;
+
+    /* If we have output and operation yet or not. */
+    bool have_operated = false;
+
+    /* The operator to be evaluated. */
+    operator to_operate = __OPERATOR_MAX__;
+
+    for (char** current_token = starting_token ;; current_token += 1) {
         if (*current_token == NULLPTR)
             continue;
-        if (*current_token == '\n')
+        if (**current_token == '\n')
             break;
 
-        /* Reading operator. */
-        operator current_operator = C_get_operator(current_token);
-        if (current_operator == __OPERATOR_MAX__)
-            printf("Expected to find an operator but found %s.\n", \
-                current_token);
+        left_associative = false;
+        right_associative = false;
+        to_operate = __OPERATOR_MAX__;
+
+        /* Adding the operators in between parenthesis. */
+        if (**current_token == ')') {
+            while (stack_size(&operator_stack)) {
+                operator tmp_operator = (operator)stack_pop(&operator_stack);
+                if (tmp_operator == OPENING_PAR)
+                    goto C_parse_operation_continue_label;
+                process_operation(tmp_operator);
+            }
+            send_error("Uneven parenthesis");
+        }
+
+        /* Checking if this is the inital '('. */
+        if (**current_token == '(') {
+            stack_push(&operator_stack, OPENING_PAR);
+            goto C_parse_operation_continue_label;
+        }
+
+        /* Reading the first/left operand. */
+        char** left_operand_pos = C_parse_operand(current_token);
+        if (left_operand_pos == __INTPTR_MAX__) {
+            right_associative = true;
+        } else {
+            current_token = left_operand_pos;
+            do {
+                current_token += 1;
+                if (**current_token == '\n')
+                    goto C_parse_operation_pop_operations_label;
+                if (**current_token == '(') {
+                    stack_push(&operator_stack, OPENING_PAR);
+                    goto C_parse_operation_continue_label;
+                }
+            } while (*current_token == NULLPTR);
+        }
+
+        /* Reading the operator. */
+        operator current_operator = C_get_operator(*current_token);
+        if (current_operator == __OPERATOR_MAX__) {
+            printf("C operation parsing is still being tested. The operation be at the top of the file and after the operation nothing else will be processed.\n");
+            printf("Expected to find an operator but found: %s.\n", \
+                *current_token);
+            exit(-1);
+        }
 
         /* Adding the operator to the output or stack. */
-        if (stack_size(&operator_stack) == 0
-        || C_get_operator_prio(current_operator) >= \
-        C_get_operator_prio((operator)stack_top(&operator_stack)))
-            process_operation(current_operator);
-        else
+        if (stack_size(&operator_stack) != 0
+        && C_get_operator_prio(current_operator) >= \
+        C_get_operator_prio((operator)stack_top(&operator_stack))) {
+            to_operate = current_operator;
+            C_set_operator_associativity(&to_operate, &left_associative, \
+                &right_associative);
+        } else {
             stack_push(&operator_stack, (void*)current_operator);
+        }
+        have_operated = true;
 
-        /* Reading the operand. */
-        C_parse_operand(file, starting_index);
+        if (left_associative)
+            goto C_parse_operation_no_right_operand_label;
+
+        do {
+            current_token += 1;
+            if (**current_token == '\n')
+                send_error("Expected another operand before new line");
+            if (**current_token == '(') {
+                stack_push(&operator_stack, OPENING_PAR);
+                goto C_parse_operation_no_right_operand_label;
+            }
+        } while (*current_token == NULLPTR);
+
+        /* Reading the right operand. */
+        char** right_operand_pos = C_parse_operand(current_token);
+        if (right_operand_pos == __INTPTR_MAX__)
+            left_associative = true;
+        else
+            current_token = right_operand_pos;
+
+        C_parse_operation_no_right_operand_label: ;
+        // TODO: This isn't the best error handling in the world.
+        /* Checks if an expected operand is missing. */
+        if (left_associative && right_associative)
+            send_error("Unexpected operation");
+
+        /* Processing the operation. */
+        if (to_operate != __OPERATOR_MAX__)
+            process_operation(to_operate);
+
+        C_parse_operation_continue_label: ;
     }
+
+    C_parse_operation_pop_operations_label: ;
+
     while (stack_size(&operator_stack))
         process_operation((operator)stack_pop(&operator_stack));
+
+    return have_operated;
+
+    #undef CLOSE_OPERAND_SLICE
+    #undef OPEN_OPERAND_SLICE
+    #undef INC_AND_CHECK_IF_TOKEN_VALID
+}
+
+/*
+ * This sets the the associative flags and changes subtraction to negation where
+ * it's needed.
+ */
+static inline void C_set_operator_associativity(operator *_operator, \
+bool* left_associative, bool* right_associative)
+{
+    switch (*_operator)
+    {
+    case COMPLEMENT:
+        *right_associative = true;
+        return;
+    case NOT:
+        *right_associative = true;
+        return;
+    case SUB:
+        if (*right_associative)
+            *_operator = NEG;
+        return;
+    default:
+        return;
+    }
 }
 
 /*
@@ -115,7 +277,7 @@ static inline bool C_parse_operation(vector* file, u32 starting_index)
  * not a valid operator. Negation and subtraction need to be done seperate of
  * this.
  */
-static inline operator C_get_operator(char* token)
+operator C_get_operator(char* token)
 {
     #define U16_CHAR(a,b) a | (b << 8)
     if (strlen(token) == 1) {
@@ -172,7 +334,7 @@ static inline operator C_get_operator(char* token)
 }
 
 /* This returns the priority of the inputed operator. */
-static inline prio C_get_operator_prio(operator _operator)
+prio C_get_operator_prio(operator _operator)
 {
     switch(_operator)
     {
@@ -204,10 +366,12 @@ static inline prio C_get_operator_prio(operator _operator)
     case DIV:
     case MOD:
         return 5;
-    return __PRIO_MAX__;
+    default:
+        return __PRIO_MAX__;
     }
 }
 
 #undef CLOSING_PAR
 #undef OPENING_PAR
 #undef __PRIO_MAX__
+#undef __OPERATOR_MAX__

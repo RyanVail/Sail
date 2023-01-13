@@ -1,6 +1,7 @@
+(1 + (2 - 2)) / 3
+
 #define COND 0
 #if 0
-    int foo = 3;
 #else
     #if 1
         int abc = 32;
@@ -11,7 +12,6 @@
 
 int a = 3;
 
-//#include<stdio.h>
 #define MAX_DEPTH 16 - 2 * 2
 
 int fib(int a, int b, int depth);

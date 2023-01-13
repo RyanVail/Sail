@@ -7,22 +7,24 @@
 #include<frontend/common/tokenizer.h>
 #include<frontend/salmon/preprocessor.h>
 #include<frontend/c/preprocessor.h>
+#include<frontend/c/parser.h>
 #include<frontend/common/preprocessor.h>
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
 #include<backend/intermediate/optimization/registerpass.h>
 #include<backend/intermediate/optimization/usescopepass.h>
 #include<backend/asm/ARMv7.h>
+#if linux && DEBUG
+#include<time.h>
+#endif
 
 int main(i32 argc, char* args[])
 {
-    #if DEBUG
-        #if VOID_PTR_64BIT
-            /* This is a fail safe. */
-            if (sizeof(void*) != 8)
-                send_error( \
-                "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to false and recompile");
-        #endif
+    /* This is a fail safe. */
+    #if DEBUG && VOID_PTR_64BIT
+    if (sizeof(void*) != 8)
+        send_error( \
+        "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to false and recompile");
     #endif
     // TOOD: Symbol table ids cannot be stored inside void pointers on 16 bit
     // machines which may be a problem.
@@ -36,14 +38,21 @@ int main(i32 argc, char* args[])
     // }
     // free_tokenized_file_vector(&_tmp);
 
-    vector c_file = C_preprocess_file("../tests/fib.c");
-    for (u32 i=0; i < VECTOR_SIZE(c_file); i++)
-        if (*(char**)vector_at(&c_file, i, 0) != NULLPTR)
-            printf("%s\n", *(char**)vector_at(&c_file, i, 0));
+    init_symbol_table(8, 8);
+
+    C_file_into_intermediate("../tests/fib.c");
+
+    // print_intermediates();
+
+    optimization_do_register_pass();
+
+    optimizaiton_do_use_scope_pass();
+
     exit(0);
 
     init_symbol_table(8, 8);
 
+    // TODO: This and C should be called "into_intermediates" with an 's'.
     salmon_file_into_intermediate("../tests/loop.sal");
     // free_tokenized_file_vector(&_tmp);
 

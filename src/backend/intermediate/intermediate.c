@@ -88,16 +88,42 @@ void process_operation(intermediate_type _operation)
     }
     #endif
 
-    if (_operation == EQUAL)
+    switch (_operation)
+    {
+    case EQUAL:
         pop_operand(true, false);
-    if (_operation == CLEAR_STACK)
+        break;
+    case CLEAR_STACK:
         clear_operand_stack();
-    if (_operation >= ADD && _operation <= MOD)
+        break;
+    case ADD:
+    case SUB:
+    case MUL:
+    case DIV:
+    case AND:
+    case XOR:
+    case OR:
+    case LSL:
+    case LSR:
+    case MOD:
         pop_operand(true, false);
-    if (_operation >= IS_EQUAL && _operation <= LESS_THAN_EQUAL)
+        break;
+    case IS_EQUAL:
+    case NOT_EQUAL:
+    case GREATER_THAN:
+    case GREATER_THAN_EQUAL:
+    case LESS_THAN:
+    case LESS_THAN_EQUAL:
         pop_operand(true, true);
-    if (_operation >= INC && _operation <= NEG)
+        break;
+    case INC:
+    case DEC:
+    case NOT:
+    case COMPLEMENT:
+    case NEG:
         pop_operand(false, false);
+        break;
+    }
 
     intermediate _intermediate = { _operation, 0 };
     add_intermediate(_intermediate);
@@ -116,6 +142,11 @@ void add_intermediate(intermediate _intermediate)
  */
 void cast_top_operand(type _type)
 {
+    #if DEBUG
+    if (stack_size(&operand_stack) == 0)
+        send_error(\
+            "Attempted to cast the top operand when there are no operands.");
+    #endif
     ((operand*)stack_top(&operand_stack))->type = _type;
     pop_operand(false, false);
 }
@@ -134,37 +165,38 @@ void set_type_of_operand(operand* _operand)
     #endif
 
     type _type = { 0, VOID_TYPE };
-    switch (_operand->intermediate.type) {
-        case CONST_PTR:
-            _type.kind = get_lowest_type(*((i64*)_operand->intermediate.ptr));
-            _operand->type = _type;
-            break;
-        case CONST:
-            _type.kind = get_lowest_type((i64)_operand->intermediate.ptr);
-            _operand->type = _type;
-            break;
-        case VAR_DECLERATION:
-            _operand->type = \
-                ((variable_symbol*)_operand->intermediate.ptr)->type;
-            break;
-        case VAR_ASSIGNMENT:
-        case VAR_RETURN:
-        case VAR_ACCESS:
-        case VAR_MEM:
-            _operand->type = get_variable_symbol("", \
-                *(u32*)(&_operand->intermediate.ptr))->type;
-            break;
-        case FUNC_RETURN:
-            _operand->type = get_function_symbol("", \
-                *(u32*)(&_operand->intermediate.ptr))->return_type;
-            break;
-        case MEM_RETURN:
-        case MEM_LOCATION:
-            _operand->type = *((type*)_operand->intermediate.ptr);
-            break;
-        default:
-            _type.kind = VOID_TYPE;
-            _operand->type = _type;
+    switch (_operand->intermediate.type)
+    {
+    case CONST_PTR:
+        _type.kind = get_lowest_type(*((i64*)_operand->intermediate.ptr));
+        _operand->type = _type;
+        break;
+    case CONST:
+        _type.kind = get_lowest_type((i64)_operand->intermediate.ptr);
+        _operand->type = _type;
+        break;
+    case VAR_DECLERATION:
+        _operand->type = \
+            ((variable_symbol*)_operand->intermediate.ptr)->type;
+        break;
+    case VAR_ASSIGNMENT:
+    case VAR_RETURN:
+    case VAR_ACCESS:
+    case VAR_MEM:
+        _operand->type = get_variable_symbol("", \
+            *(u32*)(&_operand->intermediate.ptr))->type;
+        break;
+    case FUNC_RETURN:
+        _operand->type = get_function_symbol("", \
+            *(u32*)(&_operand->intermediate.ptr))->return_type;
+        break;
+    case MEM_RETURN:
+    case MEM_LOCATION:
+        _operand->type = *((type*)_operand->intermediate.ptr);
+        break;
+    default:
+        _type.kind = VOID_TYPE;
+        _operand->type = _type;
     }
 }
 
@@ -260,6 +292,12 @@ bool add_if_ascii_num(char* token)
     return false;
 }
 
+/* This returns a pointer to the operand stack. */
+stack* get_operand_stack()
+{
+    return &operand_stack;
+}
+
 /*
  * This prints the intermediates.
  */
@@ -287,6 +325,8 @@ void print_intermediates()
             for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++)
                 printf("%08x\n",*(u32*)vector_at(_intermediate->ptr,y,0));
         }
+        if (_intermediate->type == CONST)
+            printf("%u\n", _intermediate->ptr);
     }
 }
 

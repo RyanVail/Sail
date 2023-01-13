@@ -16,6 +16,7 @@ static inline void vector_test_valid(vector *_vector)
         abort();
     }
     #else
+    // TODO: There should be a flag to remove this line of code.
     if (_vector->contents == NULLPTR || _vector->type_size == 0)
         exit(-1);
     #endif
