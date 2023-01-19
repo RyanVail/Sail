@@ -10,6 +10,23 @@ loop {
     a 1 == if break
 }
 
+struct RGBA {
+    R u8
+    G u8
+    B u8
+    A u8
+}
+
+enum num u32 {
+    ONE,
+    TWO,
+    THREE,
+    FOUR,
+    EIGHT 8 =,
+}
+
+let lest u32 num.ONE u32 =
+
 /*#include<stdio.h>
 int main()
 {

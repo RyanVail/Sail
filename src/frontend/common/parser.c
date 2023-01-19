@@ -3,22 +3,60 @@
  * to the intermediate stage.
  */
 
+#include<backend/intermediate/struct.h>
+#include<datastructures/hashtable.h>
 #include<frontend/common/parser.h>
 #include<frontend/common/tokenizer.h>
 #include<types.h>
 
-static char* DEFAULT_INVALID_NAMES[] = { "if","fn", "let", "break", "return",
+static char* DEFAULT_INVALID_NAMES[] = { "if", "fn", "let", "break", "return",
 "loop", "\0" };
 
 static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
 
+/*
+ * This parses and returns the given type modifiers. This will incrament token
+ * till it reaches the end of the modifiers. unsigned and signed modifiers will
+ * change the first bit of the returinging kind. This will skip tokens that are
+ * equal to NULLPTR and returns when it doesn't hit a modifier.
+ */
+type_kind get_type_modifier(char*** token)
+{
+    char** modifier_names = get_type_modifier_names();
+    type_kind _type;
+    while (true) {
+        if (**token == NULLPTR)
+            continue;
+        for (u32 i=0; modifier_names[i][0] != '\0'; i++) {
+            if (!strcmp(modifier_names[i],**token)) {
+                switch (i)
+                {
+                case 0: // Unsigned
+                    _type |= 1;
+                    goto get_type_modifier_next_token_label;
+                case 1: // Signed
+                    _type &= 0b01111111111111111;
+                    goto get_type_modifier_next_token_label;
+                default: // Other flags
+                    _type &= 1 << i + 4;
+                    goto get_type_modifier_next_token_label;
+                }
+            }
+            return _type;
+        }
+        get_type_modifier_next_token_label:
+        **token += 1;
+    }
+}
+
+// TODO: 255 should be replace with "__UINT8_MAX__".
 /*
  * This parses and returns the type of the same name as the inputed string. This
  * assumes that the string is in a array and that there are no NULL pointers in
  * the array. This also assumes that the pointer char is a special char. If we
  * didn't get a type the returning type kind will be equal to 255.
  */
-type parse_type(char** string_ptr)
+type get_type(char** token)
 {
     char** type_names = get_type_names();
 
@@ -33,11 +71,11 @@ type parse_type(char** string_ptr)
     u16 after_ptrs = 0;
     type _type;
 
-    for (; string_ptr[before_ptrs][0] == type_names[0xd][0]; before_ptrs++);
+    for (; token[before_ptrs][0] == type_names[0xd][0]; before_ptrs++);
 
-    string_ptr += before_ptrs;
+    token += before_ptrs;
 
-    char* type_name = *string_ptr;
+    char* type_name = *token;
 
     _type.kind = 255;
     for (u32 i=0; (char)type_names[i][0] != '\0'; i++) {
@@ -47,17 +85,27 @@ type parse_type(char** string_ptr)
         }
     }
 
-    if (_type.kind == 255)
-        return _type;
+    /* If the type isn't found, check if we're reading a struct. */
+    if (_type.kind == 255) {
+        HASH_STRING(type_name);
+        intermediate_struct* _struct = find_struct(result_hash);
+        if (_struct == NULLPTR)
+            return _type;
+        _type.kind = STRUCT_TYPE;
+        _type.ptr = _struct->hash;
+    }
 
-    string_ptr += 1;
+    token += 1;
 
-    for (; string_ptr[after_ptrs][0] == type_names[0xd][0]; after_ptrs++);
+    for (; token[after_ptrs][0] == type_names[0xd][0]; after_ptrs++);
 
     if (after_ptrs != before_ptrs && type_names[0xc][0] && type_names[0xd][0])
         send_error("Numbers of pointer chars before and afer must be equal");
 
-    _type.ptr = after_ptrs;
+    if (IS_TYPE_STRUCT(_type))
+        _type.kind = (_type.kind << 16 >> 16) + (after_ptrs << 16);
+    else
+        _type.ptr = after_ptrs;
 
     return _type;
 }
@@ -74,9 +122,7 @@ i64 get_ascii_number(char* num_string)
         result += (num_string[i] - 48);
     }
 
-    if (negative)
-        return -result;
-    return result;
+    return negative ? -result : result;
 }
 
 /*
@@ -120,6 +166,19 @@ bool is_invalid_name(char* name)
         return true;
 
     return false;
+}
+
+/*
+ * This goes from the current position in the file till it reaches a '\n' and
+ * returns the file index of the '\n'.
+ */
+u32 get_end_of_line(vector* file, u32 i)
+{
+    for (; i < VECTOR_SIZE((*file)); i++)
+        if (**(char**)vector_at(file, i, 0) == '\n')
+            return i;
+
+    return i;
 }
 
 /*

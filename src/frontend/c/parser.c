@@ -3,10 +3,10 @@
 #include<frontend/common/parser.h>
 #include<frontend/c/preprocessor.h>
 #include<backend/intermediate/intermediate.h>
+#include<backend/intermediate/struct.h>
 #if DEBUG && linux
 #include<time.h>
 #endif
-
 
 typedef u8 prio;
 
@@ -22,14 +22,13 @@ typedef u8 operator;
 #define OPENING_PAR 22
 #define CLOSING_PAR 23
 
-
 /* The logically highest value of the "operator" type. */
 #define __OPERATOR_MAX__ ((operator)-1)
 
 /* Stack of operators. Operators are in the pointers of the nodes. */
 static stack operator_stack = { NULLPTR, sizeof(operator) };
 
-static inline bool C_parse_operation(vector* file, u32 index);
+static inline bool C_parse_operation(char*** token);
 prio C_get_operator_prio(operator _operator);
 operator C_get_operator(char* token);
 static inline void C_set_operator_associativity(operator *_operator, \
@@ -55,10 +54,55 @@ void C_file_into_intermediate(char* file_name)
         clock_t starting_time = clock();
     #endif
 
-    for (u32 i=0; i < VECTOR_SIZE(file); i++) {
-        if (*(char**)vector_at(&file, i, 0) != NULLPTR) {
-            if (C_parse_operation(&file, i))
-                break;
+    // struct
+        // types
+    // typedef
+        // struct
+        // enum
+    // type
+        // variable definition
+        // function
+    // lvalue = rvalue
+    // if
+        // (rvalue) {
+    // else
+    // while
+        // (rvalue) {
+        // continue
+        // break
+    // for
+        // (lvalue = rvalue; condition; on_loop) {
+            // continue
+            // break
+    // switch
+        // case X:
+        // default:
+    // label:
+        // return
+
+    char** current_token = vector_at(&file, 0, false);
+    char** end_token = vector_at(&file, VECTOR_SIZE(file)-1, false);
+
+    for (; current_token <= end_token;) {
+        /*
+         * This catches the first line in the file and the last while loop in
+         * this file to make sure we are pointing to a valid token and/or right
+         * after a ';'.
+         */
+        if (*current_token == NULLPTR || **current_token == ';') {
+            current_token += 1;
+            continue;
+        }
+
+        /* Variable/function definitions. */
+
+        /* Equation parsing. */
+        if (C_parse_operation(&current_token))
+            return;
+
+        /* Finds the ';'. */
+        while (*current_token == NULLPTR || **current_token != ';') {
+            current_token += 1;
         }
     }
 
@@ -103,7 +147,7 @@ char** C_parse_operand(char** current_token)
  * This function takes in the starting index of an operation and sends the
  * contents into "backend/intermediate/intermediate.c" in RPN.
  */
-static inline bool C_parse_operation(vector* file, u32 starting_index)
+static inline bool C_parse_operation(char*** token)
 {
     /*
     - Parse the equation:
@@ -124,7 +168,7 @@ static inline bool C_parse_operation(vector* file, u32 starting_index)
         1 4 -
     */
 
-    char** starting_token = vector_at(file, starting_index, false);
+    char** starting_token = *token;
 
     /* If the operand is operating on the right operand. */
     bool right_associative;

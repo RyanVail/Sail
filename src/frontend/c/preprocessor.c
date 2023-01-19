@@ -2,6 +2,7 @@
  * This is the preprocessor for the Salmon programming language.
  */
 
+#include<frontend/common/parser.h>
 #include<frontend/c/preprocessor.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
@@ -28,7 +29,6 @@ static vector new_file = { NULL, 0, 0, sizeof(char*) };
 
 static inline void C_expand_macro(vector* new_file, u32* i, vector* file);
 static inline macro_status C_read_macro(vector* file, u32* i);
-static u32 C_get_end_of_line(vector* file, u32 i);
 
 // TODO: tokenized file is static now but it is still being passed into
 // functions.
@@ -57,7 +57,7 @@ void C_preprocess_token(u32* i)
  */
 void C_preprocess_line(u32* i)
 {
-    u32 end_line_index = C_get_end_of_line(&tokenized_file, *i);
+    u32 end_line_index = get_end_of_line(&tokenized_file, *i);
 
     /* Goes to the "\n" if we aren't at the start of the file. */
     *i = *i > 0 ? *i - 1 : *i;
@@ -142,19 +142,6 @@ vector C_preprocess_file(char* file_name)
 }
 
 /*
- * This goes from the current position in the file till it reaches a '\n' and
- * returns the file index of the '\n'.
- */
-u32 C_get_end_of_line(vector* file, u32 i)
-{
-    for (; i < VECTOR_SIZE((*file)); i++)
-        if (**(char**)vector_at(file, i, 0) == '\n')
-            return i;
-
-    return i;
-}
-
-/*
  * This returns the file index of a macro by the same name as the inputed
  * "char*" or "__UINT32_MAX__". The returned index is one more than where the
  * name is located.
@@ -176,7 +163,7 @@ static inline void C_add_macro(vector* file, u32* i)
 {
     if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) != __UINT32_MAX__)
         vector_append(&defined, i);
-    *i = C_get_end_of_line(file, *i);
+    *i = get_end_of_line(file, *i);
 }
 
 // TODO: This shouldn't be redoing this computation every time it expands a
@@ -193,7 +180,7 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
     if (macro_index == __UINT32_MAX__)
         return;
 
-    u32 macro_end_index = C_get_end_of_line(file, macro_index) - 1;
+    u32 macro_end_index = get_end_of_line(file, macro_index) - 1;
     find_next_valid_token(file, i);
 
     if (*i == VECTOR_SIZE((*file)))
@@ -219,7 +206,7 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
 static inline void C_skip_single_line_comment(vector* file, u32* i)
 {
     if (**(u16**)vector_at(file, *i, false) == '/' | ('/' << 8)) {
-        *i = C_get_end_of_line(file, *i);
+        *i = get_end_of_line(file, *i);
         find_next_valid_token(file, i);
     }
 }

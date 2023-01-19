@@ -22,7 +22,7 @@ void handle_error(u32 error_code)
  */
 void send_error(char* error_message)
 {
-    printf("\x1b[091m%s\x1b[0m\n", error_message);
+    printf("\x1b[091mERROR:\x1b[0m %s\n", error_message);
     #if DEBUG
     abort();
     #else

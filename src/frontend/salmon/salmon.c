@@ -11,39 +11,19 @@
 
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
+#include<backend/intermediate/struct.h>
 
 static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location);
+static inline void salmon_parse_struct(vector* file, u32* location);
 static inline void salmon_parse_loop(vector* file, u32* location);
 static inline void salmon_parse_else(vector* file, u32* location);
-static inline bool salmon_parse_type(vector* file, u32* location);
+static inline bool salmon_get_type(vector* file, u32* location);
 static inline void salmon_parse_let(vector* file, u32* location);
 static inline void salmon_parse_if(vector* file, u32* location);
 static inline void salmon_parse_fn(vector* file, u32* location);
 static inline bool salmon_parse_flow_operators(char* string);
 static inline bool salmon_parse_operation(char* string);
-
-// TODO: Remove this syntax tree when it isn't needed anymore.
-// #
-    // #include
-    // #asm
-    // #extern // #intern
-        // Inputs
-            // Name
-                // Return
-// Let
-    // Type
-        // Name
-// Fn
-    // Inputs
-        // Name
-            // Return
-// If
-    // {
-    // Operation
-    // Else
-        // {
-        // Operation
-// While
+static inline bool salmon_parse_struct_variable(vector* file, u32* location);
 
 // TODO: Freeing the file that is returned from this function will replace
 // the names in the symbol table with junk.
@@ -58,9 +38,10 @@ void salmon_file_into_intermediate(char* file_name)
         char* current_token = *(char**)vector_at(&file, i, false);
         // printf("%s\n", current_token);
         if (salmon_parse_initial_syntax_tree(&file, &i)
-        || salmon_parse_type(&file, &i)
+        || salmon_get_type(&file, &i)
         || salmon_parse_operation(current_token)
-        || salmon_parse_flow_operators(current_token))
+        || salmon_parse_flow_operators(current_token)
+        || salmon_parse_struct_variable(&file, &i))
             continue;
 
         if (*current_token == '}') {
@@ -104,6 +85,8 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
         salmon_parse_let(file, location);
     else if (!strcmp(_token, "loop"))
         salmon_parse_loop(file, location);
+    else if (!strcmp(_token, "struct"))
+        salmon_parse_struct(file, location);
     else
         return false;
 
@@ -113,6 +96,56 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
 /*
  * These functions are all secondary branches on the syntax tree.
  */
+inline void salmon_parse_struct(vector* file, u32* location)
+{
+    /* Reading the struct name. */
+    find_next_valid_token(file, location);
+    char** current_token = (char**)vector_at(file, *location, false);
+    intermediate_struct* _struct = create_struct(0, *current_token);
+
+    // TODO: This should support forward struct definition. Struct should have
+    // a flag that says if it is foward defined.
+
+    find_next_valid_token(file, location);
+    if (**(char**)vector_at(file, *location, false) != '{')
+        send_error("Expected '}' at the start of a struct definition.");
+
+
+    /* Reading the variables in the struct. */
+    type var_type;
+
+    while (true) {
+        /* Getting the name of the variable. */
+        find_next_valid_token(file, location);
+
+        if (**(char**)vector_at(file, *location, false) == '}')
+            return;
+
+        char* var_name = *(char**)vector_at(file, *location, false);
+
+        /* Getting the type of the variable. */
+        find_next_valid_token(file, location);
+        var_type = get_type((char**)vector_at(file, *location, false));
+
+        /* Skipping forward based on the type. */
+        char** type_names = get_type_names();
+        if (var_type.kind == 255)
+            return false;
+        u32 skip = IS_TYPE_STRUCT(var_type) ? var_type.kind>>16 : var_type.ptr;
+        *location += skip << ((!!type_names[0xc][0])+(!!type_names[0xd][0]-1));
+
+        /* Making sure the type is valid. */
+        if (var_type.kind == 255)
+            break;
+
+        /* Adding the variable to the struct. */
+        add_variable_to_struct(_struct,var_type,var_name);
+    }
+
+    printf("THIS: %s\n", *(char**)vector_at(file, *location, false));
+    if (**(char**)vector_at(file, *location, false) != '}')
+        send_error("Expected '}' at the end of a struct definition.");
+}
 inline void salmon_parse_if(vector* file, u32* location)
 {
     intermediate _intermediate = { IF, 0 };
@@ -141,13 +174,12 @@ inline void salmon_parse_fn(vector* file, u32* location)
 
         *location += 1;
 
-        type _type = parse_type((char**)vector_at(file, *location, false));
+        type _type = get_type((char**)vector_at(file, *location, false));
         if (_type.kind == 255)
             send_error("Unknown type in function inputs");
 
         *location += 1;
 
-        // TODO: ADD VARIABLE TO SYMBOL TABLE HERE!
         vector_append(&inputs, &_type);
         if (**(char**)vector_at(file, *location, false) != ',')
             break;
@@ -175,7 +207,7 @@ inline void salmon_parse_fn(vector* file, u32* location)
     *location += 1;
     type return_type = { 0, 255 };
     if (**(u16**)vector_at(file, *location, false) == ('-' | ('>' << 8)))
-        return_type = parse_type((char**)vector_at(file, *location+1, false));
+        return_type = get_type((char**)vector_at(file, *location+1, false));
 
     if (!add_function_symbol(fn_name, inputs, return_type, 0))
         send_error("Function name already used");
@@ -202,7 +234,7 @@ inline void salmon_parse_let(vector* file, u32* location)
 
     /* This is the variable type. */
     *location += 1;
-    type _type = parse_type((char**)vector_at(file, *location, false));
+    type _type = get_type((char**)vector_at(file, *location, false));
     if (_type.kind == 255)
         send_error("Expected type after let");
 
@@ -215,8 +247,10 @@ inline void salmon_parse_let(vector* file, u32* location)
      * This skips forward based on the number of before and after pointer
      * idicator chars.
      */
+    u32 skip = IS_TYPE_STRUCT(_type) ? _type.kind >> 16 : _type.ptr;
+
     *location += \
-        _type.ptr << ((bool)type_names[0xc][0] + (bool)type_names[0xd][0] - 1);
+        skip << ((bool)type_names[0xc][0] + (bool)type_names[0xd][0] - 1);
 
     variable_symbol* new_var_symbol = get_variable_symbol(name, 0);
 
@@ -237,12 +271,12 @@ inline void salmon_parse_loop(vector* file, u32* location)
 /*
  * This parses a type and if found sets the top operand to that type.
  */
-static inline bool salmon_parse_type(vector* file, u32* location)
+static inline bool salmon_get_type(vector* file, u32* location)
 {
     if (*location >= VECTOR_SIZE((*file)))
         return false;
 
-    type _type = parse_type((char**)vector_at(file, *location, false));
+    type _type = get_type((char**)vector_at(file, *location, false));
     if (_type.kind == 255)
         return false;
 
@@ -251,8 +285,8 @@ static inline bool salmon_parse_type(vector* file, u32* location)
      * This skips forward based on the number of before and after pointer
      * idicator chars.
      */
-    *location += \
-        _type.ptr << ((bool)type_names[0xc][0] + (bool)type_names[0xd][0] - 1);
+    u32 skip = IS_TYPE_STRUCT(_type) ? _type.kind >> 16 : _type.ptr;
+    *location += skip << ((bool)type_names[0xc][0]+(bool)type_names[0xd][0]-1);
 
     cast_top_operand(_type);
 
@@ -347,12 +381,71 @@ static inline bool salmon_parse_flow_operators(char* string)
 }
 
 /*
+ * This parses a struct variable and adds the operation to the intermediates.
+ * Returns true if it read something.
+ */
+static inline bool salmon_parse_struct_variable(vector* file, u32* location)
+{
+    /* Getting the operand stack. */
+    stack* operand_stack = get_operand_stack();
+
+    /*
+     * If the size of operand stack is zero there are no operands to get a
+     * variable from.
+     */
+    if (stack_size(operand_stack) == 0)
+        return false;
+
+    /* Making sure the top operand is a struct and we are accessing a var. */
+    operand* top_operand = stack_top(operand_stack);
+    if (top_operand == NULLPTR || !(**(char**)vector_at(file,*location,0) == '.'
+    && IS_TYPE_STRUCT(top_operand->type)))
+        return false;
+
+    /* Getting the struct variable's name. */
+    find_next_valid_token(file, location);
+    char* variable_name = *(char**)vector_at(file, *location, false);
+
+    /* If the struct is a ptr it has to be derfrenced. */
+    if (top_operand->type.kind >> 16) {
+        printf("\x1b[091mERROR:\x1b[0m Cannot get the member `%s` from a ", \
+            variable_name);
+        print_type_kind(top_operand->type, true);
+        printf(": ");
+        print_type(top_operand->type, true);
+        printf("\n");
+        exit(-1);
+    }
+
+    /* Getting the struct hash. */
+    u32 struct_hash = top_operand->type.ptr;
+
+    /* Getting the struct variable. */
+    struct_variable* _var = \
+        get_variable_from_struct(struct_hash, variable_name);
+
+    /* Makes sure the variable is valid. */
+    if (_var == NULLPTR)
+        send_error("Uknown struct variable");
+
+    /* Adding the intermediate. */
+    intermediate struct_var_intermediate = { GET_STRUCT_VARIABLE, _var->hash };
+    add_intermediate(struct_var_intermediate);
+
+    /* Changing the type of the top operand to the struct variable's type. */
+    top_operand->type = _var->type;
+
+    return true;
+}
+
+/*
  * This parses through an operation and adds the operation to the intermediates.
  * Returns true if it read something.
  */
 static inline bool salmon_parse_operation(char* string)
 {
     #define U16_CHAR(a,b) a | (b << 8)
+
     if (strlen(string) == 1 && salmon_parse_single_char_operation(*string))
         return true;
 
@@ -384,5 +477,6 @@ static inline bool salmon_parse_operation(char* string)
     }
     process_operation(_operation);
     return true;
+
     #undef U16_CHAR
 }

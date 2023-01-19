@@ -3,7 +3,7 @@
  *
  * When a variable is used it is put into a register and kept in that register
  * till another variable or a constant takes its place. Variables in registers
- * have the "intermediate_kind" of "VARIABLE_ACCESS". Registers that had 
+ * have the "intermediate_kind" of "VARIABLE_ACCESS". Registers that had
  * variables in them and that are now being operated on have the
  * "intermediate_kind" of "VAR_RETURN". Variables that are being defined and
  * come from "VAR_DECLERATION" keep the "intermediate_type" of "VAR_DECLERATION"

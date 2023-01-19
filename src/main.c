@@ -9,6 +9,7 @@
 #include<frontend/c/preprocessor.h>
 #include<frontend/c/parser.h>
 #include<frontend/common/preprocessor.h>
+#include<backend/intermediate/struct.h>
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
 #include<backend/intermediate/optimization/registerpass.h>
@@ -16,6 +17,9 @@
 #include<backend/asm/ARMv7.h>
 #if linux && DEBUG
 #include<time.h>
+#endif
+#if DEBUG && RUN_TESTS
+#include<tests/test.h>
 #endif
 
 int main(i32 argc, char* args[])
@@ -26,6 +30,8 @@ int main(i32 argc, char* args[])
         send_error( \
         "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to false and recompile");
     #endif
+ 
+    // TODO: "hashtable.c" should be "hash_table.c" same with "hashtable.h".
     // TOOD: Symbol table ids cannot be stored inside void pointers on 16 bit
     // machines which may be a problem.
 
@@ -40,15 +46,17 @@ int main(i32 argc, char* args[])
 
     init_symbol_table(8, 8);
 
-    C_file_into_intermediate("../tests/fib.c");
+    // C_file_into_intermediate("../tests/fib.c");
 
     // print_intermediates();
 
-    optimization_do_register_pass();
+    // optimization_do_register_pass();
 
-    optimizaiton_do_use_scope_pass();
+    // optimizaiton_do_use_scope_pass();
 
-    exit(0);
+    // exit(0);
+
+    init_struct_hash_tables(4);
 
     init_symbol_table(8, 8);
 
@@ -59,6 +67,8 @@ int main(i32 argc, char* args[])
     optimization_do_register_pass();
     optimizaiton_do_use_scope_pass();
     print_intermediates();
+
+    exit(0);
 
     bin sadfdf = ARMv7_intermediates_into_binary(get_intermediate_vector());
 

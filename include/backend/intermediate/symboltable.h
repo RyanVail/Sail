@@ -32,11 +32,8 @@ typedef struct function_symbol {
 typedef struct variable_symbol {
     type type;
     u32 hash;
-    // TODO: Flags should be an enum same defintion in "function_symbol"
+    // TODO: Flags should be an enum same defintion with "function_symbol"
     u8 flags;
-        // bool register;
-        // bool global;
-        // bool need_stack;
     u8 uses;
 } variable_symbol;
 

@@ -8,7 +8,7 @@
 
 static char white_space_salmon[] = { ' ', '\t', '\n', '\0' };
 static char special_salmon[] = { '*', '/', '{', '}', ';', '^', '!', '&', '|', \
-',', '(', ')', '$', '%', '@', '#', '\\', '.', '\"', '\'', '~', '\0' };
+',', '(', ')', '$', '%', '@', '#', '\\', '.', '\"', '\'', '~', '.', '\0' };
 
 /*
  * This takes in a file name and returns the preprocessed version of it.

@@ -42,9 +42,9 @@ void pop_operand(bool dual, bool comparison)
 
     if (!dual) {
         if (_first_operand->type.kind == VOID_TYPE) {
-            printf("Cannot preform operation on a \'");
-            print_type(_first_operand->type);
-            printf("\' type");
+            printf("Cannot preform operation on a ");
+            print_type(_first_operand->type, true);
+            printf(" type");
             send_error("");
         }
         return;
@@ -80,14 +80,7 @@ void pop_operand(bool dual, bool comparison)
  */
 void process_operation(intermediate_type _operation)
 {
-    #if DEBUG
-    if (_operation < INC || _operation > LESS_THAN_EQUAL
-    && _operation != EQUAL && _operation != CLEAR_STACK) {
-        printf("Got unexpected operation operand: %u\n", _operation);
-        exit(-1);
-    }
-    #endif
-
+    operand* top_operand;
     switch (_operation)
     {
     case EQUAL:
@@ -122,6 +115,21 @@ void process_operation(intermediate_type _operation)
     case COMPLEMENT:
     case NEG:
         pop_operand(false, false);
+        break;
+    // TODO: More operators need to be added.
+    case MEM_LOCATION:
+        top_operand = stack_top(&operand_stack);
+        if (IS_TYPE_STRUCT(top_operand->type))
+            top_operand->type.kind -= (1 << 16);
+        else
+            top_operand->type.ptr--;
+        pop_operand(false, false);
+        break;
+    default:
+    // TODO: Find out if this should always compile or not.
+        #if DEBUG
+        send_error("Unexpected operation");
+        #endif
         break;
     }
 
@@ -309,7 +317,7 @@ const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", \
 "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var decleration", \
 "Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", \
 "Else", "Loop", "End", "Continue", "Return", "Break", "Func def", "Func call", \
-"Goto", "Const", "Const ptr", "Func return", "Mem return", "Comparison return",\
+"Goto", "Const", "Const ptr", "Get struct variable", "Func return", "Mem return", "Comparison return",\
 "Var return", "Cast", "Register", "Ignore", "Var use", "Clear stack"};
 
 void print_intermediates()

@@ -44,7 +44,6 @@ void skip_C_comments(vector* file, u32* current_index)
         char second_token = **(char**)vector_at(file, *current_index, false);
 
         if (first_token == '*' && second_token == '/') {
-            printf("HERE.\n");
             free(*(char**)vector_at(file, *current_index, false));
             *(char**)vector_at(file, *current_index, false) = NULL;
             find_next_valid_token(file, current_index);

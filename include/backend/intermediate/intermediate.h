@@ -67,6 +67,9 @@ typedef enum intermediate_type {
     CONST,                  // A signed constant the size of (void*)
     CONST_PTR,              // A ptr to a i64 bit constant the size of (void*)
 
+    // Struct intermediates
+    GET_STRUCT_VARIABLE,    // The variable hash is inside of the ptr.
+
     // More
     FUNC_RETURN,            // This is used as a place holder for the return of
                             // a function call in "operand_stack".

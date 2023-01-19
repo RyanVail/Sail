@@ -4,7 +4,21 @@
  * TODO: '\x234' this causes a seg fault.
  */
 
+struct RGBA {
+    R u8
+    G u8
+    B u8
+    A %RGBA%
+}
+
 fn $main$ -> u32 {
+
+    let c RGBA;
+    let b %RGBA% c # =;
+    b@.A 2 =
+    b.R 3 =
+    b@.R 2 =
+
     let a u32 'this' =
     a 512 +
     a 32 == if {
