@@ -138,6 +138,7 @@ bool is_ascii_number(char* num_string)
     return true;
 }
 
+// TODO: This function should test hashes against hashes.
 /*
  * If the inputed name is invalid it will return true. This is cap sensitive.
  * Along with the current INVALID_NAMES being invalid, any special tokens, and

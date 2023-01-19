@@ -28,7 +28,7 @@ typedef struct struct_variable {
 /* struct intermediate_struct - The intermediate repersentation of a struct
  * @hash: The hash of the name of this struct
  * @name: The name of this struct
- * @contents: The variables this struct contains a vector of "struct_variable"
+ * @contents: The variables this struct contains. A stack of "struct_variable"
  * @flags: 1 -> optimize padding
  */
 typedef struct intermediate_struct {
@@ -38,8 +38,11 @@ typedef struct intermediate_struct {
     u8 flags;
 } intermediate_struct;
 
-/* This initializes the intermediate structs hashtable with the inputed size. */
-void init_struct_hash_tables(u8 hash_table_size);
+/*
+ * This initializes the intermediate struct's hashtable with the equation 
+ * (1 << "hash_table_size") the true size.
+ */
+void init_struct_hash_table(u8 hash_table_size);
 
 /* This frees all of the intermediate structs. */
 void free_intermediate_structs();
@@ -49,7 +52,7 @@ intermediate_struct* find_struct(u32 struct_hash);
 
 /*
  * This function attemps the create a struct with "struct_name". Returns a
- * pointer to the newely created struct otherwise NULLPTR.
+ * pointer to the newely created struct. Sends errors if any are encountered.
  */
 intermediate_struct* create_struct(u8 flags, char* struct_name);
 

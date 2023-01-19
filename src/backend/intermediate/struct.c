@@ -5,11 +5,12 @@
 // TODO: Recursive structs are possible.
 
 #include<backend/intermediate/struct.h>
+#include<frontend/common/parser.h>
 
 static hash_table intermediate_structs = { sizeof(struct_variable), NULLPTR };
 
 /* This initializes the intermediate structs hashtable with the inputed size. */
-void init_struct_hash_tables(u8 hash_table_size)
+void init_struct_hash_table(u8 hash_table_size)
 {
     intermediate_structs = hash_table_init(hash_table_size);
 }
@@ -25,7 +26,7 @@ intermediate_struct* find_struct(u32 struct_hash)
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs has not been inited yet");
+        send_error("Intermediate structs have not been inited yet");
     #endif
 
     hash_table_bucket* bucket = \
@@ -36,23 +37,32 @@ intermediate_struct* find_struct(u32 struct_hash)
 
 /*
  * This function attemps the create a struct with "struct_name". Returns a
- * pointer to the newely created struct returns NULLPTR if it failed to create
- * the struct.
+ * pointer to the newely created struct. Sends errors if any are encountered.
  */
 intermediate_struct* create_struct(u8 flags, char* struct_name)
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs has not been inited yet");
+        send_error("Intermediate structs have not been inited yet");
     #endif
+
+    /* If this name is invalid. */
+    if (is_invalid_name(struct_name)) {
+        printf("\x1b[091mERROR:\x1b[0m The struct name: \"%s\" is invalid.\n",\
+            struct_name);
+        exit(-1);
+    }
 
     /* Hashes the struct name. */
     HASH_STRING(struct_name);
 
     /* Tests if the struct already exists. */
-    if (find_struct(result_hash) != NULLPTR)
-        return NULLPTR;
+    if (find_struct(result_hash) != NULLPTR) {
+        printf("\x1b[091mERROR:\x1b[0m The struct name: \"%s\" has already been used.\n", struct_name);
+        exit(-1);
+    }
 
+    // TODO: This is doing this logic twice, once in "find_struct" and here.
     hash_table_bucket* struct_bucket = \
         hash_table_insert_hash(&intermediate_structs, result_hash);
 
@@ -62,7 +72,7 @@ intermediate_struct* create_struct(u8 flags, char* struct_name)
         handle_error(0);
     strcpy(new_struct_name, struct_name);
 
-    /* Initing the struct's contents. */
+    /* Initing the new struct's contents. */
     struct_bucket->value = malloc(sizeof(intermediate_struct));
     intermediate_struct* _struct = struct_bucket->value;
     if (_struct == NULLPTR)
@@ -83,7 +93,7 @@ struct_variable* get_variable_from_struct(u32 struct_hash, char* var_name)
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs has not been inited yet");
+        send_error("Intermediate structs have not been inited yet");
     #endif
 
     /* Getting the struct bucket. */
@@ -123,7 +133,7 @@ char* var_name)
 
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs has not been inited yet");
+        send_error("Intermediate structs have not been inited yet");
     #endif
 
     #if DEBUG

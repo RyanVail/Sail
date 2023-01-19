@@ -97,7 +97,7 @@ typedef enum intermediate_type {
 } intermediate_type;
 
 /* struct intermediate - This struct represents one intermediate token
- * @type: This is the type of this intermediate
+ * @type: This is the kind of intermediate this is
  * @ptr: This is either a constant or a ptr to a variable, function, etc. which
  * is determined from the "type".
  */
@@ -135,7 +135,7 @@ void free_intermediates(bool free_variable_symbols, bool free_var_vectors);
 void clear_operand_stack();
 
 /*
- * This adds an operand onto the "operand_stack".
+ * This adds an operand onto the "operand_stack" from an intermediate.
  */
 void add_operand(intermediate _intermediate, bool inited);
 
@@ -159,6 +159,13 @@ void cast_top_operand(type _type);
  * This returns a pointer to the intermediate vector.
  */
 vector* get_intermediate_vector();
+
+/*
+ * This adds the inputed constant number to the operand stack. This will convert
+ * it into a "CONST_PTR" if it can't fit into a pointer but it's a "CONST" by
+ * default.
+ */
+void add_const_num(i64 const_num);
 
 // TODO: This function should be in a common frontend file I don't know which
 // right now but it really shouldn't be here.

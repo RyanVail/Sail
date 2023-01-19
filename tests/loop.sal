@@ -11,18 +11,29 @@ struct RGBA {
     A %RGBA%
 }
 
+enum NUMS u32 {
+    ZERO,
+    ONE,
+    TWO,
+    FOUR 4 =,
+    THREE,
+    EIGHT 8 =
+}
+
 fn $main$ -> u32 {
 
+    let cdf u32 EIGHT =
     let c RGBA;
-    let b %RGBA% c # =;
-    b@.A 2 =
-    b.R 3 =
+    let abc %RGBA% c # = ;
+    let b %RGBA% c # = ;
+    b@.A b@.A =
+    b@.R 3 =
     b@.R 2 =
 
-    let a u32 'this' =
-    a 512 +
-    a 32 == if {
-        a 8 =
+    let a u32 'this' u32 =
+    a 512 u32 +
+    a 32 u32 == if {
+        a 8 u32 =
     }
 }
 /*let file_handle %void% "test.txt" "r" $fopen$ =

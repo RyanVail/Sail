@@ -1,0 +1,88 @@
+/*
+ * This handles the intermediates of enums.
+ */
+// TODO: This needs to hold the names of the enums so taking enums as function
+// inputs and type casting to enums works correctly. Enum entries should hold a
+// ptr to their parents instead of their type.
+
+#include<backend/intermediate/enum.h>
+#include<frontend/common/parser.h>
+#include<datastructures/hashtable.h>
+
+static hash_table intermediate_enums = { sizeof(enum_entry), NULLPTR };
+
+/*
+ * This initializes the intermediate enum's hashtable with the equation 
+ * (1 << "hash_table_size") the true size.
+ */
+void init_enum_hash_table(u8 hash_table_size)
+{
+    intermediate_enums = hash_table_init(hash_table_size);
+}
+
+/* This frees all of the intermediate enums. */
+void free_intermediate_enums()
+{
+    #if DEBUG
+    if (intermediate_enums.contents == NULLPTR)
+        send_error("Intermediate enums have not been inited yet");
+    #endif
+}
+
+/*
+ * This finds and returns the enum entry with the same hash. If no entry is
+ * found this returns "NULLPTR".
+ */
+enum_entry* get_enum_entry(u32 hash)
+{
+    #if DEBUG
+    if (intermediate_enums.contents == NULLPTR)
+        send_error("Intermediate enums have not been inited yet");
+    #endif
+
+    hash_table_bucket* _bucket = hash_table_at_hash(&intermediate_enums, hash);
+    return _bucket == NULLPTR ? NULLPTR : _bucket->value;
+}
+
+/*
+ * This adds the enum entry to the hash table of entries and returns a pointer
+ * to the entry. This exits on errors and prints the errors.
+ */
+enum_entry* add_enum_entry(type _type, i64 value, char* entry_name)
+{
+    #if DEBUG
+    if (intermediate_enums.contents == NULLPTR)
+        send_error("Intermediate enums have not been inited yet");
+    #endif
+
+    /* Hash the variable name. */
+    HASH_STRING(entry_name);
+
+    /* Check if the enum name is valid. */
+    if (is_invalid_name(entry_name)) {
+        printf("\x1b[091mERROR:\x1b[0m The enum entry name: \"%s\" is invalid.\n",\
+            entry_name);
+        exit(-1);
+    }
+
+    /* Check if the enum entry is already used. */
+    if (get_enum_entry(result_hash) != NULLPTR) {
+        printf("\x1b[091mERROR:\x1b[0m The enum entry name: \"%s\" has already been used.\n", entry_name);
+        exit(-1);
+    }
+
+    // TODO: This is doing this logic twice, once in "get_enum_entry" and here.
+    hash_table_bucket* _bucket = hash_table_insert_hash(&intermediate_enums, \
+        result_hash);
+
+    /* Putting it into a bucket. */
+    _bucket->value = malloc(sizeof(enum_entry));
+    enum_entry* _entry = _bucket->value;
+    if (_entry == NULLPTR)
+        handle_error(0);
+    _entry->value = value;
+    _entry->hash = result_hash;
+    _entry->type = _type;
+    return _entry;
+    
+}

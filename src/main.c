@@ -10,6 +10,7 @@
 #include<frontend/c/parser.h>
 #include<frontend/common/preprocessor.h>
 #include<backend/intermediate/struct.h>
+#include<backend/intermediate/enum.h>
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
 #include<backend/intermediate/optimization/registerpass.h>
@@ -56,7 +57,9 @@ int main(i32 argc, char* args[])
 
     // exit(0);
 
-    init_struct_hash_tables(4);
+    init_enum_hash_table(4);
+
+    init_struct_hash_table(4);
 
     init_symbol_table(8, 8);
 

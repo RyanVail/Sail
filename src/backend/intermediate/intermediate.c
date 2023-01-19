@@ -117,6 +117,14 @@ void process_operation(intermediate_type _operation)
         pop_operand(false, false);
         break;
     // TODO: More operators need to be added.
+    case MEM_ACCESS:
+        top_operand = stack_top(&operand_stack);
+        if (IS_TYPE_STRUCT(top_operand->type))
+            top_operand->type.kind += (1 << 16);
+        else
+            top_operand->type.ptr++;
+        pop_operand(false, false);
+        break;
     case MEM_LOCATION:
         top_operand = stack_top(&operand_stack);
         if (IS_TYPE_STRUCT(top_operand->type))
@@ -209,7 +217,7 @@ void set_type_of_operand(operand* _operand)
 }
 
 /*
- * This adds an operand onto the "operand_stack".
+ * This adds an operand onto the "operand_stack" from an intermediate.
  */
 void add_operand(intermediate _intermediate, bool inited)
 {
@@ -267,6 +275,36 @@ vector* get_intermediate_vector()
 }
 
 /*
+ * This adds the inputed constant number to the operand stack. This will convert
+ * it into a "CONST_PTR" if it can't fit into a pointer but it's a "CONST" by
+ * default.
+ */
+void add_const_num(i64 const_num)
+{
+    /*
+     * If we have an i64 larger than the size of a pointer we store the value
+     * on the heap and make the pointer point to the value.
+     */
+    #if !VOID_PTR_64BIT
+    intermediate _operand;
+    if (const_num < ~((i64)1 << ((sizeof(void*) << 3))-1) + 1
+    || const_num > ((i64)1 << ((sizeof(void*) << 3)-1))-1) {
+        const_num = malloc(sizeof(i64));
+        if (const_num == NULLPTR)
+            handle_error(0);
+        memcpy(const_num, &const_num, sizeof(i64));
+        intermediate _operand = { CONST_PTR, const_num };
+    } else {
+        const_num = (void*)const_num;
+        intermediate _operand = { CONST, const_num };
+    }
+    #else
+    intermediate _operand = { CONST, (void*)const_num };
+    #endif
+    add_operand(_operand, false);
+}
+
+/*
  * If the ASCII number at the inputed token is valid it adds it to the
  * intermediates. Return true if a number was added, otherwise false.
  */
@@ -274,27 +312,7 @@ bool add_if_ascii_num(char* token)
 {
     if (is_ascii_number(token)) {
         i64 _const_num = get_ascii_number(token);
-        /*
-            * If we have an i64 larger than the size of a pointer we store the
-            * value on the heap and make the ptr point to the value.
-            */
-        #if !VOID_PTR_64BIT
-        intermediate _operand;
-        if (_const_num < ~((i64)1 << ((sizeof(void*) << 3))-1) + 1
-        || _const_num > ((i64)1 << ((sizeof(void*) << 3)-1))-1) {
-            const_num = malloc(sizeof(i64));
-            if (const_num == NULLPTR)
-                handle_error(0);
-            memcpy(const_num, &_const_num, sizeof(i64));
-            intermediate _operand = { CONST_PTR, const_num };
-        } else {
-            const_num = (void*)_const_num;
-            intermediate _operand = { CONST, const_num };
-        }
-        #else
-        intermediate _operand = { CONST, (void*)_const_num };
-        #endif
-        add_operand(_operand, false);
+        add_const_num(_const_num);
         return true;
     }
     return false;

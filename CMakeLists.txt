@@ -29,6 +29,7 @@ add_executable(Sail
 	src/backend/intermediate/optimization/ignorepass.c
 	src/backend/intermediate/optimization/usescopepass.c
 	src/backend/intermediate/struct.c
+	src/backend/intermediate/enum.c
 	src/backend/intermediate/intermediate.c
 	src/backend/intermediate/symboltable.c
 	src/backend/asm/ARMv7.c

@@ -62,10 +62,18 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     if (_from.kind == VOID_TYPE || _to.kind == VOID_TYPE) {
         if (!error)
             return false;
-        send_error("Error usage of `void` type without cast");
+        // TODO: This error needs color!
+        send_error("Usage of type `void` without cast");
     }
 
     if (_to.ptr != _from.ptr)
+        goto type_can_implicitly_cast_to_error_label;
+
+    /* If only one type is a struct then there was a problem. */
+    if (IS_TYPE_STRUCT(_to) + IS_TYPE_STRUCT(_from) == 1)
+        goto type_can_implicitly_cast_to_error_label;
+    else if (IS_TYPE_STRUCT(_to) + IS_TYPE_STRUCT(_from) == 2 
+    && (_to.kind >> 16 != _from.kind >> 16))
         goto type_can_implicitly_cast_to_error_label;
 
     if (IS_TYPE_INT(_to) && (IS_TYPE_INT(_from))
@@ -87,11 +95,11 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     // TODO: All errors should be like this one!!
     printf("\x1b[091mERROR:\x1b[0m Cannot implicity cast ");
     print_type_kind(_from, true);
-    printf(" ");
+    printf(": ");
     print_type(_from, true);
-    printf(" into ");
+    printf(" to ");
     print_type_kind(_to, true);
-    printf(" ");
+    printf(": ");
     print_type(_to, true);
     printf("\n");
     exit(-1);

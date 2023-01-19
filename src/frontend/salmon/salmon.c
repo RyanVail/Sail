@@ -8,10 +8,12 @@
 #include<frontend/salmon/salmon.h>
 #include<frontend/common/parser.h>
 #include<frontend/salmon/preprocessor.h>
-
 #include<backend/intermediate/symboltable.h>
 #include<backend/intermediate/intermediate.h>
 #include<backend/intermediate/struct.h>
+#include<backend/intermediate/enum.h>
+
+// TODO: This needs to be cleaned.
 
 static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location);
 static inline void salmon_parse_struct(vector* file, u32* location);
@@ -24,6 +26,8 @@ static inline void salmon_parse_fn(vector* file, u32* location);
 static inline bool salmon_parse_flow_operators(char* string);
 static inline bool salmon_parse_operation(char* string);
 static inline bool salmon_parse_struct_variable(vector* file, u32* location);
+static inline void salmon_parse_enum(vector* file, u32* location);
+static inline bool salmon_parse_enum_usage(vector* file, u32* location);
 
 // TODO: Freeing the file that is returned from this function will replace
 // the names in the symbol table with junk.
@@ -41,7 +45,8 @@ void salmon_file_into_intermediate(char* file_name)
         || salmon_get_type(&file, &i)
         || salmon_parse_operation(current_token)
         || salmon_parse_flow_operators(current_token)
-        || salmon_parse_struct_variable(&file, &i))
+        || salmon_parse_struct_variable(&file, &i)
+        || salmon_parse_enum_usage(&file, &i))
             continue;
 
         if (*current_token == '}') {
@@ -87,6 +92,8 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
         salmon_parse_loop(file, location);
     else if (!strcmp(_token, "struct"))
         salmon_parse_struct(file, location);
+    else if (!strcmp(_token, "enum"))
+        salmon_parse_enum(file, location);
     else
         return false;
 
@@ -96,6 +103,78 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
 /*
  * These functions are all secondary branches on the syntax tree.
  */
+inline void salmon_parse_enum(vector* file, u32* location)
+{
+    /* Skipping the enum name. */
+    find_next_valid_token(file,location);
+    find_next_valid_token(file,location);
+
+    // TODO: This should support forward enum definition. Enums should have
+    // a flag that says if it is foward defined.
+
+    /* Reading the type of the enum, if there is one. */
+    type _type = get_type((char**)vector_at(file, *location, false));
+
+    /* Skipping forward based on the type. */
+    char** type_names = get_type_names();
+    if (_type.kind == 255)
+        goto salmon_parse_enum_no_type_label;
+    u32 skip = IS_TYPE_STRUCT(_type) ? _type.kind>>16 : _type.ptr;
+    *location += skip << ((!!type_names[0xc][0])+(!!type_names[0xd][0]-1));
+
+    find_next_valid_token(file,location);
+
+    salmon_parse_enum_no_type_label:
+
+    /* Testing for the '{'. */
+    if (**(char**)vector_at(file, *location, false) != '{')
+        send_error("Expected '{' at the start of a struct definition.");
+
+    /* This is the counter for the entries in the enum. */
+    u64 counter = 0;
+
+    char* _name;
+    i64 _value;
+    char ending_char;
+    /* Reading the entries. */
+    while (true) {
+        /* Getting the name of the entry. */
+        find_next_valid_token(file, location);
+        _name = *(char**)vector_at(file, *location, false);
+
+        if (*_name == '}')
+            send_error("Expected another entry into the enum after ','");
+
+        // TODO: This should parse and solve the equation provided
+        /* Getting the value if there is one. */
+        find_next_valid_token(file, location);
+        if (is_ascii_number(*(char**)vector_at(file, *location, false))) {
+            _value = get_ascii_number(*(char**)vector_at(file, *location, 0));
+            find_next_valid_token(file, location);
+            if (**(char**)vector_at(file, *location, false) != '=')
+                send_error("Expected '=' after enum entry value");
+            find_next_valid_token(file, location);
+        } else {
+            _value = counter;
+            counter++;
+        }
+
+        /* Adding the entry. */
+        add_enum_entry(_type, _value, _name);
+
+        /* Making sure there's a comma and checking if the enum ended. */
+        if (**(char**)vector_at(file, *location, false) == ',') {
+            continue;
+        } else if (**(char**)vector_at(file, *location, false) == '}') {
+            return;
+        } else {
+            /* If there was no '}' send an error. */
+            printf("\x1b[091mERROR:\x1b[0m Expected '}' to end struct decleration, but found: %s\n", \
+                *(char**)vector_at(file, *location, false));
+            exit(-1);
+        }
+    }
+}
 inline void salmon_parse_struct(vector* file, u32* location)
 {
     /* Reading the struct name. */
@@ -130,7 +209,7 @@ inline void salmon_parse_struct(vector* file, u32* location)
         /* Skipping forward based on the type. */
         char** type_names = get_type_names();
         if (var_type.kind == 255)
-            return false;
+            send_error("Invalid type in struct variable");
         u32 skip = IS_TYPE_STRUCT(var_type) ? var_type.kind>>16 : var_type.ptr;
         *location += skip << ((!!type_names[0xc][0])+(!!type_names[0xd][0]-1));
 
@@ -348,6 +427,9 @@ static inline bool salmon_parse_single_char_operation(char _char)
         case '@':
             _operation = MEM_LOCATION;
             break;
+        case '#':
+            _operation = MEM_ACCESS;
+            break;
         case '=':
             _operation = EQUAL;
             break;
@@ -377,6 +459,33 @@ static inline bool salmon_parse_flow_operators(char* string)
         return false;
 
     add_intermediate(_tmp_intermediate);
+    return true;
+}
+
+/*
+ * This parses the token at location and if the token is an enum entry it adds
+ * it to the stack. Returns true if it read something.
+ */
+static inline bool salmon_parse_enum_usage(vector* file, u32* location)
+{
+    /* Getting the hash of the token. */
+    HASH_STRING((*(char**)vector_at(file, *location, false)));
+
+    /* Getting the enum entry. */
+    enum_entry* _entry = get_enum_entry(result_hash);
+
+    /* Checking if it's an enum entry. */
+    if (_entry == NULLPTR)
+        return false;
+
+    /* Adding the entry to the stack. */
+    add_const_num(_entry->value);
+
+    /* Converting the type of the added value into the type of the enum. */
+    stack* operand_stack = get_operand_stack();
+    operand* top_operand = stack_top(operand_stack);
+    top_operand->type = _entry->type;
+
     return true;
 }
 

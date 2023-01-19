@@ -53,7 +53,7 @@ char* _string)
 
 /*
  * This returns a pointer to the bucket bound to the hash. If no bucket is found
- * NULL is returned.
+ * "NULLPTR" is returned.
  */
 hash_table_bucket* hash_table_at_hash(hash_table* _hash_table, u32 hash)
 {

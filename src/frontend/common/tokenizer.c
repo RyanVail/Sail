@@ -4,18 +4,18 @@
 #include<time.h>
 #endif
 
-static char* white_space_chars = NULL;
-static char* special_chars = NULL;
+static char* white_space_chars = NULLPTR;
+static char* special_chars = NULLPTR;
 
 /*
- * This function goes through the tokenized file and skips NULL pointers till it
- * finds a valid token.
+ * This function goes through the tokenized file and skips NULLPTRs till it
+ * reaches a valid token.
  */
 void find_next_valid_token(vector *file, u32* current_index)
 {
     *current_index += 1;
     for (; *current_index < VECTOR_SIZE((*file))-1; *current_index += 1)
-        if (*(char**)vector_at(file, *current_index, false) != NULL)
+        if (*(char**)vector_at(file, *current_index, false) != NULLPTR)
             return;
 }
 
@@ -47,7 +47,7 @@ bool is_special_char(char _char)
 vector tokenize_file(char* file_name)
 {
     #if DEBUG
-    if (white_space_chars == NULL || special_chars == NULL) {
+    if (white_space_chars == NULLPTR || special_chars == NULLPTR) {
         printf("\"white_space_chars\" or \"special_chars\" were never set.\n");
         exit(-1);
     }
@@ -57,7 +57,7 @@ vector tokenize_file(char* file_name)
     #endif
 
     FILE* file_handle = fopen(file_name, "r");
-    if (file_handle == NULL)
+    if (file_handle == NULLPTR)
         handle_error(2);
 
     vector file_vector = vector_init_with(sizeof(char*), 8);
@@ -92,7 +92,7 @@ vector tokenize_file(char* file_name)
             token_buffer[buffer_index] = '\0';
             buffer_index++;
             char* _tmp = malloc(buffer_index);
-            if (_tmp == NULL)
+            if (_tmp == NULLPTR)
                 handle_error(0);
             memcpy(_tmp, token_buffer, buffer_index);
             vector_append(&file_vector, &_tmp);
@@ -100,7 +100,7 @@ vector tokenize_file(char* file_name)
             tokenizer_save_special_char_label:
             if (special_char) {
                 char* _tmp = malloc(2);
-                if (_tmp == NULL)
+                if (_tmp == NULLPTR)
                     handle_error(0);
                 _tmp[0] = special_char;
                 _tmp[1] = '\0';
@@ -141,10 +141,10 @@ void free_tokenized_file_vector(vector* _vector)
 
     // TODO: Benchmark this against a for loop through every item
     while (VECTOR_SIZE((*_vector))) {
-        char** _t = vector_pop(_vector);
-        if (*_t != NULL)
-            free(*_t);
-        free(_t);
+        char** token = vector_pop(_vector);
+        if (*token != NULLPTR)
+            free(*token);
+        free(token);
     }
     free(_vector->contents);   
 }
