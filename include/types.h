@@ -1,5 +1,5 @@
 /*
- * This handles everything that involvs types.
+ * This handles everything that involves types.
  */
 
 #ifndef TYPES_H

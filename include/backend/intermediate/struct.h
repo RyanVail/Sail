@@ -12,6 +12,7 @@
 #include<common.h>
 #include<datastructures/stack.h>
 #include<datastructures/hashtable.h>
+#include<backend/intermediate/struct.h>
 #include<types.h>
 
 /* struct struct_variable - This represents a variable in a struct
@@ -29,7 +30,7 @@ typedef struct struct_variable {
  * @hash: The hash of the name of this struct
  * @name: The name of this struct
  * @contents: The variables this struct contains. A stack of "struct_variable"
- * @flags: 1 -> optimize padding
+ * @flags: 1 -> Padding can be optimized, 2 -> Memory layout has been generated
  */
 typedef struct intermediate_struct {
     u32 hash;
@@ -68,5 +69,24 @@ struct_variable* get_variable_from_struct(u32 struct_hash, char* var_name);
  */
 bool add_variable_to_struct(intermediate_struct* _struct, type var_type, \
 char* var_name);
+
+/*
+ * This goes though all the variables in a struct and reverses their order. This
+ * is used after adding padding as all members of a struct would be reversed
+ * otherwise.
+ */
+void reverse_struct_variables(intermediate_struct* _struct);
+
+/*
+ * This returns a pointer to the "intermediate_stucts" hashtable.
+ */
+intermediate_struct* get_intermediate_structs();
+
+/*
+ * This generates a place holder struct variables in the heap and returns a
+ * pointer to it. Padding "struct_variable"s have a hash equal to 0, random type
+ * values and the name "char*"s value is the number of bytes of padding.
+ */
+struct_variable* generate_padding_struct_variable(u32 bytes_of_padding);
 
 #endif

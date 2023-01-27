@@ -5,7 +5,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define NULLPTR (void*)0
+#define NULLPTR ((void*)0)
 #define ARRAY_SIZE(_array) sizeof(_array) / sizeof(_array[0])
 
 #include<stdlib.h>

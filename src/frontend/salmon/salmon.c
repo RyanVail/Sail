@@ -4,6 +4,7 @@
  */
 // TODO: There should be a function to clear the out of scope variable names
 // when we stop reading from a file.
+// TODO: This file should be named "parser.c" to keep consistency.
 
 #include<frontend/salmon/salmon.h>
 #include<frontend/common/parser.h>
@@ -27,7 +28,7 @@ static inline bool salmon_parse_flow_operators(char* string);
 static inline bool salmon_parse_operation(char* string);
 static inline bool salmon_parse_struct_variable(vector* file, u32* location);
 static inline void salmon_parse_enum(vector* file, u32* location);
-static inline bool salmon_parse_enum_usage(vector* file, u32* location);
+static inline bool salmon_parse_enum_entry(vector* file, u32* location);
 
 // TODO: Freeing the file that is returned from this function will replace
 // the names in the symbol table with junk.
@@ -46,7 +47,7 @@ void salmon_file_into_intermediate(char* file_name)
         || salmon_parse_operation(current_token)
         || salmon_parse_flow_operators(current_token)
         || salmon_parse_struct_variable(&file, &i)
-        || salmon_parse_enum_usage(&file, &i))
+        || salmon_parse_enum_entry(&file, &i))
             continue;
 
         if (*current_token == '}') {
@@ -79,6 +80,10 @@ void salmon_file_into_intermediate(char* file_name)
  */
 static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
 {
+    // TODO: This should hash the string ONCE then check the hash and all
+    // functions that it calls should do the same there should be no real
+    // strings except for reading constants. This would call for a major
+    // redesign but it would lower memory consumption and increase speed.
     char* _token = *(char**)vector_at(file, *location, false);
     if (!strcmp(_token, "if"))
         salmon_parse_if(file, location);
@@ -94,6 +99,8 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
         salmon_parse_struct(file, location);
     else if (!strcmp(_token, "enum"))
         salmon_parse_enum(file, location);
+    else if (!strcmp(_token, "typedef"))
+        salmon_parse_typedef(file, location);
     else
         return false;
 
@@ -103,26 +110,47 @@ static inline bool salmon_parse_initial_syntax_tree(vector* file, u32* location)
 /*
  * These functions are all secondary branches on the syntax tree.
  */
+inline void salmon_parse_typedef(vector* file, u32* location)
+{
+    /* Getting the typedef name. */
+    find_next_valid_token(file, location);
+    char* typedef_name = *(char**)vector_at(file, *location, false);
+
+    /* Reading the type of the typedef. */
+    find_next_valid_token(file, location);
+    type _type = get_type((char**)vector_at(file, *location, false));
+
+    /* Creating the typedef. */
+    add_typedef(typedef_name, _type);
+}
 inline void salmon_parse_enum(vector* file, u32* location)
 {
-    /* Skipping the enum name. */
-    find_next_valid_token(file,location);
-    find_next_valid_token(file,location);
-
-    // TODO: This should support forward enum definition. Enums should have
-    // a flag that says if it is foward defined.
+    /* Getting the enum name. */
+    find_next_valid_token(file, location);
+    char* enum_name = *(char**)vector_at(file, *location, false);
 
     /* Reading the type of the enum, if there is one. */
+    find_next_valid_token(file, location);
     type _type = get_type((char**)vector_at(file, *location, false));
+
+    /* Creating the enum. */
+    intermediate_typedef* _enum = add_typedef(enum_name, _type);
+
+    // TODO: This type should change based on the largest and lowest types used
+    // in the enum.
+    /* If there is no type assume it's a U32. */
+    if (_type.kind == 255) {
+        _type.kind = U32_TYPE;
+        _type.ptr = NULLPTR;
+        goto salmon_parse_enum_no_type_label;
+    }
 
     /* Skipping forward based on the type. */
     char** type_names = get_type_names();
-    if (_type.kind == 255)
-        goto salmon_parse_enum_no_type_label;
-    u32 skip = IS_TYPE_STRUCT(_type) ? _type.kind>>16 : _type.ptr;
+    u32 skip = IS_TYPE_STRUCT(_type) ? _type.kind >> 16 : _type.ptr;
     *location += skip << ((!!type_names[0xc][0])+(!!type_names[0xd][0]-1));
 
-    find_next_valid_token(file,location);
+    find_next_valid_token(file, location);
 
     salmon_parse_enum_no_type_label:
 
@@ -142,17 +170,23 @@ inline void salmon_parse_enum(vector* file, u32* location)
         find_next_valid_token(file, location);
         _name = *(char**)vector_at(file, *location, false);
 
-        if (*_name == '}')
-            send_error("Expected another entry into the enum after ','");
+        if (*_name == '}') {
+            printf("\x1b[091mERROR:\x1b[0m Expected another entry in the enum after ',', but found: \"%s\"\n", _name);
+            exit(-1);
+        }
 
         // TODO: This should parse and solve the equation provided
         /* Getting the value if there is one. */
         find_next_valid_token(file, location);
         if (is_ascii_number(*(char**)vector_at(file, *location, false))) {
             _value = get_ascii_number(*(char**)vector_at(file, *location, 0));
+            counter = _value++;
             find_next_valid_token(file, location);
-            if (**(char**)vector_at(file, *location, false) != '=')
-                send_error("Expected '=' after enum entry value");
+            if (**(char**)vector_at(file, *location, false) != '=') {
+                printf("\x1b[091mERROR:\x1b[0m Expected '=' after enum entry value but found: \"%s\"\n", \
+                    *(char**)vector_at(file, *location, false));
+                exit(-1);
+            }
             find_next_valid_token(file, location);
         } else {
             _value = counter;
@@ -160,7 +194,7 @@ inline void salmon_parse_enum(vector* file, u32* location)
         }
 
         /* Adding the entry. */
-        add_enum_entry(_type, _value, _name);
+        add_enum_entry(_enum, _value, _name);
 
         /* Making sure there's a comma and checking if the enum ended. */
         if (**(char**)vector_at(file, *location, false) == ',') {
@@ -192,13 +226,12 @@ inline void salmon_parse_struct(vector* file, u32* location)
 
     /* Reading the variables in the struct. */
     type var_type;
-
     while (true) {
         /* Getting the name of the variable. */
         find_next_valid_token(file, location);
 
         if (**(char**)vector_at(file, *location, false) == '}')
-            return;
+            break;
 
         char* var_name = *(char**)vector_at(file, *location, false);
 
@@ -213,7 +246,10 @@ inline void salmon_parse_struct(vector* file, u32* location)
         u32 skip = IS_TYPE_STRUCT(var_type) ? var_type.kind>>16 : var_type.ptr;
         *location += skip << ((!!type_names[0xc][0])+(!!type_names[0xd][0]-1));
 
-        /* Making sure the type is valid. */
+        /*
+         * If this type is invalid, this is assumed to be the end of the struct
+         * definition.
+         */
         if (var_type.kind == 255)
             break;
 
@@ -221,7 +257,22 @@ inline void salmon_parse_struct(vector* file, u32* location)
         add_variable_to_struct(_struct,var_type,var_name);
     }
 
-    printf("THIS: %s\n", *(char**)vector_at(file, *location, false));
+    // reverse_struct_variables(_struct);
+    // ARMv7_generate_struct(_struct);
+    // reverse_struct_variables(_struct);
+    // struct_variable* __var;
+    // while (stack_size(&_struct->contents) != 0) {
+    //     __var = stack_pop(&_struct->contents);
+    //     printf("===================\nHASH: %08x\n", __var->hash);
+    //     if (__var->hash == 0) {
+    //         printf("PADDING: %u\n", (u32)__var->name);
+    //     } else {
+    //         printf("NAME: %s\n", __var->name);
+    //     }
+    // }
+    // printf("===================\n");
+    // exit(0);
+
     if (**(char**)vector_at(file, *location, false) != '}')
         send_error("Expected '}' at the end of a struct definition.");
 }
@@ -466,7 +517,7 @@ static inline bool salmon_parse_flow_operators(char* string)
  * This parses the token at location and if the token is an enum entry it adds
  * it to the stack. Returns true if it read something.
  */
-static inline bool salmon_parse_enum_usage(vector* file, u32* location)
+static inline bool salmon_parse_enum_entry(vector* file, u32* location)
 {
     /* Getting the hash of the token. */
     HASH_STRING((*(char**)vector_at(file, *location, false)));
@@ -481,10 +532,16 @@ static inline bool salmon_parse_enum_usage(vector* file, u32* location)
     /* Adding the entry to the stack. */
     add_const_num(_entry->value);
 
-    /* Converting the type of the added value into the type of the enum. */
+
+    /* Make sure there's something on the operand stack. */
     stack* operand_stack = get_operand_stack();
+    if (stack_size(operand_stack) == 0) {
+        return false;
+    }
+
+    /* Casting the top operand. */
     operand* top_operand = stack_top(operand_stack);
-    top_operand->type = _entry->type;
+    top_operand->type = _entry->parent_enum->type;
 
     return true;
 }

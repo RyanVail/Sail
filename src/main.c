@@ -15,6 +15,7 @@
 #include<backend/intermediate/intermediate.h>
 #include<backend/intermediate/optimization/registerpass.h>
 #include<backend/intermediate/optimization/usescopepass.h>
+#include<backend/intermediate/typedef.h>
 #include<backend/asm/ARMv7.h>
 #if linux && DEBUG
 #include<time.h>
@@ -35,6 +36,8 @@ int main(i32 argc, char* args[])
     // TODO: "hashtable.c" should be "hash_table.c" same with "hashtable.h".
     // TOOD: Symbol table ids cannot be stored inside void pointers on 16 bit
     // machines which may be a problem.
+    // TODO: The "STACK_IS_EMPTY" macro should replace "stack_size()" calls
+    // since it's way more efficent
 
     // process_cli_options(argc, args);
 
@@ -47,29 +50,30 @@ int main(i32 argc, char* args[])
 
     init_symbol_table(8, 8);
 
-    // C_file_into_intermediate("../tests/fib.c");
+    C_file_into_intermediate("../tests/fib.c");
 
-    // print_intermediates();
+    print_intermediates();
 
     // optimization_do_register_pass();
 
     // optimizaiton_do_use_scope_pass();
 
-    // exit(0);
+    exit(0);
 
+	/* Initing the many many hash tables. */
     init_enum_hash_table(4);
-
+    init_typedef_hash_table(4);
     init_struct_hash_table(4);
-
     init_symbol_table(8, 8);
 
     // TODO: This and C should be called "into_intermediates" with an 's'.
     salmon_file_into_intermediate("../tests/loop.sal");
     // free_tokenized_file_vector(&_tmp);
 
+    ARMv7_generate_structs();
     optimization_do_register_pass();
     optimizaiton_do_use_scope_pass();
-    print_intermediates();
+    //print_intermediates();
 
     exit(0);
 

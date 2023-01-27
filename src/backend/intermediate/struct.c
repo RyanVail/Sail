@@ -4,8 +4,8 @@
  */
 // TODO: Recursive structs are possible.
 
-#include<backend/intermediate/struct.h>
 #include<frontend/common/parser.h>
+#include<backend/intermediate/struct.h>
 
 static hash_table intermediate_structs = { sizeof(struct_variable), NULLPTR };
 
@@ -156,5 +156,61 @@ char* var_name)
     /* Inserting the variable into the hash table. */
     struct_var->hash = result_hash;
     struct_var->type = var_type;
+    struct_var->name = new_var_name;
     stack_push(&_struct->contents, struct_var);
+}
+
+/*
+ * This goes though all the variables in a struct and reverses their order. This
+ * is used after the reconstruction of struct's content's stacks because
+ * otherwise all variables would be reversed.
+ */
+void reverse_struct_variables(intermediate_struct* _struct)
+{
+    #if DEBUG
+    if (intermediate_structs.contents == NULLPTR)
+        send_error("Intermediate structs have not been inited yet");
+    #endif
+
+    /* Making a copy of the struct's variables. */
+    stack old_stack = _struct->contents;
+    _struct->contents.top = NULLPTR;
+
+    /* Copying over the variables. */
+    struct_variable* _var;
+    while (stack_size(&old_stack) != 0) {
+        _var = stack_pop(&old_stack);
+        stack_push(&_struct->contents, _var);
+    }
+}
+
+/*
+ * This returns a pointer to the "intermediate_stucts" hashtable.
+ */
+intermediate_struct* get_intermediate_structs()
+{
+    return &intermediate_structs;
+}
+
+/*
+ * This generates a place holder struct variables in the heap and returns a
+ * pointer to it. Padding "struct_variable"s have a hash equal to 0, random type
+ * values, and the "name" pointers value is the number of bytes of padding.
+ */
+struct_variable* generate_padding_struct_variable(u32 bytes_of_padding)
+{
+    #if DEBUG
+    if (intermediate_structs.contents == NULLPTR)
+        send_error("Intermediate structs have not been inited yet");
+    #endif
+
+    /* Creating the struct variable. */
+    struct_variable* struct_var = malloc(sizeof(struct_variable));
+    if (struct_var == NULLPTR)
+        handle_error(0);
+
+    /* Setting to needed values and returning the struct variable. */
+    struct_var->hash = 0;
+    struct_var->name = (void*)bytes_of_padding;
+    return struct_var;
 }

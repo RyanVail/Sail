@@ -2,7 +2,16 @@
  * This contains a lot of commonly used parsing function branching a front end
  * to the intermediate stage.
  */
+// TODO: This should split the lines into their own struct like below to make
+// the whole parsing process a lot easier.
+/*
+struct token_line {
+    char** tokens;
+}
+*/
 
+#include<backend/intermediate/typedef.h>
+#include<backend/intermediate/enum.h>
 #include<backend/intermediate/struct.h>
 #include<datastructures/hashtable.h>
 #include<frontend/common/parser.h>
@@ -17,7 +26,7 @@ static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
 /*
  * This parses and returns the given type modifiers. This will incrament token
  * till it reaches the end of the modifiers. unsigned and signed modifiers will
- * change the first bit of the returinging kind. This will skip tokens that are
+ * change the first bit of the returning kind. This will skip tokens that are
  * equal to NULLPTR and returns when it doesn't hit a modifier.
  */
 type_kind get_type_modifier(char*** token)
@@ -89,10 +98,16 @@ type get_type(char** token)
     if (_type.kind == 255) {
         HASH_STRING(type_name);
         intermediate_struct* _struct = find_struct(result_hash);
-        if (_struct == NULLPTR)
-            return _type;
-        _type.kind = STRUCT_TYPE;
-        _type.ptr = _struct->hash;
+        if (_struct != NULLPTR) {
+            _type.kind = STRUCT_TYPE;
+            _type.ptr = _struct->hash;
+        } else {
+            /* If it isn't a struct check if it's a typedef. */
+            intermediate_typedef* _typedef = get_typedef(result_hash);
+            if (_typedef == NULLPTR)
+                return _type;
+            _type = _typedef->type;
+        }
     }
 
     token += 1;

@@ -22,6 +22,7 @@ add_executable(Sail
 	src/frontend/common/tokenizer.c
 	src/frontend/common/parser.c
 	src/frontend/salmon/preprocessor.c
+	src/frontend/common/evaluate.c
 	src/frontend/salmon/salmon.c
 	src/frontend/c/preprocessor.c
 	src/frontend/c/parser.c
@@ -29,6 +30,7 @@ add_executable(Sail
 	src/backend/intermediate/optimization/ignorepass.c
 	src/backend/intermediate/optimization/usescopepass.c
 	src/backend/intermediate/struct.c
+	src/backend/intermediate/typedef.c
 	src/backend/intermediate/enum.c
 	src/backend/intermediate/intermediate.c
 	src/backend/intermediate/symboltable.c

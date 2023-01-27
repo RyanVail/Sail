@@ -4,6 +4,14 @@
  * TODO: '\x234' this causes a seg fault.
  */
 
+typedef int u32
+
+struct test_struct {
+    cds u8
+    gf u32
+    ccs u16
+}
+
 struct RGBA {
     R u8
     G u8
@@ -15,17 +23,18 @@ enum NUMS u32 {
     ZERO,
     ONE,
     TWO,
-    FOUR 4 =,
     THREE,
+    FOUR 4 =,
+    FIVE,
     EIGHT 8 =
 }
 
 fn $main$ -> u32 {
-
-    let cdf u32 EIGHT =
+    let dec NUMS EIGHT u32 =
     let c RGBA;
     let abc %RGBA% c # = ;
     let b %RGBA% c # = ;
+    let test u32 3 u32 =
     b@.A b@.A =
     b@.R 3 =
     b@.R 2 =
@@ -35,7 +44,9 @@ fn $main$ -> u32 {
     a 32 u32 == if {
         a 8 u32 =
     }
+    let acd NUMS FOUR = ;
 }
+
 /*let file_handle %void% "test.txt" "r" $fopen$ =
 file_handle ! if $end$
 

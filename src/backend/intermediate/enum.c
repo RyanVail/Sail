@@ -9,38 +9,38 @@
 #include<frontend/common/parser.h>
 #include<datastructures/hashtable.h>
 
-static hash_table intermediate_enums = { sizeof(enum_entry), NULLPTR };
+static hash_table enum_entries = { sizeof(enum_entry), NULLPTR };
 
 /*
  * This initializes the intermediate enum's hashtable with the equation 
- * (1 << "hash_table_size") the true size.
+ * (1 << "hash_table_size") for the true size.
  */
-void init_enum_hash_table(u8 hash_table_size)
+void init_enum_hash_table(u8 entry_size)
 {
-    intermediate_enums = hash_table_init(hash_table_size);
+    enum_entries = hash_table_init(entry_size);
 }
 
 /* This frees all of the intermediate enums. */
-void free_intermediate_enums()
+void free_enum_entries()
 {
     #if DEBUG
-    if (intermediate_enums.contents == NULLPTR)
+    if (enum_entries.contents == NULLPTR)
         send_error("Intermediate enums have not been inited yet");
     #endif
 }
 
 /*
  * This finds and returns the enum entry with the same hash. If no entry is
- * found this returns "NULLPTR".
+ * found this returns NULLPTR.
  */
 enum_entry* get_enum_entry(u32 hash)
 {
     #if DEBUG
-    if (intermediate_enums.contents == NULLPTR)
+    if (enum_entries.contents == NULLPTR)
         send_error("Intermediate enums have not been inited yet");
     #endif
 
-    hash_table_bucket* _bucket = hash_table_at_hash(&intermediate_enums, hash);
+    hash_table_bucket* _bucket = hash_table_at_hash(&enum_entries, hash);
     return _bucket == NULLPTR ? NULLPTR : _bucket->value;
 }
 
@@ -48,10 +48,11 @@ enum_entry* get_enum_entry(u32 hash)
  * This adds the enum entry to the hash table of entries and returns a pointer
  * to the entry. This exits on errors and prints the errors.
  */
-enum_entry* add_enum_entry(type _type, i64 value, char* entry_name)
+enum_entry* add_enum_entry(intermediate_typedef* parent_enum, i64 value, \
+char* entry_name)
 {
     #if DEBUG
-    if (intermediate_enums.contents == NULLPTR)
+    if (enum_entries.contents == NULLPTR)
         send_error("Intermediate enums have not been inited yet");
     #endif
 
@@ -65,24 +66,23 @@ enum_entry* add_enum_entry(type _type, i64 value, char* entry_name)
         exit(-1);
     }
 
-    /* Check if the enum entry is already used. */
+    /* Check if the enum entry name has already been used. */
     if (get_enum_entry(result_hash) != NULLPTR) {
         printf("\x1b[091mERROR:\x1b[0m The enum entry name: \"%s\" has already been used.\n", entry_name);
         exit(-1);
     }
 
     // TODO: This is doing this logic twice, once in "get_enum_entry" and here.
-    hash_table_bucket* _bucket = hash_table_insert_hash(&intermediate_enums, \
+    hash_table_bucket* _bucket = hash_table_insert_hash(&enum_entries, \
         result_hash);
 
-    /* Putting it into a bucket. */
+    /* Putting the enum entry into a bucket. */
     _bucket->value = malloc(sizeof(enum_entry));
     enum_entry* _entry = _bucket->value;
     if (_entry == NULLPTR)
         handle_error(0);
     _entry->value = value;
     _entry->hash = result_hash;
-    _entry->type = _type;
+    _entry->parent_enum = parent_enum;
     return _entry;
-    
 }

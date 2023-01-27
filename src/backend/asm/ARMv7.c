@@ -17,6 +17,7 @@
 
 #include<backend/asm/ARMv7.h>
 #include<backend/intermediate/intermediate.h>
+#include<backend/intermediate/struct.h>
 
 typedef enum location_type {
     STACK_INDEX,
@@ -128,8 +129,8 @@ static u32 ARMv7_get_immediate_of_const(u32 _const);
 static inline u8 ARMv7_get_register_with_value(intermediate _intermediate);
 
 /*
- * This returns a "bin" which contains the outputed ARMv7 machine code from the
- * intermediates.
+ * This returns a "bin" which contains the outputed ARMv7 machine code generated
+ * from the inputed intermediates.
  */
 bin ARMv7_intermediates_into_binary(vector* intermediates)
 {
@@ -163,7 +164,6 @@ static inline void ARMv7_save_register(u8 reg_index)
 
     variable_symbol* _var = get_variable_symbol("",regs[reg_index].content.ptr);
 
-    printf("HERE.\n");
     ARMv7_add_asm(ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(14, true, \
     0, true, reg_index, true, false));
 }
@@ -311,7 +311,6 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         _first = stack_pop(&value_locations);
         _second = stack_top(&value_locations);
         // TODO: This logic still needs to be added
-        printf("HERE.\n");
         printf("%u\n", _first->first);
         if (_second->type == REG_INDEX
         && regs[_second->first].content.type == VAR_DECLERATION)
@@ -605,6 +604,82 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
     }
 
     return lowest_priority_reg;
+}
+
+/*
+ * This takes in a pointer to a struct and generates its padding and memory
+ * layout. This is a helper function for "ARMv7_generate_structs".
+ */
+void ARMv7_generate_struct(intermediate_struct* _struct)
+{
+    // TODO: This should try and optimize the padding.
+	/* Making a copy of the struct's variables. */
+    stack old_stack = _struct->contents;
+    _struct->contents.top = NULLPTR;
+
+    /* Copying over the variables with padding in needed places. */
+    u32 allignment = 0;
+    u32 remainder;
+    struct_variable* _padding;
+    struct_variable* _var;
+
+    u32* type_sizes = get_type_sizes();
+    while (stack_size(&old_stack) != 0) {
+        _var = stack_pop(&old_stack);
+
+        /* Checking if the variable needs padding. */
+        if (IS_TYPE_STRUCT((_var->type))) {
+            // TODO: This needs to work with struct types.
+        } else if (_var->type.ptr != 0) {
+            remainder = allignment % type_sizes[12];
+            allignment += type_sizes[12];
+        } else {
+            remainder = allignment % type_sizes[_var->type.kind & 0xF];
+        }
+
+        /* Adding the padding to the stack if needed. */
+        if (remainder != 0) {
+            remainder = type_sizes[_var->type.kind & 0xF] - remainder;
+            _padding = generate_padding_struct_variable(remainder);
+            stack_push(&_struct->contents, _padding);
+            allignment += remainder;
+        }
+        allignment += type_sizes[_var->type.kind & 0xF];
+        /* Adding the original variable to the stack. */
+        stack_push(&_struct->contents, _var);
+    }
+}
+
+/*
+ * This function goes through all defined structs and generates their memory
+ * layout and padding.
+ */
+void ARMv7_generate_structs()
+{
+    hash_table* struct_hash_table = get_intermediate_structs();
+    hash_table_bucket* current_bucket = struct_hash_table->contents;
+    hash_table_bucket* linked_bucket;
+    intermediate_struct* current_struct;
+
+    /* Going through all structs in the struct hash table. */
+    for (u32 i=0; i < (1 << struct_hash_table->size); i++) {
+        linked_bucket = current_bucket;
+
+        /* Going through the linked buckets. */
+        while (linked_bucket != NULLPTR) {
+            /* Making the memory layout of the current struct. */
+            current_struct = linked_bucket->value;
+            if (current_struct != NULLPTR) {
+                reverse_struct_variables(current_struct);
+                ARMv7_generate_struct(current_struct);
+                reverse_struct_variables(current_struct);
+            }
+            linked_bucket = linked_bucket->value;
+        }
+
+        /* Incramenting to the next struct. */
+        current_bucket++;
+    }
 }
 
 /*

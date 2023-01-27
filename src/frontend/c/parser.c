@@ -13,24 +13,12 @@ typedef u8 prio;
 /* The logically highest value of the "prio" type. */
 #define __PRIO_MAX__ ((prio)-1)
 
-/*
- * Operators ids are the same as those of "intermediate_kind" expect for
- * "OPENING_PAR" and "CLOSING_PAR" which are just temp anyway.
- */
-typedef u8 operator;
-
-#define OPENING_PAR 22
-#define CLOSING_PAR 23
-
-/* The logically highest value of the "operator" type. */
-#define __OPERATOR_MAX__ ((operator)-1)
-
-/* Stack of operators. Operators are in the pointers of the nodes. */
+/* Stack of operators. Operators are in the pointers of the links. */
 static stack operator_stack = { NULLPTR, sizeof(operator) };
 
-static inline bool C_parse_operation(char*** token);
 prio C_get_operator_prio(operator _operator);
 operator C_get_operator(char* token);
+char** C_parse_operand(char** current_token);
 static inline void C_set_operator_associativity(operator *_operator, \
 bool* left_associative, bool* right_associative);
 
@@ -97,7 +85,8 @@ void C_file_into_intermediate(char* file_name)
         /* Variable/function definitions. */
 
         /* Equation parsing. */
-        if (C_parse_operation(&current_token))
+        if (C_parse_operation(&current_token, &process_operation, \
+        &C_parse_operand))
             return;
 
         /* Finds the ';'. */
@@ -144,10 +133,12 @@ char** C_parse_operand(char** current_token)
 }
 
 /*
- * This function takes in the starting index of an operation and sends the
- * contents into "backend/intermediate/intermediate.c" in RPN.
+ * This function takes in the starting index of an operation and passes the
+ * "operator" type of every operator into the inputed "operator_func".
+ * The parsed operators are passed into the inputed "operand_func".
  */
-static inline bool C_parse_operation(char*** token)
+bool C_parse_operation(char*** token, void* operator_func(operator), \
+void* operand_func(char**))
 {
     /*
     - Parse the equation:
@@ -161,11 +152,6 @@ static inline bool C_parse_operation(char*** token)
 
         - If the current operator is a closing parenthesis or the end of the
             operation add all the operators to the output.
-
-        3 2 - 2 4 * 2 / -
-        1 2 4 * 2 / -
-        1 8 2 / -
-        1 4 -
     */
 
     char** starting_token = *token;
@@ -198,10 +184,13 @@ static inline bool C_parse_operation(char*** token)
                 operator tmp_operator = (operator)stack_pop(&operator_stack);
                 if (tmp_operator == OPENING_PAR)
                     goto C_parse_operation_continue_label;
-                process_operation(tmp_operator);
+                (*operator_func)(tmp_operator);
             }
             send_error("Uneven parenthesis");
         }
+
+        // TODO: This checking if the operation is done should be done a lot
+        // better some way
 
         /* Checking if this is the inital '('. */
         if (**current_token == '(') {
@@ -209,8 +198,12 @@ static inline bool C_parse_operation(char*** token)
             goto C_parse_operation_continue_label;
         }
 
+        /* Checking if this is the inital '\n'. */
+        if (**current_token == '\n')
+            goto C_parse_operation_pop_operations_label;
+
         /* Reading the first/left operand. */
-        char** left_operand_pos = C_parse_operand(current_token);
+        char** left_operand_pos = (*operand_func)(current_token);
         if (left_operand_pos == __INTPTR_MAX__) {
             right_associative = true;
         } else {
@@ -234,6 +227,10 @@ static inline bool C_parse_operation(char*** token)
                 *current_token);
             exit(-1);
         }
+
+        // TODO: This doesn't handle the case of the operator being either the
+        // one after an '(' or just the first operator's priority and it would
+        // be added last even though the other operators have a lower priority.
 
         /* Adding the operator to the output or stack. */
         if (stack_size(&operator_stack) != 0
@@ -261,7 +258,7 @@ static inline bool C_parse_operation(char*** token)
         } while (*current_token == NULLPTR);
 
         /* Reading the right operand. */
-        char** right_operand_pos = C_parse_operand(current_token);
+        char** right_operand_pos = (*operand_func)(current_token);
         if (right_operand_pos == __INTPTR_MAX__)
             left_associative = true;
         else
@@ -275,7 +272,7 @@ static inline bool C_parse_operation(char*** token)
 
         /* Processing the operation. */
         if (to_operate != __OPERATOR_MAX__)
-            process_operation(to_operate);
+            (*operator_func)(to_operate);
 
         C_parse_operation_continue_label: ;
     }
@@ -283,7 +280,7 @@ static inline bool C_parse_operation(char*** token)
     C_parse_operation_pop_operations_label: ;
 
     while (stack_size(&operator_stack))
-        process_operation((operator)stack_pop(&operator_stack));
+        (*operator_func)((operator)stack_pop(&operator_stack));
 
     return have_operated;
 
@@ -415,7 +412,4 @@ prio C_get_operator_prio(operator _operator)
     }
 }
 
-#undef CLOSING_PAR
-#undef OPENING_PAR
 #undef __PRIO_MAX__
-#undef __OPERATOR_MAX__

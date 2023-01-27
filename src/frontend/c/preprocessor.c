@@ -4,8 +4,10 @@
 
 #include<frontend/common/parser.h>
 #include<frontend/c/preprocessor.h>
+#include<frontend/common/evaluate.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
+#include<backend/intermediate/intermediate.h>
 #if DEBUG && linux
 #include<time.h>
 #endif
@@ -25,13 +27,17 @@ typedef enum macro_status {
 static vector defined = { 0, 0, 0, sizeof(u32) };
 // TODO: ^^^ This should be a hash table. ^^^
 static vector tokenized_file = { 0, 0, 0, sizeof(char*) };
-static vector new_file = { NULL, 0, 0, sizeof(char*) };
+static vector new_file = { 0, 0, 0, sizeof(char*) };
+static stack operand_stack = { NULLPTR, sizeof(i64) };
 
 static inline void C_expand_macro(vector* new_file, u32* i, vector* file);
 static inline macro_status C_read_macro(vector* file, u32* i);
 
 // TODO: tokenized file is static now but it is still being passed into
 // functions.
+
+#include<frontend/c/preprocessor.h>
+#include<frontend/c/parser.h>
 
 /*
  * This preprocesses a single token of C code.
@@ -130,8 +136,10 @@ vector C_preprocess_file(char* file_name)
         C_preprocess_line(&i);
     }
 
-    // for (u32 i=0; i < VECTOR_SIZE(new_file); i++)
-        // printf("%s\n", *(char**)vector_at(&new_file, i, false));
+    for (u32 i=0; i < VECTOR_SIZE(new_file); i++) {
+        if (*(char**)vector_at(&new_file, i, false) != NULLPTR)
+            printf("%s\n", *(char**)vector_at(&new_file, i, false));
+    }
 
     free(tokenized_file.contents);
     #if DEBUG && linux
@@ -161,8 +169,9 @@ static inline u32 C_get_macro(vector* file, char* macro_name)
  */
 static inline void C_add_macro(vector* file, u32* i)
 {
-    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) != __UINT32_MAX__)
-        vector_append(&defined, i);
+    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) == __UINT32_MAX__)
+        send_error("Macro has already been defined");
+    vector_append(&defined, i);
     *i = get_end_of_line(file, *i);
 }
 
@@ -212,25 +221,68 @@ static inline void C_skip_single_line_comment(vector* file, u32* i)
 }
 
 /*
+ * This is a helper function of "C_process_if_macro". This adds the numeral
+ * value of the inputed ASCII number at the inputed index to the operand_stack.
+ * Returns "__INTPTR_MAX__" if nothing was read.
+ */
+char** C_preprocessor_process_operand(char** token)
+{
+    /* Making sure this is a number. */
+    if (!is_ascii_number(*token))
+        return __INTPTR_MAX__;
+
+    /* Allocating space for the number. */
+    i64* num = malloc(sizeof(i64));
+    if (num == NULLPTR)
+        handle_error(0);
+    *num = get_ascii_number(*token);
+
+    /* Adding the num to the stack and returning the current token. */
+    stack_push(&operand_stack, num);
+    return token;
+}
+
+/*
+ * This takes in and computes the result of the operation.
+ */
+void C_preprocessor_process_operator(operator _operator)
+{
+    i64 first_operator = *(i64*)stack_pop(&operand_stack);
+    i64 second_operator = *(i64*)stack_top(&operand_stack);
+
+    printf("%u\n", _operator);
+    *(i64*)operand_stack.top->value = \
+        evaluate_expression(second_operator, first_operator, _operator);
+}
+
+/*
  * This computes the result of an "#if" macro after all other macros inside of
  * return true or false based on the result.
  */
 static inline macro_status C_process_if_macro(vector* file, u32 *i)
 {
-    // u32 tmp_index = *i;
-    // C_preprocess_line(&tmp_index);
+    /* Getting the first index of the expression. */
+    find_next_valid_token(file, i);
+    char** index = vector_at(file, *i, false);
 
-    // TODO: This should compute the result of the current line
-
-    // printf("%s\n", *(char**)vector_at(file, *i, 0));
-    // exit(0);
+    /* Processing the expression after the if statment. */
+    C_parse_operation(&index, &C_preprocessor_process_operator, \
+    &C_preprocessor_process_operand);
 
     find_next_valid_token(file, i);
 
-    if (**(char**)vector_at(file, *i, false) == '0')
-        return SKIP_TO_NEXT;
+    if (stack_size(&operand_stack) != 1)
+        send_error("Expected the result of preprocessing to be one number");
 
-    return DONT_SAVE_LINE;
+    i64 result = *(i64*)stack_top(&operand_stack);
+
+    while (!STACK_IS_EMPTY(operand_stack))
+        free(stack_pop(&operand_stack));
+
+    if (result >= 1)
+        return DONT_SAVE_LINE;
+
+    return SKIP_TO_NEXT;
 }
 
 /*

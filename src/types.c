@@ -1,5 +1,5 @@
 /*
- * This handles everything that involvs types.
+ * This handles everything that involves types.
  */
 #include<types.h>
 #include<common.h>
@@ -8,7 +8,7 @@
 static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "i8", "u8", "i16", "u16",
 "i32", "u32", "i64", "u64", "float", "double", "%", "%", "\0" };
 
-static u32 DEFAULT_TYPE_SIZES[] = { 0, 1, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8};
+static u32 DEFAULT_TYPE_SIZES[] = { 0, 1, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 4 };
 
 static char* DEFAULT_TYPE_MODIFIERS[] = { "unsigned", "signed", "const",
 "volatile", "register", "static", "inline", "extern", "\0" };
@@ -17,6 +17,7 @@ static char** TYPE_MODIFIERS = DEFAULT_TYPE_MODIFIERS;
 static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
 static u32* TYPE_SIZES = DEFAULT_TYPE_SIZES;
 
+// TODO: This should be in "backend/intermediate" not here.
 // TODO: The below function should change based on TYPE_SIZES rather than using
 // hard coded values.
 /*
@@ -196,6 +197,7 @@ void set_type_modifier_names(char** _MODIFIER_NAMES)
 /*
  * This allows different front ends / back ends to set custom type sizes. The
  * sizes should correspond with the "type_kind" enum rather than "TYPE_NAMES".
+ * The last size is the size of pointers.
  */
 void set_type_sizes(u32* _TYPE_SIZES)
 {
