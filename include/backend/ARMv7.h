@@ -10,7 +10,7 @@
 #define REGISTERS_COMPLEMENT_CONST 1
 #define REGISTERS_SIZE_NOT_CONST 0
 
-#include<backend/asm/bin.h>
+#include<backend/bin.h>
 
 #undef REGISTERS_NEGATIVE_CONST
 #undef REGISTERS_SIZE_NOT_CONST

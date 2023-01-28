@@ -10,7 +10,7 @@
 #define BACKEND_ASM_BIN_H
 
 #include<common.h>
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/intermediate.h>
 
 /* struct reg - This holds the status of a single register
  * @size: The size of this register in bytes, only present if the target cpu has

@@ -9,14 +9,14 @@
 #include<frontend/c/preprocessor.h>
 #include<frontend/c/parser.h>
 #include<frontend/common/preprocessor.h>
-#include<backend/intermediate/struct.h>
-#include<backend/intermediate/enum.h>
-#include<backend/intermediate/symboltable.h>
-#include<backend/intermediate/intermediate.h>
-#include<backend/intermediate/optimization/registerpass.h>
-#include<backend/intermediate/optimization/usescopepass.h>
-#include<backend/intermediate/typedef.h>
-#include<backend/asm/ARMv7.h>
+#include<intermediate/struct.h>
+#include<intermediate/enum.h>
+#include<intermediate/symboltable.h>
+#include<intermediate/intermediate.h>
+#include<intermediate/optimization/registerpass.h>
+#include<intermediate/optimization/usescopepass.h>
+#include<intermediate/typedef.h>
+#include<backend/ARMv7.h>
 #if linux && DEBUG
 #include<time.h>
 #endif
@@ -41,24 +41,23 @@ int main(i32 argc, char* args[])
 
     // process_cli_options(argc, args);
 
-    // vector _tmp = tokenize_file("/home/ryan/Documents/PDFs/Armv8-A Instruction Set Architecture.pdf");
     // vector _tmp = tokenize_file("test.sal");
     // for (u32 i=0; i < _tmp.apparent_size; i++) {
     //     printf("%s\n", *(char**)vector_at(&_tmp, i, false));
     // }
     // free_tokenized_file_vector(&_tmp);
 
-    init_symbol_table(8, 8);
+    // init_symbol_table(8, 8);
 
-    C_file_into_intermediate("../tests/fib.c");
+    // C_file_into_intermediate("../tests/fib.c");
 
-    print_intermediates();
+    // print_intermediates();
 
     // optimization_do_register_pass();
 
     // optimizaiton_do_use_scope_pass();
 
-    exit(0);
+    // exit(0);
 
 	/* Initing the many many hash tables. */
     init_enum_hash_table(4);
@@ -73,7 +72,7 @@ int main(i32 argc, char* args[])
     ARMv7_generate_structs();
     optimization_do_register_pass();
     optimizaiton_do_use_scope_pass();
-    //print_intermediates();
+    print_intermediates();
 
     exit(0);
 

@@ -3,7 +3,7 @@
  */
 #include<types.h>
 #include<common.h>
-#include<backend/intermediate/struct.h>
+#include<intermediate/struct.h>
 
 static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "i8", "u8", "i16", "u16",
 "i32", "u32", "i64", "u64", "float", "double", "%", "%", "\0" };
@@ -17,7 +17,7 @@ static char** TYPE_MODIFIERS = DEFAULT_TYPE_MODIFIERS;
 static char** TYPE_NAMES = DEFAULT_TYPE_NAMES;
 static u32* TYPE_SIZES = DEFAULT_TYPE_SIZES;
 
-// TODO: This should be in "backend/intermediate" not here.
+// TODO: This should be in "intermediate" not here.
 // TODO: The below function should change based on TYPE_SIZES rather than using
 // hard coded values.
 /*
@@ -104,6 +104,15 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     print_type(_to, true);
     printf("\n");
     exit(-1);
+}
+
+/*
+ * This shrinks the inputed value based on the type and "TYPE_SIZES". This is
+ * assuming that the negatives and 
+ */
+i64 shrink_value_to_type(i64 value, type _type)
+{
+    //
 }
 
 /*

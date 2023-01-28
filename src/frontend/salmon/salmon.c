@@ -9,10 +9,10 @@
 #include<frontend/salmon/salmon.h>
 #include<frontend/common/parser.h>
 #include<frontend/salmon/preprocessor.h>
-#include<backend/intermediate/symboltable.h>
-#include<backend/intermediate/intermediate.h>
-#include<backend/intermediate/struct.h>
-#include<backend/intermediate/enum.h>
+#include<intermediate/symboltable.h>
+#include<intermediate/intermediate.h>
+#include<intermediate/struct.h>
+#include<intermediate/enum.h>
 
 // TODO: This needs to be cleaned.
 

@@ -4,8 +4,8 @@
  * basically splitting the intermediates into basic blocks.
  */
 
-#include<backend/intermediate/optimization/registerpass.h>
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/optimization/registerpass.h>
+#include<intermediate/intermediate.h>
 #if DEBUG && linux
 #include<time.h>
 #endif
@@ -36,9 +36,8 @@ void optimization_do_register_pass()
         clock_t starting_time = clock();
     #endif
 
-    vector* intermediates;
+    vector* intermediates = get_intermediate_vector();
 
-    intermediates = get_intermediate_vector();
     vector output_intermediates = \
         vector_init_with(sizeof(intermediate), intermediates->size);
 
@@ -50,6 +49,8 @@ void optimization_do_register_pass()
 
     intermediate* start_scope_ptr = 0;
 
+    // TODO: The below if statments should be replaced with a switch statment so
+    // the compiler can decide how to optimize it.
     for (; location < VECTOR_SIZE((*intermediates));) {
         intermediate* _current = vector_at(intermediates, location, 0);
 

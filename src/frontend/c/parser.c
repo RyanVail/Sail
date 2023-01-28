@@ -2,12 +2,13 @@
 #include<datastructures/stack.h>
 #include<frontend/common/parser.h>
 #include<frontend/c/preprocessor.h>
-#include<backend/intermediate/intermediate.h>
-#include<backend/intermediate/struct.h>
+#include<intermediate/intermediate.h>
+#include<intermediate/struct.h>
 #if DEBUG && linux
 #include<time.h>
 #endif
 
+/* This represents the priority of an operator. Higher value, higher prio. */
 typedef u8 prio;
 
 /* The logically highest value of the "prio" type. */

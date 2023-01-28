@@ -3,7 +3,7 @@
  * typedefs.
  */
 
-#include<backend/intermediate/typedef.h>
+#include<intermediate/typedef.h>
 #include<frontend/common/parser.h>
 
 static hash_table intermediate_typedefs = { sizeof(intermediate_typedefs), 0 };

@@ -4,7 +4,7 @@
  * evaluation of constant expressions.
  */
 
-#include<backend/intermediate/optimization/secondpass.h>
+#include<intermediate/optimization/secondpass.h>
 
 u8 target_pointer_width = __UINT8_MAX__;
 

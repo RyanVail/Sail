@@ -7,7 +7,7 @@
 #define BACKEND_INTERMEDIATE_OPTIMIZATION_IGNORE_PASS_H
 
 #include<common.h>
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/intermediate.h>
 
 /*
  * This passes through the intermediates adding "IGNORE" intermediates when

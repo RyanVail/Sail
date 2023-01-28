@@ -3,7 +3,7 @@
  * intermediates. Intermediates should be feed in to "add_intermediate" in
  * reverse polish notation.
  */
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/intermediate.h>
 #include<frontend/common/parser.h>
 
 static stack operand_stack = { 0, sizeof(operand) };

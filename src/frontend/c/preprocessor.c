@@ -7,7 +7,7 @@
 #include<frontend/common/evaluate.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/intermediate.h>
 #if DEBUG && linux
 #include<time.h>
 #endif
@@ -264,6 +264,8 @@ static inline macro_status C_process_if_macro(vector* file, u32 *i)
     /* Getting the first index of the expression. */
     find_next_valid_token(file, i);
     char** index = vector_at(file, *i, false);
+
+    // TODO: This doesn't account for the '?' and ':' operators.
 
     /* Processing the expression after the if statment. */
     C_parse_operation(&index, &C_preprocessor_process_operator, \

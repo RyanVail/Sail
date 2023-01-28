@@ -15,9 +15,9 @@
 // TODO: This doesn't support branches longer than the 24 bit maximum in one
 // instruction.
 
-#include<backend/asm/ARMv7.h>
-#include<backend/intermediate/intermediate.h>
-#include<backend/intermediate/struct.h>
+#include<backend/ARMv7.h>
+#include<intermediate/intermediate.h>
+#include<intermediate/struct.h>
 
 typedef enum location_type {
     STACK_INDEX,

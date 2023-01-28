@@ -4,7 +4,7 @@
  */
 
 #include<datastructures/hashtable.h>
-#include<backend/intermediate/symboltable.h>
+#include<intermediate/symboltable.h>
 #include<types.h>
 
 #if DEBUG

@@ -12,7 +12,7 @@
 #include<common.h>
 #include<datastructures/stack.h>
 #include<datastructures/hashtable.h>
-#include<backend/intermediate/struct.h>
+#include<intermediate/struct.h>
 #include<types.h>
 
 /* struct struct_variable - This represents a variable in a struct

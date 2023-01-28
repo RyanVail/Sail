@@ -3,8 +3,8 @@
  * uses.
  */
 
-#include<backend/intermediate/optimization/usescopepass.h>
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/optimization/usescopepass.h>
+#include<intermediate/intermediate.h>
 #if DEBUG && linux
     #include<time.h>
 #endif

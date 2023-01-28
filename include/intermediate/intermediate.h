@@ -9,7 +9,7 @@
 #include<common.h>
 #include<main.h>
 #include<datastructures/stack.h>
-#include<backend/intermediate/symboltable.h>
+#include<intermediate/symboltable.h>
 
 // TODO: Spell comparsion right!
 // TODO: There should be another intermediate called scope which starts a new

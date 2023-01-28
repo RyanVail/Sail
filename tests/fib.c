@@ -3,7 +3,7 @@
 #define COND 0
 #if 0
 #else
-    #if 0 + 0 * 3 + 0
+    #if COND + 1
         int abc = 32;
     #else
         int test = 3;

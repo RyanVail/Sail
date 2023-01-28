@@ -8,7 +8,7 @@
 #include<common.h>
 #include<datastructures/stack.h>
 #include<types.h>
-#include<backend/intermediate/typedef.h>
+#include<intermediate/typedef.h>
 
 /* struct enum_entry - This represents an entry into an enum
  * @hash: The hash of the name of this entry

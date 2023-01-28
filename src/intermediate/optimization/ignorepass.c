@@ -3,7 +3,7 @@
  * "REGISTER" intermediates when a variable is not used within a scope anymore.
  */
 
-#include<backend/intermediate/optimization/ignorepass.h>
+#include<intermediate/optimization/ignorepass.h>
 
 /*
 This uses index for simplicity rather than pointers.

@@ -3,7 +3,7 @@
 #ifndef FRONTEND_COMMON_EVALUATE_H
 #define FRONTEND_COMMON_EVALUATE_H
 
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/intermediate.h>
 #include<common.h>
 
 /*

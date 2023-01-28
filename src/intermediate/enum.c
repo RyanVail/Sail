@@ -5,7 +5,7 @@
 // inputs and type casting to enums works correctly. Enum entries should hold a
 // ptr to their parents instead of their type.
 
-#include<backend/intermediate/enum.h>
+#include<intermediate/enum.h>
 #include<frontend/common/parser.h>
 #include<datastructures/hashtable.h>
 

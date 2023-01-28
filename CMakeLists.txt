@@ -26,13 +26,14 @@ add_executable(Sail
 	src/frontend/salmon/salmon.c
 	src/frontend/c/preprocessor.c
 	src/frontend/c/parser.c
-	src/backend/intermediate/optimization/registerpass.c
-	src/backend/intermediate/optimization/ignorepass.c
-	src/backend/intermediate/optimization/usescopepass.c
-	src/backend/intermediate/struct.c
-	src/backend/intermediate/typedef.c
-	src/backend/intermediate/enum.c
-	src/backend/intermediate/intermediate.c
-	src/backend/intermediate/symboltable.c
-	src/backend/asm/ARMv7.c
+	src/intermediate/optimization/registerpass.c
+	src/intermediate/optimization/ignorepass.c
+	src/intermediate/optimization/usescopepass.c
+	src/intermediate/optimization/constantpass.c
+	src/intermediate/struct.c
+	src/intermediate/typedef.c
+	src/intermediate/enum.c
+	src/intermediate/intermediate.c
+	src/intermediate/symboltable.c
+	src/backend/ARMv7.c
 )

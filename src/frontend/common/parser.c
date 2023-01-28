@@ -10,9 +10,9 @@ struct token_line {
 }
 */
 
-#include<backend/intermediate/typedef.h>
-#include<backend/intermediate/enum.h>
-#include<backend/intermediate/struct.h>
+#include<intermediate/typedef.h>
+#include<intermediate/enum.h>
+#include<intermediate/struct.h>
 #include<datastructures/hashtable.h>
 #include<frontend/common/parser.h>
 #include<frontend/common/tokenizer.h>

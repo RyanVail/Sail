@@ -5,7 +5,7 @@
  */
 
 #include<common.h>
-#include<backend/intermediate/intermediate.h>
+#include<intermediate/intermediate.h>
 #include<datastructures/stack.h>
 
 /*

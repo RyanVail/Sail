@@ -5,7 +5,7 @@
 // TODO: Recursive structs are possible.
 
 #include<frontend/common/parser.h>
-#include<backend/intermediate/struct.h>
+#include<intermediate/struct.h>
 
 static hash_table intermediate_structs = { sizeof(struct_variable), NULLPTR };
 
