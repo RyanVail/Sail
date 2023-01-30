@@ -86,8 +86,8 @@ void optimization_do_register_pass()
 
     free(uses.contents);
     free(ptrs.contents);
-    free_intermediates(false, false);
-    *get_intermediate_vector() = output_intermediates;
+    free_intermediates(false, false, false);
+    *intermediates = output_intermediates;
 
     #if DEBUG && linux
         printf("Took %f ms to do the register pass.\n", \

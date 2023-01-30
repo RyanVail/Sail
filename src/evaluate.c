@@ -1,8 +1,8 @@
 /* This file does all of the evaluating of equations pre computation. */
 
-#include<frontend/common/evaluate.h>
+#include<evaluate.h>
+#include<types.h>
 
-// TODO: This only supports a left to right operands.
 /* This evaluates the inputed expression and returns the result. */
 i64 evaluate_expression(i64 operand0, i64 operand1, operator _operator)
 {

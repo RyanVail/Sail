@@ -1,7 +1,6 @@
 /*
- * This is like a hashtable in that its time complexity is O(1) but rather than
- * using a hash function the inputed string is assumed to only contain the
- * characters 'a' to 'z', '0' to '9', and '_'
+ * This is a very primitive hashtable implementation using a really simple hash
+ * function.
  */
 
 #ifndef HASH_TABLE_H

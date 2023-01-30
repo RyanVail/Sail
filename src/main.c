@@ -15,6 +15,7 @@
 #include<intermediate/intermediate.h>
 #include<intermediate/optimization/registerpass.h>
 #include<intermediate/optimization/usescopepass.h>
+#include<intermediate/optimization/constantpass.h>
 #include<intermediate/typedef.h>
 #include<backend/ARMv7.h>
 #if linux && DEBUG
@@ -71,7 +72,8 @@ int main(i32 argc, char* args[])
 
     ARMv7_generate_structs();
     optimization_do_register_pass();
-    optimizaiton_do_use_scope_pass();
+    optimization_do_use_scope_pass();
+    optimization_do_constant_pass();
     print_intermediates();
 
     exit(0);
@@ -123,5 +125,5 @@ int main(i32 argc, char* args[])
     // printf("%p\n", get_variable_symbol("", 0));
     // clear_variables_in_scope();
     free_symbol_table();
-    free_intermediates(true, true);
+    free_intermediates(true, true, true);
 }

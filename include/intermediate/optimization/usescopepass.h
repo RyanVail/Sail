@@ -3,9 +3,9 @@
  * uses.
  */
 
-#ifndef BACKEND_INTERMEDIATE_OPTIMIZATION_USE_SCOPE_PASS
-#define BACKEND_INTERMEDIATE_OPTIMIZATION_USE_SCOPE_PASS
+#ifndef INTERMEDIATE_OPTIMIZATION_USE_SCOPE_PASS
+#define INTERMEDIATE_OPTIMIZATION_USE_SCOPE_PASS
 
-void optimizaiton_do_use_scope_pass();
+void optimization_do_use_scope_pass();
 
 #endif

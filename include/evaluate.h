@@ -1,7 +1,7 @@
 /* This file does all of the evaluating of equations pre computation. */
 
-#ifndef FRONTEND_COMMON_EVALUATE_H
-#define FRONTEND_COMMON_EVALUATE_H
+#ifndef EVALUATE_H
+#define EVALUATE_H
 
 #include<intermediate/intermediate.h>
 #include<common.h>

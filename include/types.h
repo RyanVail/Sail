@@ -78,6 +78,9 @@ void print_type(type _type, bool graphical);
  */
 void print_type_kind(type _type, bool graphical);
 
+/* This scales the inputed value to the inputed type. */
+i64 scale_value_to_type(i64 value, type _type);
+
 /*
  * This allows different front ends to set custom type names. The 0xe and 0xf
  * index of "TYPE_NAMES" should be the characters before and after variable

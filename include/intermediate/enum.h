@@ -2,8 +2,8 @@
  * This handles the intermediates of enums.
  */
 
-#ifndef BACKEND_INTERMEDIATE_ENUM_H
-#define BACKEND_INTERMEDIATE_ENUM_H
+#ifndef INTERMEDIATE_ENUM_H
+#define INTERMEDIATE_ENUM_H
 
 #include<common.h>
 #include<datastructures/stack.h>

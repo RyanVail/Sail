@@ -4,7 +4,7 @@
 
 #include<frontend/common/parser.h>
 #include<frontend/c/preprocessor.h>
-#include<frontend/common/evaluate.h>
+#include<evaluate.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
 #include<intermediate/intermediate.h>

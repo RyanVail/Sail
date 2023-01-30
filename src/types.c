@@ -107,15 +107,6 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
 }
 
 /*
- * This shrinks the inputed value based on the type and "TYPE_SIZES". This is
- * assuming that the negatives and 
- */
-i64 shrink_value_to_type(i64 value, type _type)
-{
-    //
-}
-
-/*
  * This prints the type name.
  */
 void print_type(type _type, bool graphical)
@@ -179,6 +170,13 @@ void print_type_kind(type _type, bool graphical)
     /* Printing the ending color and '`'. */
     if (graphical)
         printf("\x1b[0m");
+}
+
+/* This scales the inputed value to the inputed type. */
+i64 scale_value_to_type(i64 value, type _type)
+{
+    i64 tmp_value = value >> (TYPE_SIZES[_type.kind] << 3);
+    return (tmp_value == 0) ? (value) : (~tmp_value);
 }
 
 /*

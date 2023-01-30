@@ -3,8 +3,8 @@
  * "REGISTER" intermediates when a variable is not used within a scope anymore.
  */
 
-#ifndef BACKEND_INTERMEDIATE_OPTIMIZATION_IGNORE_PASS_H
-#define BACKEND_INTERMEDIATE_OPTIMIZATION_IGNORE_PASS_H
+#ifndef INTERMEDIATE_OPTIMIZATION_IGNORE_PASS_H
+#define INTERMEDIATE_OPTIMIZATION_IGNORE_PASS_H
 
 #include<common.h>
 #include<intermediate/intermediate.h>

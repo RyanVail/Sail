@@ -9,7 +9,7 @@
     #include<time.h>
 #endif
 
-void optimizaiton_do_use_scope_pass()
+void optimization_do_use_scope_pass()
 {
     #if DEBUG && linux
     clock_t starting_time = clock();
@@ -19,6 +19,8 @@ void optimizaiton_do_use_scope_pass()
     vector output_intermediates = { 0, 0, 0, sizeof(intermediate) };
     intermediate* start_scope_ptr = 0;
 
+    // TODO: "intermediates" should be a ptr to the vector of intermediates like
+    // every other optimization pass.
     intermediates = *get_intermediate_vector();
     output_intermediates = \
         vector_init_with(sizeof(intermediate), intermediates.size);
@@ -38,18 +40,18 @@ void optimizaiton_do_use_scope_pass()
 
             for (u32 x=0; x < VECTOR_SIZE(scope_uses); x++)
                 if (_var_id == *(u32*)vector_at(&scope_uses, x, 0))
-                    goto optimizaiton_do_use_scope_pass_var_already_used_label;
+                    goto optimization_do_use_scope_pass_var_already_used_label;
             vector_append(&scope_uses, &_var_id);
         }
 
-        optimizaiton_do_use_scope_pass_var_already_used_label:
+        optimization_do_use_scope_pass_var_already_used_label:
 
         vector_append(&output_intermediates, _current);
 
         if (_current->type == FUNC_DEF || i == 0
         || i == VECTOR_SIZE(intermediates) - 1) {
             if (!i)
-                goto optimizaiton_do_use_scope_pass_put_intermediate_label;
+                goto optimization_do_use_scope_pass_put_intermediate_label;
 
             vector* new_scope_uses = malloc(sizeof(vector));
             if (new_scope_uses == NULLPTR)
@@ -70,7 +72,7 @@ void optimizaiton_do_use_scope_pass()
             if (start_scope_ptr)
                 start_scope_ptr->ptr = new_scope_uses;
 
-            optimizaiton_do_use_scope_pass_put_intermediate_label: ;
+            optimization_do_use_scope_pass_put_intermediate_label: ;
 
             if (i != VECTOR_SIZE(intermediates) - 1) {
                 intermediate _intermediate = { VAR_USE, 0 };
@@ -81,7 +83,7 @@ void optimizaiton_do_use_scope_pass()
         }
     }
     free(scope_uses.contents);
-    free_intermediates(false, false);
+    free_intermediates(false, false, false);
     *get_intermediate_vector() = output_intermediates;
 
     #if DEBUG && linux

@@ -22,7 +22,7 @@ add_executable(Sail
 	src/frontend/common/tokenizer.c
 	src/frontend/common/parser.c
 	src/frontend/salmon/preprocessor.c
-	src/frontend/common/evaluate.c
+	src/evaluate.c
 	src/frontend/salmon/salmon.c
 	src/frontend/c/preprocessor.c
 	src/frontend/c/parser.c

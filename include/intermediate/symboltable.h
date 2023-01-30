@@ -2,8 +2,8 @@
  * This handles everything to do with the symbol table.
  */
 
-#ifndef BACKEND_INTERMEDIATE_SYMBOLTABLE
-#define BACKEND_INTERMEDIATE_SYMBOLTABLE
+#ifndef INTERMEDIATE_SYMBOLTABLE
+#define INTERMEDIATE_SYMBOLTABLE
 
 #include<common.h>
 #include<types.h>

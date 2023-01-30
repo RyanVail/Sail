@@ -243,21 +243,23 @@ void clear_operand_stack()
  * This frees "intermediates_vector". The symbol table should be in a clean
  * scope before this function is called.
  */
-void free_intermediates(bool free_variable_symbols, bool free_var_vectors)
+void free_intermediates(bool free_variable_symbols, bool free_var_vectors, \
+bool free_constants)
 {
     while (intermediates_vector.apparent_size != 0) {
         register intermediate* _intermediate = vector_pop(&intermediates_vector);
 
         #if !VOID_PTR_64BIT
-        if (_intermediate->type == CONST_PTR || _intermediate->type == CAST)
+        if (free_constants && _intermediate->ptr != NULLPTR
+        && (_intermediate->type == CONST_PTR || _intermediate->type == CAST))
             free(_intermediate->ptr);
         #endif
     
         if (free_variable_symbols && _intermediate->type == VAR_DECLERATION)
             free(_intermediate->ptr);
 
-        if (free_var_vectors && _intermediate->type == REGISTER
-        || _intermediate->type == VAR_USE) {
+        if (free_var_vectors && (_intermediate->type == REGISTER
+        || _intermediate->type == VAR_USE)) {
             free(((vector*)_intermediate->ptr)->contents);
             free(_intermediate->ptr);
         }
@@ -287,16 +289,17 @@ void add_const_num(i64 const_num)
      */
     #if !VOID_PTR_64BIT
     intermediate _operand;
-    if (const_num < ~((i64)1 << ((sizeof(void*) << 3))-1) + 1
-    || const_num > ((i64)1 << ((sizeof(void*) << 3)-1))-1) {
-        const_num = malloc(sizeof(i64));
-        if (const_num == NULLPTR)
+    i64* _const_num;
+    if (const_num < ~((i64)1 << ((sizeof(void*) << 3))-1)
+    || const_num > ((i64)1 << ((sizeof(void*) << 3)-1))) {
+        _const_num = malloc(sizeof(i64));
+        if (_const_num == NULLPTR)
             handle_error(0);
-        memcpy(const_num, &const_num, sizeof(i64));
-        intermediate _operand = { CONST_PTR, const_num };
+        *_const_num = const_num;
+        intermediate _operand = { CONST_PTR, _const_num };
     } else {
-        const_num = (void*)const_num;
-        intermediate _operand = { CONST, const_num };
+        _const_num = (void*)const_num;
+        intermediate _operand = { CONST, _const_num };
     }
     #else
     intermediate _operand = { CONST, (void*)const_num };
@@ -329,7 +332,7 @@ stack* get_operand_stack()
  */
 #if DEBUG
 
-// TODO: Replace the bellow array with something less temperary.
+// TODO: Replace this array with something less temp.
 const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", \
 "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", \
 "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var decleration", \
@@ -348,11 +351,17 @@ void print_intermediates()
         if (_intermediate->type == REGISTER || _intermediate->type == VAR_USE)
         {
             vector* _tmp_vec = _intermediate->ptr;
+
+            if (_tmp_vec == NULLPTR)
+                continue;
+
             for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++)
                 printf("%08x\n",*(u32*)vector_at(_intermediate->ptr,y,0));
         }
+        #if VOID_PTR_64BIT
         if (_intermediate->type == CONST)
-            printf("%u\n", _intermediate->ptr);
+            printf("%li\n", _intermediate->ptr);
+        #endif
     }
 }
 

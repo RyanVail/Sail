@@ -105,5 +105,5 @@ void optimization_do_ignore_pass()
             _var += sizeof(u32);
         }
     }
-    *get_intermediate_vector() = output_intermediates;
+    *intermediates = output_intermediates;
 }

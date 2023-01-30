@@ -3,8 +3,8 @@
  * typedefs.
  */
 
-#ifndef BACKEND_INTERMEDIATE_TYPEDEF_H
-#define BACKEND_INTERMEDIATE_TYPEDEF_H
+#ifndef INTERMEDIATE_TYPEDEF_H
+#define INTERMEDIATE_TYPEDEF_H
 
 #include<common.h>
 #include<datastructures/hashtable.h>

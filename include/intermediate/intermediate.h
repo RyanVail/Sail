@@ -2,8 +2,8 @@
  * This holds the intermediate enum and other general functions involving
  * intermediates.
  */
-#ifndef BACKEND_INTERMEDIATE_H
-#define BACKEND_INTERMEDIATE_H
+#ifndef INTERMEDIATE_H
+#define INTERMEDIATE_H
 
 #include<types.h>
 #include<common.h>
@@ -125,9 +125,11 @@ typedef struct operand {
 void pop_operand(bool dual, bool comparison);
 
 /*
- * This frees "intermediates_vector".
+ * This frees "intermediates_vector". The symbol table should be in a clean
+ * scope before this function is called.
  */
-void free_intermediates(bool free_variable_symbols, bool free_var_vectors);
+void free_intermediates(bool free_variable_symbols, bool free_var_vectors, \
+bool free_constants);
 
 /*
  * This clears the operand stack
