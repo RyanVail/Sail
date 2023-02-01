@@ -48,6 +48,7 @@ typedef enum intermediate_type {
     VAR_ACCESS,             // The variable hash is in the "ptr".
     VAR_MEM,                // The variable hash is in the "ptr".
     // Memory intermediates
+    // TODO: These intermediates are terribly named and the examples don't help.
     MEM_LOCATION,           // *ptr = 8
     MEM_ACCESS,             // *ptr
 
@@ -66,6 +67,12 @@ typedef enum intermediate_type {
     // Constant intermediate
     CONST,                  // A signed constant the size of (void*)
     CONST_PTR,              // A ptr to a i64 bit constant the size of (void*)
+    FLOAT,                  // The floating point intermediate. The value is
+                            // inside of the ptr.
+    DOUBLE,                 // The double point intermediate. The value is
+                            // inside of the ptr when compiling for 64 bit
+                            // platforms. On 32 bit platforms ptr points to the
+                            // value.
 
     // Struct intermediates
     GET_STRUCT_VARIABLE,    // The variable hash is inside of the ptr.
@@ -94,6 +101,7 @@ typedef enum intermediate_type {
                             // inside a scope. This contains a pointer to a
                             // vector of variable ids.
     CLEAR_STACK,            // ;
+    NIL,                    // This intermediate is skipped.
 } intermediate_type;
 
 /* struct intermediate - This struct represents one intermediate token
@@ -162,6 +170,12 @@ void cast_top_operand(type _type);
  */
 vector* get_intermediate_vector();
 
+/* This adds the inputed f32 onto the operand stack. */
+void add_float(f32 value);
+
+/* This adds the inputed f64 onto the operand stack. */
+void add_double(f64 value);
+
 /*
  * This adds the inputed constant number to the operand stack. This will convert
  * it into a "CONST_PTR" if it can't fit into a pointer but it's a "CONST" by
@@ -173,9 +187,16 @@ void add_const_num(i64 const_num);
 // right now but it really shouldn't be here.
 /*
  * If the ASCII number at the inputed token is valid it adds it to the
- * intermediates. Return if it added the number.
+ * intermediates. Returns true if a number was added, otherwise false.
  */
 bool add_if_ascii_num(char* token);
+
+/*
+ * If the inputed token is a valid float or double it adds it to the
+ * intermediates. Returns the ending index of the float if something was added,
+ * otherwise 0.
+ */
+u32 add_if_ascii_float(char** starting_token);
 
 /* This returns a pointer to the operand stack. */
 stack* get_operand_stack();

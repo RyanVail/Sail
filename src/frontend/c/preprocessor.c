@@ -9,6 +9,7 @@
 #include<frontend/common/preprocessor.h>
 #include<intermediate/intermediate.h>
 #if DEBUG && linux
+#include<cli.h>
 #include<time.h>
 #endif
 
@@ -143,8 +144,9 @@ vector C_preprocess_file(char* file_name)
 
     free(tokenized_file.contents);
     #if DEBUG && linux
-    printf("Took %f ms to preprocess file.\n", \
-        (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f);
+    if (get_global_cli_options()->time_compilation)
+        printf("Took %f ms to preprocess file.\n", \
+            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f);
     #endif
     return new_file;
 }

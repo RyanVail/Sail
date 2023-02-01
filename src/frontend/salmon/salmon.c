@@ -13,6 +13,10 @@
 #include<intermediate/intermediate.h>
 #include<intermediate/struct.h>
 #include<intermediate/enum.h>
+#if DEBUG && linux
+#include<cli.h>
+#include<time.h>
+#endif
 
 // TODO: This needs to be cleaned.
 
@@ -29,6 +33,7 @@ static inline bool salmon_parse_operation(char* string);
 static inline bool salmon_parse_struct_variable(vector* file, u32* location);
 static inline void salmon_parse_enum(vector* file, u32* location);
 static inline bool salmon_parse_enum_entry(vector* file, u32* location);
+static inline void salmon_parse_typedef(vector* file, u32* location);
 
 // TODO: Freeing the file that is returned from this function will replace
 // the names in the symbol table with junk.
@@ -39,9 +44,15 @@ static inline bool salmon_parse_enum_entry(vector* file, u32* location);
 void salmon_file_into_intermediate(char* file_name)
 {
     vector file = salmon_preprocess_file(file_name);
+
+    #if DEBUG && linux
+    clock_t starting_time = clock();
+    #endif
+
     for (u32 i=0; i < file.apparent_size; i++) {
         char* current_token = *(char**)vector_at(&file, i, false);
         // printf("%s\n", current_token);
+
         if (salmon_parse_initial_syntax_tree(&file, &i)
         || salmon_get_type(&file, &i)
         || salmon_parse_operation(current_token)
@@ -50,12 +61,14 @@ void salmon_file_into_intermediate(char* file_name)
         || salmon_parse_enum_entry(&file, &i))
             continue;
 
+        /* Checking if this is the end of a scope. */
         if (*current_token == '}') {
             intermediate _tmp_intermediate = { END, 0 };
             add_intermediate(_tmp_intermediate);
             continue;
         }
 
+        /* Checking if this is a var access. */
         if (!is_invalid_name(current_token)
         && get_variable_symbol(current_token, 0)) {
             intermediate _tmp_intermediate = \
@@ -64,11 +77,21 @@ void salmon_file_into_intermediate(char* file_name)
             add_operand(_tmp_intermediate, false);
         }
 
-        add_if_ascii_num(current_token);
+        /* Reading this as a possible float and incramenting to after it. */
+        i += add_if_ascii_float(vector_at(&file, i, false));
+
+        /* "vector_at" is used because "add_if_ascii_float" changes "i". */
+        add_if_ascii_num(*(char**)vector_at(&file, i, false));
     }
     
     clear_operand_stack();
     free_tokenized_file_vector(&file);
+
+    #if DEBUG && linux
+    if (get_global_cli_options()->time_compilation)
+        printf("Took %f ms to process file.\n", \
+            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
+    #endif
 }
 
 // TODO: A lot of these functions don't check for the end of the file so they
@@ -377,10 +400,9 @@ inline void salmon_parse_let(vector* file, u32* location)
      * This skips forward based on the number of before and after pointer
      * idicator chars.
      */
-    u32 skip = IS_TYPE_STRUCT(_type) ? _type.kind >> 16 : _type.ptr;
+    u32 skip = (IS_TYPE_STRUCT(_type)) ? (_type.kind >> 16) : (_type.ptr);
 
-    *location += \
-        skip << ((bool)type_names[0xc][0] + (bool)type_names[0xd][0] - 1);
+    *location += skip << ((bool)type_names[0xc][0]+(bool)type_names[0xd][0]-1);
 
     variable_symbol* new_var_symbol = get_variable_symbol(name, 0);
 
@@ -421,7 +443,7 @@ static inline bool salmon_get_type(vector* file, u32* location)
     cast_top_operand(_type);
 
     // TODO: This should be done in "intermediate.c".
-    #if VOID_PTR_64BIT
+    #if PTRS_ARE_64BIT
     intermediate _tmp_intermediate = { CAST, *((void**)&_type) };
     #else
     type* _tmp_type = malloc(sizeof(type));

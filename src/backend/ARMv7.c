@@ -18,6 +18,10 @@
 #include<backend/ARMv7.h>
 #include<intermediate/intermediate.h>
 #include<intermediate/struct.h>
+#if DEBUG && linux
+#include<time.h>
+#include<cli.h>
+#endif
 
 typedef enum location_type {
     STACK_INDEX,
@@ -242,7 +246,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         _var = malloc(sizeof(value_location));
         if (_var == NULLPTR)
             handle_error(0);
-        #if VOID_PTR_64BIT
+        #if PTRS_ARE_64BIT
         u32 immediate = ARMv7_get_immediate_of_const((u64)_intermediate.ptr);
         if (immediate != __UINT32_MAX__) {
             _var->type = IMMEDIATE;
@@ -340,7 +344,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         break;
     case CAST:
         _first = stack_top(&value_locations);
-        #if VOID_PTR_64BIT
+        #if PTRS_ARE_64BIT
         _first->value_type = *((type*)&_intermediate.ptr);
         #else
         _first->value_type = *((type*)_intermediate.ptr);
@@ -495,12 +499,12 @@ static inline void ARMv7_copy_variable(u32 _var_hash, u8 _reg)
     // TODO: This currently only works with variables that are inside of
     // registers.
     #if DEBUG
-        if (!(regs[base_reg].content.type == VAR_ACCESS
-        || regs[base_reg].content.type == VAR_ASSIGNMENT)
-        && regs[base_reg].content.ptr != _var_hash) {
-            printf("Variable hash: %08x\n", _var_hash);
-            send_error("Variable to copy is not inside of a register");
-        }
+    if (!(regs[base_reg].content.type == VAR_ACCESS
+    || regs[base_reg].content.type == VAR_ASSIGNMENT)
+    && regs[base_reg].content.ptr != _var_hash) {
+        printf("Variable hash: %08x\n", _var_hash);
+        send_error("Variable to copy is not inside of a register");
+    }
     #endif
 
     /* MOV VAR_REG, _reg */
@@ -530,7 +534,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
                 return i;
         }
 
-        #if VOID_PTR_64BIT
+        #if PTRS_ARE_64BIT
         if (regs[i].content.type == CONST_PTR) {
             lowest_priority_reg = i;
             if (_intermediate.type == CONST_PTR
@@ -656,6 +660,10 @@ void ARMv7_generate_struct(intermediate_struct* _struct)
  */
 void ARMv7_generate_structs()
 {
+    #if DEBUG && linux
+    clock_t starting_time = clock();
+    #endif
+
     hash_table* struct_hash_table = get_intermediate_structs();
     hash_table_bucket* current_bucket = struct_hash_table->contents;
     hash_table_bucket* linked_bucket;
@@ -680,6 +688,12 @@ void ARMv7_generate_structs()
         /* Incramenting to the next struct. */
         current_bucket++;
     }
+
+    #if DEBUG && linux
+    if (get_global_cli_options()->time_compilation)
+        printf("Took %f ms to generate all struct's memory layout.\n", \
+            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
+    #endif
 }
 
 /*

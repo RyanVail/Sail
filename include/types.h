@@ -14,6 +14,9 @@
 #define IS_TYPE_STRUCT(x) (!(x.kind << 16 >> 16 ^ STRUCT_TYPE))
 #define IS_KIND_STRUCT(x) (!((x << 16 >> 16) ^ STRUCT_TYPE))
 
+#define IS_TYPE_FLOAT_OR_DOUBLE(x) (x.kind == FLOAT_TYPE||x.kind == DOUBLE_TYPE)
+#define IS_KIND_FLOAT_OR_DOUBLE(x) (x == FLOAT_TYPE || x == DOUBLE_TYPE)
+
 // TODO: There should be a macro to get the ptr count that handles the dumb
 // "STRUCT_TYPE".
 
@@ -78,7 +81,11 @@ void print_type(type _type, bool graphical);
  */
 void print_type_kind(type _type, bool graphical);
 
-/* This scales the inputed value to the inputed type. */
+/*
+ * This scales the inputed value to the inputed type. This only works for values
+ * no greater magnitude than the minimum value of the type to the power of two
+ * minus one. EX. maximum of u8: 256^2-1 = 65535.
+ */
 i64 scale_value_to_type(i64 value, type _type);
 
 /*

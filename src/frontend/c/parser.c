@@ -6,6 +6,7 @@
 #include<intermediate/struct.h>
 #if DEBUG && linux
 #include<time.h>
+#include<cli.h>
 #endif
 
 /* This represents the priority of an operator. Higher value, higher prio. */
@@ -40,7 +41,7 @@ void C_file_into_intermediate(char* file_name)
 
     /* Initial intermediate pass. */
     #if DEBUG && linux
-        clock_t starting_time = clock();
+    clock_t starting_time = clock();
     #endif
 
     // struct
@@ -97,6 +98,7 @@ void C_file_into_intermediate(char* file_name)
     }
 
     #if linux && DEBUG
+    if (get_global_cli_options()->time_compilation)
         printf("Took %f ms to do the initial intermediate pass.\n", \
             (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
     #endif

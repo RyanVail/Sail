@@ -8,6 +8,7 @@
 #include<intermediate/intermediate.h>
 #if DEBUG && linux
 #include<time.h>
+#include<cli.h>
 #endif
 
 static inline void goto_start_of_next_basic_block(u32* location, \
@@ -33,7 +34,7 @@ void optimization_do_register_pass()
      */
 
     #if DEBUG && linux
-        clock_t starting_time = clock();
+    clock_t starting_time = clock();
     #endif
 
     vector* intermediates = get_intermediate_vector();
@@ -90,6 +91,7 @@ void optimization_do_register_pass()
     *intermediates = output_intermediates;
 
     #if DEBUG && linux
+    if (get_global_cli_options()->time_compilation)
         printf("Took %f ms to do the register pass.\n", \
             (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
     #endif

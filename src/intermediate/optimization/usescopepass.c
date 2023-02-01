@@ -6,7 +6,8 @@
 #include<intermediate/optimization/usescopepass.h>
 #include<intermediate/intermediate.h>
 #if DEBUG && linux
-    #include<time.h>
+#include<time.h>
+#include<cli.h>
 #endif
 
 void optimization_do_use_scope_pass()
@@ -87,6 +88,7 @@ void optimization_do_use_scope_pass()
     *get_intermediate_vector() = output_intermediates;
 
     #if DEBUG && linux
+    if (get_global_cli_options()->time_compilation)
         printf("Took %f ms to do the use scope pass.\n", \
             (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
     #endif

@@ -2,6 +2,7 @@
 #include<frontend/common/tokenizer.h>
 #if DEBUG && linux
 #include<time.h>
+#include<cli.h>
 #endif
 
 static char* white_space_chars = NULLPTR;
@@ -114,8 +115,9 @@ vector tokenize_file(char* file_name)
     fclose(file_handle);
 
     #if DEBUG && linux
-    printf("Took %f ms to tokenize file.\n", \
-        (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f);
+    if (get_global_cli_options()->time_compilation)
+        printf("Took %f ms to tokenize file.\n", \
+            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f);
     #endif
 
     return file_vector;

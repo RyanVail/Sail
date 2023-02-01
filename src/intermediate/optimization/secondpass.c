@@ -87,7 +87,7 @@ void optimization_do_second_pass()
         && (_intermediate->type <= LESS_THAN_EQUAL)) {
             operand* _first = stack_top(&operand_stack);
             operand* _second = operand_stack.top->next->value;
-            #if !VOID_PTR_64BIT
+            #if !PTRS_ARE_64BIT
             if ((_first->type == CONST_PTR || _first->type == CONST)
             && (_second->type == CONST_PTR || _second->type == CONST)) {
                 i64 _first_value = (i64)_first->ptr;

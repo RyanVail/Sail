@@ -126,7 +126,118 @@ type get_type(char** token)
 }
 
 /*
- * This returns the ASCII number of a string.
+ * This goes through the inputed string and returns 0 if it isn't a float, 1 if
+ * it is a float, and 2 if it's a double indicated by the trailing 'd' or 'f',
+ * but defaulting to a float.
+ */
+is_ascii_float_return is_ascii_float(char** float_token)
+{
+    // TODO: If "is_ascii_float" and "get_ascii_float" used indexs rather than
+    // ptrs that would get rid of this terriblesness.
+    /* This is used to tell how many tokens there are in this float. */
+    char** starting_token = float_token;
+
+    bool found_period = false;
+    char* current_token = *float_token;
+    char current_char;
+    u8 float_type = 0;
+    while (true) {
+        /* Making sure this token is valid. */
+        if (current_token == NULLPTR) {
+            float_token++;
+            current_token = *float_token;
+            continue;
+        }
+
+        current_char = *current_token;
+
+        /* Checking for the period. */
+        if (current_char == '.') {
+            if (found_period) {
+                float_type = 0;
+                goto is_ascii_float_return_construct_struct_label;
+            }
+            found_period = true;
+            float_token++;
+            current_token = *float_token;
+            continue;
+        }
+
+        /* Checking for trailing 'f' and 'd' chars. */
+        if (current_char == 'f' || current_char == 'd') {
+            if (*(current_token+1) != '\0') {
+                float_type = 0;
+                goto is_ascii_float_return_construct_struct_label;
+            }
+            float_type = (current_char == 'f') ? (1) : (2);
+            goto is_ascii_float_return_construct_struct_label;
+        }
+
+        /* Checking if the string is done. */
+        if (current_char == '\0') {
+            /* If there's a period it's done otherwise go to the next token. */
+            if (found_period) {
+                float_type = 1;
+                goto is_ascii_float_return_construct_struct_label;
+            } else {
+                float_token++;
+                current_token = *float_token;
+                continue;
+            }
+        }
+
+        /* If this character isn't a number, this isn't a float. */
+        if (48 > current_char || current_char > 57) {
+            float_type = 0;
+            goto is_ascii_float_return_construct_struct_label;
+        }
+
+        current_token++;
+    }
+
+    is_ascii_float_return_construct_struct_label:
+
+    is_ascii_float_return returning = { float_token, \
+    float_token - starting_token, float_type };
+    return returning;
+}
+
+/*
+ * This returns the f64 representation of the inputed token.
+ */
+f64 get_ascii_float(char** float_token, char** ending_float_token)
+{
+    f64 float_value = 0.0f;
+    bool found_period = false;
+    char* current_token;
+    while (true) {
+        /* Getting this token. */
+        current_token = *float_token;
+        if (current_token == NULLPTR)
+            continue;
+
+        /* Checking for a period. */
+        if (*current_token == '.')
+            found_period = true;
+
+        /* Getting this token's value and dividing it if there was a period. */
+        f64 tmp_value = strtold(current_token, NULLPTR);
+        if (found_period)
+            for (int i=0; i < strlen(current_token) - 1; i++)
+                tmp_value /= 10;
+        float_value += tmp_value;
+
+        /* Checking if this is the last token. */
+        if (float_token == ending_float_token)
+            return float_value;
+
+        /* Incramenting to the next token. */
+        float_token++;
+    }
+}
+
+/*
+ * This returns the numeral value of an ASCII string.
  */
 i64 get_ascii_number(char* num_string)
 {

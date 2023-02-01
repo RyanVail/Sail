@@ -21,17 +21,15 @@
 #if linux && DEBUG
 #include<time.h>
 #endif
-#if DEBUG && RUN_TESTS
-#include<tests/test.h>
-#endif
+#include<frontend/common/parser.h>
 
 int main(i32 argc, char* args[])
 {
     /* This is a fail safe. */
-    #if DEBUG && VOID_PTR_64BIT
+    #if DEBUG && PTRS_ARE_64BIT
     if (sizeof(void*) != 8)
         send_error( \
-        "Set \"VOID_PTR_64BIT\" flag in \"main.h\" to false and recompile");
+        "Set \"PTRS_ARE_64BIT\" flag in \"main.h\" to false and recompile");
     #endif
  
     // TODO: "hashtable.c" should be "hash_table.c" same with "hashtable.h".
@@ -66,14 +64,18 @@ int main(i32 argc, char* args[])
     init_struct_hash_table(4);
     init_symbol_table(8, 8);
 
+    get_global_cli_options()->time_compilation = true;
+
     // TODO: This and C should be called "into_intermediates" with an 's'.
     salmon_file_into_intermediate("../tests/loop.sal");
     // free_tokenized_file_vector(&_tmp);
 
-    ARMv7_generate_structs();
     optimization_do_register_pass();
     optimization_do_use_scope_pass();
     optimization_do_constant_pass();
+
+    // ARMv7_generate_structs();
+
     print_intermediates();
 
     exit(0);

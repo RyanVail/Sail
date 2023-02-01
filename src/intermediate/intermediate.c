@@ -3,6 +3,9 @@
  * intermediates. Intermediates should be feed in to "add_intermediate" in
  * reverse polish notation.
  */
+// TODO: A lot of these function names are not specific enough like
+// "add_operand" which shuold be called something like
+// "add_intermediate_operand"
 #include<intermediate/intermediate.h>
 #include<frontend/common/parser.h>
 
@@ -51,7 +54,7 @@ void pop_operand(bool dual, bool comparison)
     }
 
     operand* _second_operand = \
-    comparison ? stack_pop(&operand_stack) : stack_top(&operand_stack);
+    (comparison) ? (stack_pop(&operand_stack)) : (stack_top(&operand_stack));
 
     if (_second_operand->intermediate.type == VAR_RETURN)
         goto pop_operand_second_operand_is_place_holder_label;
@@ -191,9 +194,16 @@ void set_type_of_operand(operand* _operand)
         _type.kind = get_lowest_type((i64)_operand->intermediate.ptr);
         _operand->type = _type;
         break;
+    case FLOAT:
+        _type.kind = FLOAT_TYPE;
+        _operand->type = _type;
+        break;
+    case DOUBLE:
+        _type.kind = DOUBLE_TYPE;
+        _operand->type = _type;
+        break;
     case VAR_DECLERATION:
-        _operand->type = \
-            ((variable_symbol*)_operand->intermediate.ptr)->type;
+        _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
         break;
     case VAR_ASSIGNMENT:
     case VAR_RETURN:
@@ -249,7 +259,7 @@ bool free_constants)
     while (intermediates_vector.apparent_size != 0) {
         register intermediate* _intermediate = vector_pop(&intermediates_vector);
 
-        #if !VOID_PTR_64BIT
+        #if !PTRS_ARE_64BIT
         if (free_constants && _intermediate->ptr != NULLPTR
         && (_intermediate->type == CONST_PTR || _intermediate->type == CAST))
             free(_intermediate->ptr);
@@ -276,6 +286,41 @@ vector* get_intermediate_vector()
     return &intermediates_vector;
 }
 
+/* This adds the inputed f32 onto the operand stack. */
+void add_float(f32 value)
+{
+    #if DEBUG && FLOATS_IN_PTRS
+    if (sizeof(u32) != sizeof(f32))
+        send_error("The size of a u32 must be equal to the size of a float");
+    #endif
+
+    #if FLOATS_IN_PTRS
+    intermediate _intermediate = { FLOAT, F32_TO_VOIDPTR(value) };
+    #else
+    f32* new_float = malloc(sizeof(f32));
+    if (new_float == NULLPTR)
+        send_error(0);
+    *new_float = value;
+    intermediate _intermediate = { FLOAT, new_float };
+    #endif
+    add_operand(_intermediate, false);
+}
+
+/* This adds the inputed f64 onto the operand stack. */
+void add_double(f64 value)
+{
+    #if PTRS_ARE_64BIT && FLOATS_IN_PTRS
+    intermediate _intermediate = { DOUBLE, F64_TO_VOIDPTR(value) };
+    #else
+    f64* new_double = malloc(sizeof(f64));
+    if (new_double == NULLPTR)
+        send_error(0);
+    *new_double = value;
+    intermediate _intermediate = { DOUBLE, new_double };
+    #endif
+    add_operand(_intermediate, false);
+}
+
 /*
  * This adds the inputed constant number to the operand stack. This will convert
  * it into a "CONST_PTR" if it can't fit into a pointer but it's a "CONST" by
@@ -287,7 +332,7 @@ void add_const_num(i64 const_num)
      * If we have an i64 larger than the size of a pointer we store the value
      * on the heap and make the pointer point to the value.
      */
-    #if !VOID_PTR_64BIT
+    #if !PTRS_ARE_64BIT
     intermediate _operand;
     i64* _const_num;
     if (const_num < ~((i64)1 << ((sizeof(void*) << 3))-1)
@@ -309,7 +354,7 @@ void add_const_num(i64 const_num)
 
 /*
  * If the ASCII number at the inputed token is valid it adds it to the
- * intermediates. Return true if a number was added, otherwise false.
+ * intermediates. Returns true if a number was added, otherwise false.
  */
 bool add_if_ascii_num(char* token)
 {
@@ -319,6 +364,32 @@ bool add_if_ascii_num(char* token)
         return true;
     }
     return false;
+}
+
+/*
+ * If the inputed token is a valid float or double it adds it to the
+ * intermediates. Returns the ending index of the float if something was added,
+ * otherwise 0.
+ */
+u32 add_if_ascii_float(char** starting_token)
+{
+    is_ascii_float_return float_info = is_ascii_float(starting_token);
+    f64 float_value;
+    switch (float_info.type)
+    {
+    case 0:
+        return 0;
+        break;
+    case 1:
+        float_value = get_ascii_float(starting_token, float_info.end_ptr);
+        add_float(float_value);
+        break;
+    case 2:
+        float_value = get_ascii_float(starting_token, float_info.end_ptr);
+        add_double(float_value);
+        break;
+    }
+    return float_info.token_length;
 }
 
 /* This returns a pointer to the operand stack. */
@@ -338,8 +409,9 @@ const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", \
 "LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var decleration", \
 "Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", \
 "Else", "Loop", "End", "Continue", "Return", "Break", "Func def", "Func call", \
-"Goto", "Const", "Const ptr", "Get struct variable", "Func return", "Mem return", "Comparison return",\
-"Var return", "Cast", "Register", "Ignore", "Var use", "Clear stack"};
+"Goto", "Const", "Const ptr", "Float", "Double", "Get struct variable", \
+"Func return", "Mem return", "Comparison return", "Var return", "Cast", \
+"Register", "Ignore", "Var use", "Clear stack", "NIL" };
 
 void print_intermediates()
 {
@@ -348,20 +420,36 @@ void print_intermediates()
 
         printf("INTER: %s\n", INTERMEDIATES_TEXT[_intermediate->type]);
 
-        if (_intermediate->type == REGISTER || _intermediate->type == VAR_USE)
-        {
-            vector* _tmp_vec = _intermediate->ptr;
+        vector* _tmp_vec;
 
+        switch(_intermediate->type)
+        {
+        case REGISTER:
+        case VAR_USE:
+            _tmp_vec = _intermediate->ptr;
             if (_tmp_vec == NULLPTR)
                 continue;
-
             for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++)
                 printf("%08x\n",*(u32*)vector_at(_intermediate->ptr,y,0));
-        }
-        #if VOID_PTR_64BIT
-        if (_intermediate->type == CONST)
+            break;
+        case FLOAT:
+            #if FLOATS_IN_PTRS
+            printf("%f\n", VOIDPTR_TO_F32(_intermediate->ptr));
+            #else
+            printf("%f\n", *((f64*)_intermediate->ptr));
+            #endif
+            break;
+        case CONST:
             printf("%li\n", _intermediate->ptr);
-        #endif
+            break;
+        case DOUBLE:
+            #if PTRS_ARE_64BIT && FLOATS_IN_PTRS
+            printf("%lf\n", VOIDPTR_TO_F64(_intermediate->ptr));
+            #else
+            printf("%lf\n", *((f64*)_intermediate->ptr));
+            #endif
+            break;
+        }
     }
 }
 

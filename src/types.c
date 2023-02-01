@@ -6,7 +6,7 @@
 #include<intermediate/struct.h>
 
 static char* DEFAULT_TYPE_NAMES[] = { "void", "bool", "i8", "u8", "i16", "u16",
-"i32", "u32", "i64", "u64", "float", "double", "%", "%", "\0" };
+"i32", "u32", "i64", "u64", "f32", "f64", "%", "%", "\0" };
 
 static u32 DEFAULT_TYPE_SIZES[] = { 0, 1, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 4 };
 
@@ -70,21 +70,29 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
     if (_to.ptr != _from.ptr)
         goto type_can_implicitly_cast_to_error_label;
 
-    /* If only one type is a struct then there was a problem. */
-    if (IS_TYPE_STRUCT(_to) + IS_TYPE_STRUCT(_from) == 1)
+    /* If only one type is a struct then send an error. */
+    if (IS_TYPE_STRUCT(_to) ^ IS_TYPE_STRUCT(_from))
         goto type_can_implicitly_cast_to_error_label;
-    else if (IS_TYPE_STRUCT(_to) + IS_TYPE_STRUCT(_from) == 2 
+    else if ((IS_TYPE_STRUCT(_to) && IS_TYPE_STRUCT(_from))
     && (_to.kind >> 16 != _from.kind >> 16))
         goto type_can_implicitly_cast_to_error_label;
 
+    /*
+     * If these are ints and one is negative and the other is positive or the
+     * "to" type is smaller than the "from" type there send an error.
+     */
     if (IS_TYPE_INT(_to) && (IS_TYPE_INT(_from))
     && ((_to.kind < _from.kind) || ((_to.kind & 1) != (_from.kind & 1))))
             goto type_can_implicitly_cast_to_error_label;
 
-    // TODO: Impliment floats and doubles.
-    if (_from.kind == FLOAT_TYPE || _from.kind == DOUBLE_TYPE
-    || _to.kind == FLOAT_TYPE || _to.kind == DOUBLE_TYPE)
-        send_error("Floats & doubles aren't implimented yet.");
+    /* If only one type is a float / double. */
+    if (IS_TYPE_FLOAT_OR_DOUBLE(_from) ^ IS_TYPE_FLOAT_OR_DOUBLE(_to))
+        goto type_can_implicitly_cast_to_error_label;
+
+    /* If "to" is a float and "from" is a double send an error. */
+    if ((IS_TYPE_FLOAT_OR_DOUBLE(_from) && IS_TYPE_FLOAT_OR_DOUBLE(_to))
+    && (_from.kind > _to.kind))
+        goto type_can_implicitly_cast_to_error_label;
 
     return true;
 
@@ -172,7 +180,11 @@ void print_type_kind(type _type, bool graphical)
         printf("\x1b[0m");
 }
 
-/* This scales the inputed value to the inputed type. */
+/*
+ * This scales the inputed value to the inputed type. This only works for values
+ * no greater magnitude than the minimum value of the type to the power of two
+ * minus one. EX. maximum of u8: 256^2-1 = 65535.
+ */
 i64 scale_value_to_type(i64 value, type _type)
 {
     i64 tmp_value = value >> (TYPE_SIZES[_type.kind] << 3);
