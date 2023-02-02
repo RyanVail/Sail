@@ -3,7 +3,7 @@
 #include<types.h>
 #include<datastructures/stack.h>
 #include<datastructures/hashtable.h>
-#include<frontend/salmon/salmon.h>
+#include<frontend/salmon/parser.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/salmon/preprocessor.h>
 #include<frontend/c/preprocessor.h>
@@ -35,8 +35,6 @@ int main(i32 argc, char* args[])
     // TODO: "hashtable.c" should be "hash_table.c" same with "hashtable.h".
     // TOOD: Symbol table ids cannot be stored inside void pointers on 16 bit
     // machines which may be a problem.
-    // TODO: The "STACK_IS_EMPTY" macro should replace "stack_size()" calls
-    // since it's way more efficent
 
     // process_cli_options(argc, args);
 
@@ -74,9 +72,9 @@ int main(i32 argc, char* args[])
     optimization_do_use_scope_pass();
     optimization_do_constant_pass();
 
-    // ARMv7_generate_structs();
+    ARMv7_generate_structs();
 
-    print_intermediates();
+    // print_intermediates();
 
     exit(0);
 

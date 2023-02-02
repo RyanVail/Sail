@@ -82,6 +82,7 @@ intermediate_struct* create_struct(u8 flags, char* struct_name)
     _struct->contents.type_size = sizeof(struct_variable);
     _struct->hash = result_hash;
     _struct->name = new_struct_name;
+    _struct->byte_size = __UINT16_MAX__;
     return _struct;
 }
 
@@ -178,24 +179,29 @@ void reverse_struct_variables(intermediate_struct* _struct)
 
     /* Copying over the variables. */
     struct_variable* _var;
-    while (stack_size(&old_stack) != 0) {
+    while (!IS_STACK_EMPTY(old_stack)) {
         _var = stack_pop(&old_stack);
-        stack_push(&_struct->contents, _var);
+        stack_push(&(_struct->contents), _var);
     }
 }
 
 /*
  * This returns a pointer to the "intermediate_stucts" hashtable.
  */
-intermediate_struct* get_intermediate_structs()
+hash_table* get_intermediate_structs()
 {
+    #if DEBUG
+    if (intermediate_structs.contents == NULLPTR)
+        send_error("Intermediate structs have not been inited yet");
+    #endif
+
     return &intermediate_structs;
 }
 
 /*
  * This generates a place holder struct variables in the heap and returns a
  * pointer to it. Padding "struct_variable"s have a hash equal to 0, random type
- * values, and the "name" pointers value is the number of bytes of padding.
+ * values and the name is a "u32" that holds the number of bytes of padding.
  */
 struct_variable* generate_padding_struct_variable(u32 bytes_of_padding)
 {
@@ -214,3 +220,32 @@ struct_variable* generate_padding_struct_variable(u32 bytes_of_padding)
     struct_var->name = (void*)bytes_of_padding;
     return struct_var;
 }
+
+#if DEBUG
+
+/*
+ * This function prints all of the variables in the struct. This function is for
+ * debugging and is not noramlly called.
+ */
+void print_struct(intermediate_struct* _struct)
+{
+    link* current_link = _struct->contents.top;
+    struct_variable* current_variable;
+
+    printf("STRUCT: %s\n", _struct->name);
+
+    while (current_link != NULLPTR) {
+        /* Getting and printing the struct variable. */
+        current_variable = (struct_variable*)current_link->value;
+        if (current_variable->hash == 0) {
+            printf("PADDING %u BYTES\n", (u32)current_variable->name);
+        } else {
+            printf("STRUCT VAR: %s\n", current_variable->name);
+        }
+
+        /* Going to the next link. */
+        current_link = current_link->next;
+    }
+}
+
+#endif

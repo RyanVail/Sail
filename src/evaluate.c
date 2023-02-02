@@ -46,3 +46,29 @@ i64 evaluate_expression(i64 operand0, i64 operand1, operator _operator)
     #endif
     }
 }
+
+/* This simplifies the inequality at the inputed intermediate vector. */
+void simplify_inequalitiy(intermediate* starting_interemdiate)
+{
+    /*
+    (3x) > (x + 1)
+    (3 x *) (x 1 +) >               RPN
+    ( (3 x *) ) ( (x) 1 + ) >       SEPERATE TERMS
+    ( (2 x *) ) ( 0 1 + ) >         SUBTRACT SMALLER COMMON TERM
+    ( (2 x *) 0 1 + - ) (0) >       SUBTRACT OPERAND ZERO BY OPERAND ONE
+    ( 2 x * 1 - ) (0) >             CONSTANT PASS
+
+
+    (2x + 3 - 4) <= (2x - 4)
+    (2 x * 3 + 4 -) (2 x * 4 -) <=          RPN
+    ( (2 x *) 3 + 4 -) ( (2 x *) 4 -) <=    SEPERATE COMMON TERMS
+    (0 3 + 4 -) (0 4 -) <=                  REPLACE COMMON TERMS WITH ZERO
+    (0)                                     CONSTANT PASS
+
+
+    ( 3 x * 2 +) ( 2 y * 3 -) >         RPN
+    ( (3 x *) 2 +) ( (2 y *) 3 -) >     SEPERATE TERMS
+    ( (3 x *) (2 y *) - 2 + 3 -) (0) >  MOVING EVERYTHING TO OPERAND ZERO
+    ( 3 x * 2 y * - 1 -) (0) >          CONSTANT PASS
+    */
+}

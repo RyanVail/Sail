@@ -161,8 +161,6 @@ static inline void ARMv7_add_asm(u32 machine_code_to_add)
  */
 static inline void ARMv7_save_register(u8 reg_index)
 {
-    u32* type_sizes = get_type_sizes;
-
     if (regs[reg_index].content.type != VAR_ACCESS)
         return;
 
@@ -211,7 +209,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case END:
         // TODO: This shouldn't be as nested as it is.
         end_control_flow = NULLPTR;
-        if (!STACK_IS_EMPTY(control_flow_stack)) {
+        if (!IS_STACK_EMPTY(control_flow_stack)) {
             end_control_flow = stack_pop(&control_flow_stack);
             if (end_control_flow != NULLPTR) {
                 i32 new_offset = end_control_flow->offset - current_offset;
@@ -228,7 +226,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         clear_variables_in_scope();
         break;
     case CLEAR_STACK:
-        while (!(STACK_IS_EMPTY(value_locations)))
+        while (!(IS_STACK_EMPTY(value_locations)))
             free(stack_pop(&value_locations));
         break;
     case NEG:
@@ -622,38 +620,58 @@ void ARMv7_generate_struct(intermediate_struct* _struct)
     _struct->contents.top = NULLPTR;
 
     /* Copying over the variables with padding in needed places. */
+    u32* type_sizes = get_type_sizes();
     u32 allignment = 0;
     u32 remainder;
+    u32 type_size;
     struct_variable* _padding;
     struct_variable* _var;
 
-    u32* type_sizes = get_type_sizes();
     while (stack_size(&old_stack) != 0) {
         _var = stack_pop(&old_stack);
 
-        /* Checking if the variable needs padding. */
-        if (IS_TYPE_STRUCT((_var->type))) {
-            // TODO: This needs to work with struct types.
-        } else if (_var->type.ptr != 0) {
-            remainder = allignment % type_sizes[12];
-            allignment += type_sizes[12];
-        } else {
-            remainder = allignment % type_sizes[_var->type.kind & 0xF];
-        }
+        /* Adding "type_size" to the allignment and getting the remainder. */
+        if (IS_TYPE_STRUCT((_var->type)) && _var->type.ptr == _struct->hash
+        && _var->type.kind >> 16 == 0)
+            send_error("Structs cannot contain themselves");
 
-        /* Adding the padding to the stack if needed. */
+        type_size = get_size_of_type(_var->type, &ARMv7_generate_struct);
+        allignment += type_size;
+
+        /*
+         * If this is a struct (ptrs excluded) that has a size larger than that
+         * of a ptr, it will be set to a pointer.
+         */
+        if (IS_TYPE_STRUCT((_var->type)) && _var->type.kind >> 16 == 0
+        && type_size > type_sizes[12])
+            type_size = type_sizes[12];
+
+        /* The first step of geting the padding size needed. */
+        remainder = allignment % type_size;
+
+        /* The second step of getting the padding size. */
         if (remainder != 0) {
-            remainder = type_sizes[_var->type.kind & 0xF] - remainder;
+            remainder = type_size - remainder;
+
+            /* Creating and adding the padding. */
             _padding = generate_padding_struct_variable(remainder);
             stack_push(&_struct->contents, _padding);
             allignment += remainder;
         }
-        allignment += type_sizes[_var->type.kind & 0xF];
+
         /* Adding the original variable to the stack. */
         stack_push(&_struct->contents, _var);
     }
+
+    _struct->byte_size = allignment;
+
+    #if DEBUG
+    reverse_struct_variables(_struct);
+    print_struct(_struct);
+    #endif
 }
 
+// TODO: This function should be shared in "struct.c" and take in a function ptr.
 /*
  * This function goes through all defined structs and generates their memory
  * layout and padding.
@@ -665,28 +683,30 @@ void ARMv7_generate_structs()
     #endif
 
     hash_table* struct_hash_table = get_intermediate_structs();
-    hash_table_bucket* current_bucket = struct_hash_table->contents;
     hash_table_bucket* linked_bucket;
     intermediate_struct* current_struct;
 
     /* Going through all structs in the struct hash table. */
     for (u32 i=0; i < (1 << struct_hash_table->size); i++) {
-        linked_bucket = current_bucket;
+        linked_bucket = &((hash_table_bucket*)struct_hash_table->contents)[i];
 
         /* Going through the linked buckets. */
         while (linked_bucket != NULLPTR) {
+            /* If this bucket doesn't have anything just continue. */
+            if (linked_bucket->hash == 0) {
+                linked_bucket = linked_bucket->next;
+                continue;
+            }
+
             /* Making the memory layout of the current struct. */
             current_struct = linked_bucket->value;
             if (current_struct != NULLPTR) {
                 reverse_struct_variables(current_struct);
                 ARMv7_generate_struct(current_struct);
-                reverse_struct_variables(current_struct);
             }
-            linked_bucket = linked_bucket->value;
-        }
 
-        /* Incramenting to the next struct. */
-        current_bucket++;
+            linked_bucket = linked_bucket->next;
+        }
     }
 
     #if DEBUG && linux
@@ -712,7 +732,7 @@ void ARMv7_clear_registers()
  */
 void ARMv7_free_all()
 {
-    while (!(STACK_IS_EMPTY(value_locations)))
+    while (!(IS_STACK_EMPTY(value_locations)))
         free(stack_pop(&value_locations));
 }
 

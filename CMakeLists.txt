@@ -23,7 +23,7 @@ add_executable(Sail
 	src/frontend/common/parser.c
 	src/frontend/salmon/preprocessor.c
 	src/evaluate.c
-	src/frontend/salmon/salmon.c
+	src/frontend/salmon/parser.c
 	src/frontend/c/preprocessor.c
 	src/frontend/c/parser.c
 	src/intermediate/optimization/registerpass.c

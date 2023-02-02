@@ -1,6 +1,7 @@
 /*
  * This handles everything that involves types.
  */
+
 #include<types.h>
 #include<common.h>
 #include<intermediate/struct.h>
@@ -25,10 +26,6 @@ static u32* TYPE_SIZES = DEFAULT_TYPE_SIZES;
  */
 type_kind get_lowest_type(i64 value)
 {
-    // TODO: Decide if this should stay in or not.
-    // if (value == 0 || value == 1)
-        // return BOOL_TYPE;
-
     if (value > 0) {
         if (value <= __UINT8_MAX__)
             return U8_TYPE;
@@ -52,20 +49,47 @@ type_kind get_lowest_type(i64 value)
     return I32_TYPE;
 }
 
-// TODO: The error input of the below function was only used for debug things I'm
-// pretty sure and doesn't need to exist anymore.
+/*
+ * This takes in a type and a function that generates the contents of a struct
+ * and returns the size of a type. If no "struct_generator" is provided this
+ * not generate the size of a struct and will return "__UINT32_MAX__".
+ * "struct_generator" is expected to generate both the padding of the struct and
+ * put the full size of the struct into "byte_size" from a ptr to the struct.
+ */
+u32 get_size_of_type(type _type, void* struct_generator(intermediate_struct*))
+{
+    intermediate_struct* _struct;
+    if (IS_TYPE_STRUCT(_type)) {
+        /* Checking if this is a struct pointer. */
+        if (_type.kind >> 16)
+            return TYPE_SIZES[12];
+
+        /* Generating the struct's size if it hasn't been inited yet. */
+        _struct = find_struct(_type.ptr);
+        if (_struct->byte_size == __UINT16_MAX__) {
+            if (struct_generator == NULLPTR)
+                return __UINT32_MAX__;
+            struct_generator(_struct);
+        }
+        return _struct->byte_size;
+    } else if (_type.ptr != 0) {
+        /* If the type is a ptr this is the size of a ptr. */
+        return TYPE_SIZES[12];
+    } else {
+        /* If the type is a normal type. */
+        return TYPE_SIZES[_type.kind & 0xF];
+    }
+}
+
 /*
  * This checks if type "_from" can be casted into type "_to" implicitily.
- * Returns true if "_from" can implicitly cast to "_to".
+ * Returns true if "_from" can implicitly cast to "_to". Otherwise prints an
+ * error.
  */
-bool type_can_implicitly_cast_to(type _from, type _to, bool error)
+bool type_can_implicitly_cast_to(type _from, type _to)
 {
-    if (_from.kind == VOID_TYPE || _to.kind == VOID_TYPE) {
-        if (!error)
-            return false;
-        // TODO: This error needs color!
+    if (_from.kind == VOID_TYPE || _to.kind == VOID_TYPE)
         send_error("Usage of type `void` without cast");
-    }
 
     if (_to.ptr != _from.ptr)
         goto type_can_implicitly_cast_to_error_label;
@@ -98,10 +122,6 @@ bool type_can_implicitly_cast_to(type _from, type _to, bool error)
 
     type_can_implicitly_cast_to_error_label:
 
-    if (!error)
-        return false;
-
-    // TODO: All errors should be like this one!!
     printf("\x1b[091mERROR:\x1b[0m Cannot implicity cast ");
     print_type_kind(_from, true);
     printf(": ");

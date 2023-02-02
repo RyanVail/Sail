@@ -4,9 +4,8 @@
  */
 // TODO: There should be a function to clear the out of scope variable names
 // when we stop reading from a file.
-// TODO: This file should be named "parser.c" to keep consistency.
 
-#include<frontend/salmon/salmon.h>
+#include<frontend/salmon/parser.h>
 #include<frontend/common/parser.h>
 #include<frontend/salmon/preprocessor.h>
 #include<intermediate/symboltable.h>
@@ -280,22 +279,6 @@ inline void salmon_parse_struct(vector* file, u32* location)
         add_variable_to_struct(_struct,var_type,var_name);
     }
 
-    // reverse_struct_variables(_struct);
-    // ARMv7_generate_struct(_struct);
-    // reverse_struct_variables(_struct);
-    // struct_variable* __var;
-    // while (stack_size(&_struct->contents) != 0) {
-    //     __var = stack_pop(&_struct->contents);
-    //     printf("===================\nHASH: %08x\n", __var->hash);
-    //     if (__var->hash == 0) {
-    //         printf("PADDING: %u\n", (u32)__var->name);
-    //     } else {
-    //         printf("NAME: %s\n", __var->name);
-    //     }
-    // }
-    // printf("===================\n");
-    // exit(0);
-
     if (**(char**)vector_at(file, *location, false) != '}')
         send_error("Expected '}' at the end of a struct definition.");
 }
@@ -465,52 +448,52 @@ static inline bool salmon_get_type(vector* file, u32* location)
 static inline bool salmon_parse_single_char_operation(char _char)
 {
     intermediate_type _operation;
-    // TODO: Switch statments need to be standerdized inside of this project.
-    switch (_char) {
-        case '+':
-            _operation = ADD;
-            break;
-        case '-':
-            _operation = SUB;
-            break;
-        case '/':
-            _operation = DIV;
-            break;
-        case '*':
-            _operation = MUL;
-            break;
-        case '^':
-            _operation = XOR;
-            break;
-        case '|':
-            _operation = OR;
-            break;
-        case '&':
-            _operation = ADD;
-            break;
-        case '%':
-            _operation = MOD;
-            break;
-        case '~':
-            _operation = COMPLEMENT;
-            break;
-        case '!':
-            _operation = NOT;
-            break;
-        case '@':
-            _operation = MEM_LOCATION;
-            break;
-        case '#':
-            _operation = MEM_ACCESS;
-            break;
-        case '=':
-            _operation = EQUAL;
-            break;
-        case ';':
-            _operation = CLEAR_STACK;
-            break;
-        default:
-            return false;
+    switch (_char)
+    {
+    case '+':
+        _operation = ADD;
+        break;
+    case '-':
+        _operation = SUB;
+        break;
+    case '/':
+        _operation = DIV;
+        break;
+    case '*':
+        _operation = MUL;
+        break;
+    case '^':
+        _operation = XOR;
+        break;
+    case '|':
+        _operation = OR;
+        break;
+    case '&':
+        _operation = ADD;
+        break;
+    case '%':
+        _operation = MOD;
+        break;
+    case '~':
+        _operation = COMPLEMENT;
+        break;
+    case '!':
+        _operation = NOT;
+        break;
+    case '@':
+        _operation = MEM_LOCATION;
+        break;
+    case '#':
+        _operation = MEM_ACCESS;
+        break;
+    case '=':
+        _operation = EQUAL;
+        break;
+    case ';':
+        _operation = CLEAR_STACK;
+        break;
+    default:
+        return false;
     }
     process_operation(_operation);
     return true;
@@ -557,9 +540,8 @@ static inline bool salmon_parse_enum_entry(vector* file, u32* location)
 
     /* Make sure there's something on the operand stack. */
     stack* operand_stack = get_operand_stack();
-    if (stack_size(operand_stack) == 0) {
+    if (IS_STACK_EMPTY((*operand_stack)))
         return false;
-    }
 
     /* Casting the top operand. */
     operand* top_operand = stack_top(operand_stack);
@@ -581,7 +563,7 @@ static inline bool salmon_parse_struct_variable(vector* file, u32* location)
      * If the size of operand stack is zero there are no operands to get a
      * variable from.
      */
-    if (stack_size(operand_stack) == 0)
+    if (IS_STACK_EMPTY((*operand_stack)))
         return false;
 
     /* Making sure the top operand is a struct and we are accessing a var. */

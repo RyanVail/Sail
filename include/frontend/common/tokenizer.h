@@ -20,12 +20,6 @@ vector tokenize_file(char* file_name);
  */
 void set_tokenizer_chars(char* _white_space_chars, char* _special_chars);
 
-// TODO: If this function isn't needed remove it.
-// /*
-//  * This takes in the vector of a tokenized file and removes NULL pointers.
-//  */
-// void remove_null_pointers_from_tokenized_file(vector* _vector);
-
 /*
  * This takes in the vector of a tokenized file and frees it.
  */

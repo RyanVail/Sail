@@ -20,13 +20,13 @@ void stack_push(stack* _stack, void* value)
  */
 void* stack_top(stack* _stack)
 {
+    #if DEBUG
     if (_stack->top == NULLPTR) {
-        #if DEBUG
         printf("Cannot take the top of a stack with a size of zero.\n");
         abort();
-        #endif
-        exit(-1);
     }
+    #endif
+
     return _stack->top->value;
 }
 
@@ -35,16 +35,16 @@ void* stack_top(stack* _stack)
  */
 void* stack_pop(stack* _stack)
 {
+    #if DEBUG
     if (_stack->top == NULLPTR) {
-        #if DEBUG
         printf("Cannot pop a stack with a size of zero.\n");
         abort();
-        #endif
-        exit(-1);
     }
+    #endif
+
     link* _tmp_link = _stack->top;
     void* _tmp_value = _tmp_link->value;
-    _stack->top = _stack->top->next;
+    _stack->top = _tmp_link->next;
     free(_tmp_link);
     return _tmp_value;
 }

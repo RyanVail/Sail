@@ -3,9 +3,6 @@
  * of structs.
  */
 
-// TODO: This should hold the names of the structs and the names of their
-// variables.
-
 #ifndef INTERMEDIATE_STRUCT_H
 #define INTERMEDIATE_STRUCT_H
 
@@ -31,12 +28,14 @@ typedef struct struct_variable {
  * @name: The name of this struct
  * @contents: The variables this struct contains. A stack of "struct_variable"
  * @flags: 1 -> Padding can be optimized, 2 -> Memory layout has been generated
+ * @byte_size: The size of this struct in bytes __UINT16_MAX__ if not set
  */
 typedef struct intermediate_struct {
     u32 hash;
     char* name;
     stack contents;
     u8 flags;
+    u16 byte_size;
 } intermediate_struct;
 
 /*
@@ -48,6 +47,7 @@ void init_struct_hash_table(u8 hash_table_size);
 /* This frees all of the intermediate structs. */
 void free_intermediate_structs();
 
+// TODO: This should be called "get_struct" like the symbol table.
 /* This returns a pointer to the struct with the same hashed name. */
 intermediate_struct* find_struct(u32 struct_hash);
 
@@ -80,13 +80,23 @@ void reverse_struct_variables(intermediate_struct* _struct);
 /*
  * This returns a pointer to the "intermediate_stucts" hashtable.
  */
-intermediate_struct* get_intermediate_structs();
+hash_table* get_intermediate_structs();
 
 /*
  * This generates a place holder struct variables in the heap and returns a
  * pointer to it. Padding "struct_variable"s have a hash equal to 0, random type
- * values and the name "char*"s value is the number of bytes of padding.
+ * values and the name is a "u32" that holds the number of bytes of padding.
  */
 struct_variable* generate_padding_struct_variable(u32 bytes_of_padding);
+
+#if DEBUG
+
+/*
+ * This function prints all of the variables in the struct. This function is for
+ * debugging and is not noramlly called.
+ */
+void print_struct(intermediate_struct* _struct);
+
+#endif
 
 #endif

@@ -16,7 +16,7 @@ struct RGBA {
     R u8
     G u8
     B u8
-    A %RGBA%
+    A test_struct
 }
 
 enum NUMS u32 {

@@ -66,7 +66,7 @@ void pop_operand(bool dual, bool comparison)
 
     pop_operand_second_operand_is_place_holder_label:
 
-    type_can_implicitly_cast_to(_first_operand->type, _second_operand->type, 1);
+    type_can_implicitly_cast_to(_first_operand->type, _second_operand->type);
 
     if (dual)
         free(_first_operand);
@@ -162,7 +162,7 @@ void add_intermediate(intermediate _intermediate)
 void cast_top_operand(type _type)
 {
     #if DEBUG
-    if (stack_size(&operand_stack) == 0)
+    if (IS_STACK_EMPTY(operand_stack))
         send_error(\
             "Attempted to cast the top operand when there are no operands.");
     #endif
@@ -245,7 +245,7 @@ void add_operand(intermediate _intermediate, bool inited)
  */
 void clear_operand_stack()
 {
-    while (!(STACK_IS_EMPTY(operand_stack)))
+    while (!(IS_STACK_EMPTY(operand_stack)))
         free((char*)stack_pop(&operand_stack));
 }
 

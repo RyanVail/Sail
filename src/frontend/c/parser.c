@@ -236,7 +236,7 @@ void* operand_func(char**))
         // be added last even though the other operators have a lower priority.
 
         /* Adding the operator to the output or stack. */
-        if (stack_size(&operator_stack) != 0
+        if (!IS_STACK_EMPTY(operator_stack)
         && C_get_operator_prio(current_operator) >= \
         C_get_operator_prio((operator)stack_top(&operator_stack))) {
             to_operate = current_operator;

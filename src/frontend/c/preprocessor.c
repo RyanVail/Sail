@@ -280,7 +280,7 @@ static inline macro_status C_process_if_macro(vector* file, u32 *i)
 
     i64 result = *(i64*)stack_top(&operand_stack);
 
-    while (!STACK_IS_EMPTY(operand_stack))
+    while (!IS_STACK_EMPTY(operand_stack))
         free(stack_pop(&operand_stack));
 
     if (result >= 1)

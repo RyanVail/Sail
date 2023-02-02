@@ -99,8 +99,9 @@ hash_table hash_table_init(u8 size)
         handle_error(0);
 
     for (u32 i=0; i < (1 << size); i++) {
-        new_hash_table_contents[i].next = 0;
+        new_hash_table_contents[i].next = NULLPTR;
         new_hash_table_contents[i].hash = 0;
+        // new_hash_table_contents[i].value = NULLPTR;
     }
 
     hash_table new_hash_table = { size, (void*)new_hash_table_contents };

@@ -3,7 +3,7 @@
 
 #include<common.h>
 
-#define STACK_IS_EMPTY(_stack) (_stack.top == NULLPTR)
+#define IS_STACK_EMPTY(_stack) (_stack.top == NULLPTR)
 
 typedef struct link link;
 
@@ -16,6 +16,7 @@ typedef struct link {
     void* value;
 } link;
 
+// TODO: type_size is not used.
 /* struct stack - This is a simple stack data type
  * @top: This is the value on the top of the stack
  * @type_size: This is the size of the values inside the links

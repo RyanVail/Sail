@@ -65,10 +65,23 @@ typedef struct type {
  */
 type_kind get_lowest_type(i64 value);
 
+typedef struct intermediate_struct intermediate_struct;
+
+/*
+ * This takes in a type and a function that generates the contents of a struct
+ * and returns the size of a type. If no "struct_generator" is provided this
+ * not generate the size of a struct and will return "__UINT32_MAX__".
+ * "struct_generator" is expected to generate both the padding of the struct and
+ * put the full size of the struct into "byte_size" from a ptr to the struct.
+ */
+u32 get_size_of_type(type _type, void* struct_generator(intermediate_struct*));
+
 /*
  * This checks if type "_from" can be casted into type "_to" implicitily.
+ * Returns true if "_from" can implicitly cast to "_to". Otherwise prints an
+ * error.
  */
-bool type_can_implicitly_cast_to(type _from, type _to, bool error);
+bool type_can_implicitly_cast_to(type _from, type _to);
 
 /*
  * This prints the type name.
