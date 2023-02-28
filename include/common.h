@@ -7,6 +7,7 @@
 
 #define NULLPTR ((void*)0)
 #define ARRAY_SIZE(_array) sizeof(_array) / sizeof(_array[0])
+
 #define F32_TO_VOIDPTR(x) ((void*)(*((u32*)(&x))))
 #define VOIDPTR_TO_F32(x) (*(f32*)(&x))
 
@@ -17,11 +18,16 @@
 #include<stdio.h>
 #include<stdbool.h>
 #include<string.h>
+#include<errno.h>
 
 #include<defs.h>
 #include<typedefs.h>
-#include<errors.h>
 #include<main.h>
+#include<errors.h>
 #include<datastructures/vector.h>
+
+#if DEBUG
+#include<debug/debug.h>
+#endif
 
 #endif

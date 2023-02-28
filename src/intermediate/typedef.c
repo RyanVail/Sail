@@ -1,5 +1,5 @@
 /*
- * This holds a lot of function that apply to the intermediate repersentation of
+ * This holds a lot of function that apply to the intermediate representation of
  * typedefs.
  */
 
@@ -25,7 +25,7 @@ intermediate_typedef* get_typedef(u32 hash)
 {
     #if DEBUG
     if (intermediate_typedefs.contents == NULLPTR)
-        send_error("Intermediate typedefs have not been inited yet");
+        send_error("Intermediate typedefs have not been initted yet");
     #endif
 
     hash_table_bucket*_bucket = hash_table_at_hash(&intermediate_typedefs,hash);
@@ -37,7 +37,7 @@ intermediate_typedef* add_typedef(char* typedef_name, type typedef_type)
 {
     #if DEBUG
     if (intermediate_typedefs.contents == NULLPTR)
-        send_error("Intermediate typedefs have not been inited yet");
+        send_error("Intermediate typedefs have not been initted yet");
     #endif
 
     /* Hashing the typedef name. */
@@ -63,8 +63,7 @@ intermediate_typedef* add_typedef(char* typedef_name, type typedef_type)
     /* Putting the typedef into a bucket. */
     _bucket->value = malloc(sizeof(intermediate_typedef));
     intermediate_typedef* _typedef = _bucket->value;
-    if (_typedef == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(_typedef);
     _typedef->hash = result_hash;
     _typedef->name = typedef_name;
     _typedef->type = typedef_type;

@@ -1,5 +1,5 @@
 /*
- * This holds a lot of function that apply to the intermedaite repersentation of
+ * This holds a lot of function that apply to the intermedaite representation of
  * typedefs.
  */
 
@@ -7,10 +7,10 @@
 #define INTERMEDIATE_TYPEDEF_H
 
 #include<common.h>
-#include<datastructures/hashtable.h>
+#include<datastructures/hash_table.h>
 #include<types.h>
 
-/* struct intermediate_typedef - This is the intermediate repersentation of a
+/* struct intermediate_typedef - This is the intermediate representation of a
  * typedef
  * @hash: The hash of the name of this typedef
  * @name: The name of this typedef

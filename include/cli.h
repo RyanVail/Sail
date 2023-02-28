@@ -8,6 +8,10 @@
 #include<common.h>
 #include<string.h>
 
+typedef enum compilation_target {
+	LINUX_ARMv7,
+} compilation_target;
+
 /* struct cli_options - One static defintion of all command line options.
  * @compilation_target: The arcitecture and OS we are compiling for
  * @opt: The compilation optimization level
@@ -16,24 +20,23 @@
  * @input_files_length: The length of "input_files"
  * @output_file_name: The name of the output file
  */
-struct cli_options {
-	enum { linux_ARMv7 } compilation_target;
+typedef struct cli_options {
+	compilation_target target;
 	u8 opt;
 	#if DEBUG
 	bool time_compilation;
 	#endif
-	char **input_files;
+	vector input_files;
 	u8 input_files_length;
 	char output_file_name[];
-};
-
-void process_cli_options(u32 argc, char *args[]);
-
-void free_cli_options();
+} cli_options;
 
 /*
- * This function returns a pointer to the global cli options.
+ * This goes through CLI options and sets the appropriate flags in
+ * "global_cli_options".
  */
-struct cli_options *get_global_cli_options();
+void process_cli_options(u32 argc, char *args[]);
+
+extern cli_options global_cli_options;
 
 #endif

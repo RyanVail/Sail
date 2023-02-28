@@ -4,10 +4,6 @@
 #include<frontend/c/preprocessor.h>
 #include<intermediate/intermediate.h>
 #include<intermediate/struct.h>
-#if DEBUG && linux
-#include<time.h>
-#include<cli.h>
-#endif
 
 /* This represents the priority of an operator. Higher value, higher prio. */
 typedef u8 prio;
@@ -16,7 +12,7 @@ typedef u8 prio;
 #define __PRIO_MAX__ ((prio)-1)
 
 /* Stack of operators. Operators are in the pointers of the links. */
-static stack operator_stack = { NULLPTR, sizeof(operator) };
+static stack operator_stack = { NULLPTR };
 
 prio C_get_operator_prio(operator _operator);
 operator C_get_operator(char* token);
@@ -25,10 +21,10 @@ static inline void C_set_operator_associativity(operator *_operator, \
 bool* left_associative, bool* right_associative);
 
 /*
- * This function reads in the C source file refrenced by "file_name" processes
+ * This function reads in the C source file referenced by "file_name" processes
  * and turns it into intermediates.
  */
-void C_file_into_intermediate(char* file_name)
+void C_file_into_intermediates(char* file_name)
 {
     // TODO: This should be done outside of this function, preprocessing should
     // be optional.
@@ -40,9 +36,7 @@ void C_file_into_intermediate(char* file_name)
     }
 
     /* Initial intermediate pass. */
-    #if DEBUG && linux
-    clock_t starting_time = clock();
-    #endif
+    START_PROFILING("the initial intermediate pass", "compile file");
 
     // struct
         // types
@@ -97,17 +91,13 @@ void C_file_into_intermediate(char* file_name)
         }
     }
 
-    #if linux && DEBUG
-    if (get_global_cli_options()->time_compilation)
-        printf("Took %f ms to do the initial intermediate pass.\n", \
-            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
-    #endif
+    END_PROFILING("the initial intermediate pass", true);
 }
 
 /*
  * This function reads an operand from the file, adds it to the intermediates,
  * and returns the ending token of the operands so the pointer will have to be
- * incramented once to reach the next token that is not part of the operand.
+ * incremented once to reach the next token that is not part of the operand.
  * Returns "__INTPTR_MAX__" if nothing was read.
  */
 char** C_parse_operand(char** current_token)
@@ -137,8 +127,8 @@ char** C_parse_operand(char** current_token)
 
 /*
  * This function takes in the starting index of an operation and passes the
- * "operator" type of every operator into the inputed "operator_func".
- * The parsed operators are passed into the inputed "operand_func".
+ * "operator" type of every operator into the inputted "operator_func".
+ * The parsed operators are passed into the inputted "operand_func".
  */
 bool C_parse_operation(char*** token, void* operator_func(operator), \
 void* operand_func(char**))
@@ -236,7 +226,7 @@ void* operand_func(char**))
         // be added last even though the other operators have a lower priority.
 
         /* Adding the operator to the output or stack. */
-        if (!IS_STACK_EMPTY(operator_stack)
+        if (!STACK_IS_EMPTY(operator_stack)
         && C_get_operator_prio(current_operator) >= \
         C_get_operator_prio((operator)stack_top(&operator_stack))) {
             to_operate = current_operator;
@@ -318,7 +308,7 @@ bool* left_associative, bool* right_associative)
 
 /*
  * This either returns the operator of the token or __OPERATOR_MAX__ if it is
- * not a valid operator. Negation and subtraction need to be done seperate of
+ * not a valid operator. Negation and subtraction need to be done separate of
  * this.
  */
 operator C_get_operator(char* token)
@@ -377,7 +367,7 @@ operator C_get_operator(char* token)
     #undef U16_CHAR
 }
 
-/* This returns the priority of the inputed operator. */
+/* This returns the priority of the inputted operator. */
 prio C_get_operator_prio(operator _operator)
 {
     switch(_operator)
@@ -400,7 +390,7 @@ prio C_get_operator_prio(operator _operator)
     case INC:
     case DEC:
     case MEM_LOCATION:
-    case MEM_ACCESS:
+    case MEM_DEREF:
     case ADD:
     case SUB:
     case COMPLEMENT:

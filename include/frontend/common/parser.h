@@ -1,5 +1,5 @@
 /*
- * This contains a lot of commonly used parsing function branching a front end
+ * This contains a lot of commonly used parsing function branching a frontend
  * to the intermediate stage.
  */
 
@@ -10,31 +10,34 @@
 #include<types.h>
 
 /*
- * This parses and returns the given type modifiers. This will incrament token
+ * This parses and returns the given type modifiers. This will increment token
  * till it reaches the end of the modifiers. unsigned and signed modifiers will
- * change the first bit of the returinging kind. This will skip tokens that are
+ * change the first bit of the returning kind. This will skip tokens that are
  * equal to NULLPTR and returns when it doesn't hit a modifier.
  */
 type_kind get_type_modifier(char*** token);
 
 /*
- * This parses and returns the type of the same name as the inputed string. This
- * assumes that the string is in a array and that there are no NULL pointers in
- * the array. This also assumes that the pointer char is a special char. If we
- * didn't get a type the returning type kind will be equal to 255.
+ * This parses and returns the type of the same name as the inputted string.
+ * This will also read and set the ptr count of the returned type. This assumes
+ * that the string is in a array and that there are no NULL pointers in the
+ * array. This also assumes that the pointer char is a special char. If there's
+ * no type a type the returned type's kind will be equal to 255. This sets errno
+ * on errors. This also sets errno_value to the "inital_token" appon returning
+ * 255 and if type ptrs are unequal.
  */
 type get_type(char** token);
 
 typedef struct is_ascii_float_return is_ascii_float_return;
 /*
- * This goes through the inputed string and returns 0 if it isn't a float, 1 if
+ * This goes through the inputted string and returns 0 if it isn't a float, 1 if
  * it is a float, and 2 if it's a double indicated by the trailing 'd' or 'f',
  * but defaulting to a float.
  */
 is_ascii_float_return is_ascii_float(char** starting_float_token);
 
 /*
- * This returns the f64 representation of the inputed token.
+ * This returns the f64 representation of the inputted token.
  */
 f64 get_ascii_float(char** starting_float_token, char** ending_float_token);
 
@@ -55,7 +58,7 @@ bool is_ascii_number(char* num_string);
 u32 get_end_of_line(vector* file, u32 i);
 
 /*
- * If the inputed name is invalid it will return true. This is cap sensitive.
+ * If the inputted name is invalid it will return true. This is cap sensitive.
  * Along with the current INVALID_NAMES being invalid, any special tokens, and
  * types are counted as invalid. If the name starts with a number it is also
  * considered invalid.

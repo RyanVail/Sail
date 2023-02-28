@@ -19,36 +19,17 @@ fication of output file\n\t-O<level>\t\t--opt <level>\t\tLevel of optimization \
 0-3\n";
 #endif
 
+cli_options global_cli_options;
 
-static struct cli_options global_cli_options;
-
-/*
- * This frees the heap in "global_cli_options".
- */
-void cli_clean()
-{
-	free(global_cli_options.input_files);
-}
-
-
-/*
- * This function returns a pointer to the global cli options.
- */
-struct cli_options *get_global_cli_options()
-{
-	return &global_cli_options;
-}
-
-// TODO: Make this use a vector
 /*
  * This goes through CLI options and sets the appropriate flags in
- * "global_cli_options"
+ * "global_cli_options".
  */
 void process_cli_options(u32 argc, char *args[])
 {
-	register u32 num_input_files = 0;
-	for (i32 i=1; i<argc; i++) {
-		if (args[i][0] == '-' && args[i][1] == '-') {
+	vector input_files = vector_init(sizeof(char*), 2);
+	for (i32 i=1; i < argc; i++) {
+		if (!strcmp(args, "--")) {
 			if (!strcmp(args[i], "--help")) {
 				printf(help_message);
 				exit(0);
@@ -79,29 +60,14 @@ void process_cli_options(u32 argc, char *args[])
 			#endif
 			}
 		}
-		/*
-		 * This stores pointers to the "args" inputed file's names on the heap.
-		 */
 		else {
-			register char*** _f = &global_cli_options.input_files;
-			num_input_files++;
-			if (num_input_files == 1) {
-				*_f = (char**)malloc(1 * sizeof(char*));
-
-				if (*_f == NULL)
-					handle_error(0);
-
-				*_f[0] = args[i];
-				continue;
-			}
-			*_f = realloc(*_f, num_input_files * sizeof(char*));
-
-			if (*_f == NULL)
-				handle_error(1);
-
-			(*_f)[num_input_files-1] = args[i];
+			char* str = malloc(strlen(args[i])+1);
+			CHECK_MALLOC(str);
+			strcpy(str, &args[i]);
+			vector_append(&input_files, str);
 		}
 	}
-	if (!num_input_files)
+	if (!VECTOR_SIZE(input_files))
 		send_error("No input files. Use -h for help");
+	global_cli_options.input_files = input_files;
 }

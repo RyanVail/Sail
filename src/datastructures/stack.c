@@ -8,10 +8,26 @@ void stack_push(stack* _stack, void* value)
 {
     link* _tmp = _stack->top;
     link* _new_top = malloc(sizeof(link));
-    if (_new_top == NULLPTR)
-        send_error(0);
+    CHECK_MALLOC(_new_top);
     _new_top->next = _tmp;
     _new_top->value = value;
+    _stack->top = _new_top;
+}
+
+/* This adds the inputted value onto the stack and allocates space for it. */
+void stack_push_malloc_with_size(stack* _stack, void* value, u32 type_size)
+{
+    /* Copying the value. */
+    void* _value = malloc(type_size);
+    CHECK_MALLOC(_value);
+    memcpy(_value, value, type_size);
+
+    /* Adding a new link. */
+    link* _tmp = _stack->top;
+    link* _new_top = malloc(sizeof(link));
+    CHECK_MALLOC(_new_top);
+    _new_top->next = _tmp;
+    _new_top->value = _value;
     _stack->top = _new_top;
 }
 
@@ -28,6 +44,21 @@ void* stack_top(stack* _stack)
     #endif
 
     return _stack->top->value;
+}
+
+/* This returns the value of the last link on the stack. */
+void* stack_last(stack* _stack)
+{
+    link* _tmp_link = _stack->top;
+
+    while (_tmp_link != NULLPTR) {
+        if (_tmp_link->next == NULLPTR)
+            break;
+
+        _tmp_link = _tmp_link->next;
+    }
+
+    return _tmp_link == NULLPTR ? NULLPTR : _tmp_link->value;
 }
 
 /*

@@ -26,6 +26,7 @@ static u32* TYPE_SIZES = DEFAULT_TYPE_SIZES;
  */
 type_kind get_lowest_type(i64 value)
 {
+    #if USE_PREDEF_TYPE_MAXES
     if (value > 0) {
         if (value <= __UINT8_MAX__)
             return U8_TYPE;
@@ -33,20 +34,35 @@ type_kind get_lowest_type(i64 value)
             return U16_TYPE;
         if (value <= __UINT32_MAX__)
             return U32_TYPE;
-        if (value <= __UINT64_MAX__)
-            return U64_TYPE;
-        return U32_TYPE;
+        return U64_TYPE;
     }
-
     if (value <= __INT8_MAX__ && value >= ~__INT8_MAX__)
         return I8_TYPE;
     if (value <= __INT16_MAX__ && value >= ~__INT16_MAX__)
         return I16_TYPE;
     if (value <= __INT32_MAX__ && value >= ~__INT32_MAX__)
         return I32_TYPE;
-    if (value <= __INT64_MAX__ && value >= ~__INT64_MAX__)
-        return I64_TYPE;
-    return I32_TYPE;
+    return I64_TYPE;
+    #else
+    type_kind current_type;
+    i64 current_max;
+    if (value > 0) {
+        for (current_type = U8_TYPE; current_type <= U64_TYPE; current_type+=2){
+            /* This assumes that the byte width of an u64 is eight. */
+            if (TYPE_SIZES[current_type] >= 8)
+                return current_type;
+            if (value <= ((u64)1 << ((u64)TYPE_SIZES[current_type]<<3))-1)
+                return current_type;
+        }
+        return U64_TYPE;
+    }
+    for (current_type = I8_TYPE; current_type <= I64_TYPE; current_type+=2) {
+        i64 current_max = ((u64)1 << ((u64)TYPE_SIZES[current_type])-1)-1;
+        if (value <= current_max && value >= ~current_max)
+            return current_type;
+    }
+    return I64_TYPE;
+    #endif
 }
 
 /*
@@ -64,8 +80,8 @@ u32 get_size_of_type(type _type, void* struct_generator(intermediate_struct*))
         if (_type.kind >> 16)
             return TYPE_SIZES[12];
 
-        /* Generating the struct's size if it hasn't been inited yet. */
-        _struct = find_struct(_type.ptr);
+        /* Generating the struct's size if it hasn't been initted yet. */
+        _struct = get_struct(_type.ptr);
         if (_struct->byte_size == __UINT16_MAX__) {
             if (struct_generator == NULLPTR)
                 return __UINT32_MAX__;
@@ -82,7 +98,7 @@ u32 get_size_of_type(type _type, void* struct_generator(intermediate_struct*))
 }
 
 /*
- * This checks if type "_from" can be casted into type "_to" implicitily.
+ * This checks if type "_from" can be casted into type "_to" implicitly.
  * Returns true if "_from" can implicitly cast to "_to". Otherwise prints an
  * error.
  */
@@ -91,13 +107,19 @@ bool type_can_implicitly_cast_to(type _from, type _to)
     if (_from.kind == VOID_TYPE || _to.kind == VOID_TYPE)
         send_error("Usage of type `void` without cast");
 
+    /*
+     * If these are normal types this makes sure they both have the same ptr
+     * count. If these are structs this make sure they're both the same struct.
+     */
     if (_to.ptr != _from.ptr)
         goto type_can_implicitly_cast_to_error_label;
 
     /* If only one type is a struct then send an error. */
     if (IS_TYPE_STRUCT(_to) ^ IS_TYPE_STRUCT(_from))
         goto type_can_implicitly_cast_to_error_label;
-    else if ((IS_TYPE_STRUCT(_to) && IS_TYPE_STRUCT(_from))
+
+    /* If the structs pointers don't match send an error. */
+    if ((IS_TYPE_STRUCT(_to) && IS_TYPE_STRUCT(_from))
     && (_to.kind >> 16 != _from.kind >> 16))
         goto type_can_implicitly_cast_to_error_label;
 
@@ -144,7 +166,7 @@ void print_type(type _type, bool graphical)
         printf("\x1b[035m`");
 
     /* Getting the # of ptrs. */
-    u32 ptr_count = IS_TYPE_STRUCT(_type) ? _type.kind >> 16 : _type.ptr;
+    u32 ptr_count = GET_TYPE_PTR_COUNT(_type);
 
     /* Printing the before ptrs (if present). */
     if (TYPE_NAMES[0xc][0] != '\0')
@@ -153,7 +175,7 @@ void print_type(type _type, bool graphical)
 
     /* Printing the type name. */
     if (IS_TYPE_STRUCT(_type))
-        printf("%s", find_struct(_type.ptr)->name);
+        printf("%s", get_struct(_type.ptr)->name);
     else
         printf("%s", TYPE_NAMES[_type.kind]);
 
@@ -201,9 +223,9 @@ void print_type_kind(type _type, bool graphical)
 }
 
 /*
- * This scales the inputed value to the inputed type. This only works for values
- * no greater magnitude than the minimum value of the type to the power of two
- * minus one. EX. maximum of u8: 256^2-1 = 65535.
+ * This scales the inputted value to the inputted type. This only works for
+ * values no greater magnitude than the minimum value of the type to the power
+ * of two minus one. EX. maximum of u8: 256^2-1 = 65535.
  */
 i64 scale_value_to_type(i64 value, type _type)
 {
@@ -212,7 +234,7 @@ i64 scale_value_to_type(i64 value, type _type)
 }
 
 /*
- * This allows different front ends to set custom type names. The 0xe and 0xf
+ * This allows different frontends to set custom type names. The 0xe and 0xf
  * index of "TYPE_NAMES" should be the characters before and after variable
  * names to show pointers 0x0 means no character. The last string has to be
  * a string to a null pointers like so "\0".
@@ -223,7 +245,7 @@ void set_type_names(char** _TYPE_NAMES)
 }
 
 /*
- * This allows different front ends to set custom type modifier names. The first
+ * This allows different frontends to set custom type modifier names. The first
  * modifier name is the unsigned identifier and the second is the unsigned
  * identifier. chars in place The rest of the type modifiers are the same as
  * those in the "type_kind" enum. The last char should be a '\0'.
@@ -234,17 +256,21 @@ void set_type_modifier_names(char** _MODIFIER_NAMES)
 }
 
 /*
- * This allows different front ends / back ends to set custom type sizes. The
+ * This allows different frontends / backends to set custom type sizes. The
  * sizes should correspond with the "type_kind" enum rather than "TYPE_NAMES".
  * The last size is the size of pointers.
  */
 void set_type_sizes(u32* _TYPE_SIZES)
 {
+    #if USE_PREDEF_TYPE_MAXES && DEBUG
+    send_error("Type sizes cannot be changed when \"USE_PREDEF_TYPE_MAXES\" is set to true.");
+    #endif
+
     TYPE_SIZES = _TYPE_SIZES;
 }
 
 /*
- * This allows the front ends to get the type modifier's names.
+ * This allows the frontends to get the type modifier's names.
  */
 char** get_type_modifier_names()
 {
@@ -252,7 +278,7 @@ char** get_type_modifier_names()
 }
 
 /*
- * This allows the front ends to get the names of types.
+ * This allows the frontends to get the names of types.
  */
 char** get_type_names()
 {
@@ -260,7 +286,7 @@ char** get_type_names()
 }
 
 /*
- * This allows the front ends / back ends to get the sizes of types.
+ * This allows the frontends / backends to get the sizes of types.
  */
 u32* get_type_sizes()
 {

@@ -72,7 +72,7 @@ void add_variable_symbol_ptr(variable_symbol* _variable_symbol);
 /*
  * This clears all variables from the symbol table that are in scope without
  * freeing their variable symbol structs since they should be pointed to by the
- * "VAR_DECLERATION" intermediates.
+ * "VAR_DECLARATION" intermediates.
  */
 void clear_variables_in_scope();
 

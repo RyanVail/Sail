@@ -1,37 +1,32 @@
 /*
- * This optimization pass goes through all of the intermediates and evalutes
- * arithments invloving constants.
+ * This optimization pass goes through all of the intermediates and evaluates
+ * arithmetics involving constants.
  */
 
 #include<intermediate/optimization/constantpass.h>
 #include<evaluate.h>
 #include<types.h>
-#if DEBUG && linux
-#include<cli.h>
-#include<time.h>
-#endif
 
-typedef enum communativity {
+typedef enum commutativity {
     NONE,
     NEGATION,
     ADD_SUB,
     MUL_DIV,
-} communativity;
+} commutativity;
 
 void constant_optimization_process_operation(intermediate* operand0, \
 intermediate* operand1, intermediate* _current, type result_type);
 
 /*
- * This goes through all of the the constants in the intermediates and evalutes
+ * This goes through all of the the constants in the intermediates and evaluates
  * them. Constants as in values inside of "CONST" / "CONSTPTR" intermediates.
- * This also remvoes/simplifies things like double negatives. This pass will
+ * This also removes / simplifies things like double negatives. This pass will
  * leave NILs in the intermediates.
  */
 void optimization_do_constant_pass()
 {
-    #if DEBUG && linux
-    clock_t starting_time = clock();
-    #endif
+    START_PROFILING("do the constant optimization pass", \
+    "do all optimization passes");
 
     #if !PTRS_ARE_64BIT
     i64 operand0_value;
@@ -41,16 +36,16 @@ void optimization_do_constant_pass()
     #endif
 
     /*
-     * The communativity type of the last operator. Also will be set to "UKNOWN"
+     * The commutativity type of the last operator. Also will be set to "UKNOWN"
      * if an operand isn't a constant.
      */
-    communativity last_communativity = NONE;
+    commutativity last_commutativity = NONE;
 
     /* This is the operand stack. This has ptrs to the intermediate vector. */
-    stack operand_stack = { NULLPTR, sizeof(intermediate) };
+    stack operand_stack = { NULLPTR };
 
     // TODO: This should be getting the lowest possible type of the constants.
-    // Or type definitions hsould be bound to a u32 by default rather than the
+    // Or type definitions should be bound to a u32 by default rather than the
     // smallest possible type.
 
     /* The result type is defaulted to a "u32" unless there's a cast. */
@@ -75,18 +70,17 @@ void optimization_do_constant_pass()
             break;
         case ADD:
         case SUB:
-            // TODO: This needs to pop based on the correct things
             operand0 = stack_pop(&operand_stack);
             operand1 = stack_top(&operand_stack);
-            if (last_communativity == ADD_SUB || last_communativity == NONE)
-                constant_optimization_process_operation(&operand0, &operand1, \
-                    _current, result_type);
-            last_communativity = ADD_SUB;
+            if (last_commutativity == ADD_SUB || last_commutativity == NONE)
+                constant_optimization_process_operation(operand0, operand1, \
+                _current, result_type);
+            last_commutativity = ADD_SUB;
             break;
         case MUL:
         case DIV:
             stack_pop(&operand_stack);
-            last_communativity = MUL_DIV;
+            last_commutativity = MUL_DIV;
             break;
         case CAST:
             #if PTRS_ARE_64BIT
@@ -95,7 +89,7 @@ void optimization_do_constant_pass()
             result_type = *((type*)_current->ptr);
             #endif
             break;
-            // TODO: A lot of the below statments need an implementation.
+            // TODO: A lot of the below statements need an implementation.
         case INC:
         case DEC:
         case COMPLEMENT:
@@ -119,25 +113,21 @@ void optimization_do_constant_pass()
             break;
         case VAR_MEM:
         case MEM_LOCATION:
-        case MEM_ACCESS:
+        case MEM_DEREF:
             break;
         case GET_STRUCT_VARIABLE:
             break;
         default:
-            while (stack_size(&operand_stack) != 0)
+            while (!STACK_IS_EMPTY(operand_stack))
                 stack_pop(&operand_stack);
             result_type.kind = U32_TYPE;
             result_type.ptr = 0;
-            last_communativity = NONE;
+            last_commutativity = NONE;
             break;
         }
     }
 
-    #if DEBUG && linux
-    if (get_global_cli_options()->time_compilation)
-        printf("Took %f ms to do the constant pass.\n", \
-            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
-    #endif
+    END_PROFILING("do the constant optimization pass", true);
 }
 
 /* This process an int operation for the constant optimization pass. */
@@ -159,25 +149,29 @@ intermediate* operand1, intermediate* _current, type result_type)
     result = evaluate_expression(operand1->ptr, operand0->ptr, \
         _current->type);
     #else
+    i64* operand0_value;
+    i64* operand1_value;
     /* Freeing the operands after getting them. */
-    if (*operand0->type == CONST_PTR) {
-        *operand0_value = *((i64*)*operand0->ptr);
-        free(*operand0->ptr);
-    } else {
-        *operand0_value = *operand0->ptr;
+    if (operand0->type == CONST_PTR) {
+        operand0_value = *((i64*)operand0->ptr);
+        free(operand0->ptr);
+    } else if (operand0->type == CONST) {
+        operand0_value = &operand0->ptr;
     }
 
-    if (*operand1->type == CONST_PTR) {
-        *operand1_value = (i64*)*operand1->ptr;
-        *operand1->ptr = NULLPTR;
+    if (operand1->type == CONST_PTR) {
+        operand1_value = (i64)operand1->ptr;
+        operand1->ptr = NULLPTR;
     } else {
-        *operand1_value = &(*operand1->ptr);
+        operand1_value = &operand1->ptr;
     }
 
-    result = evaluate_expression(*operand1,*operand0,_current->type);
+    result = evaluate_expression(*operand1_value, *operand0_value,\
+        _current->type);
     #endif
 
     operand0->type = NIL;
+    _current->type = NIL;
 
     // TODO: For ptrs this needs to do something different.
     /* Scaling the result. */
@@ -188,21 +182,8 @@ intermediate* operand1, intermediate* _current, type result_type)
 
     /* Adding the result back to the intermediates. */
     #if !PTRS_ARE_64BIT
-    if (result < ~((i64)1 << ((sizeof(void*) << 3))-1)
-    || result > ((i64)1 << ((sizeof(void*) << 3)-1))) {
-        _result = malloc(sizeof(i64));
-        if (_result == NULLPTR)
-            handle_error(0);
-        *_result = result;
-        _current->type = CONST_PTR;
-    } else {
-        _result = (void*)result;
-        _current->type = CONST;
-    }
-    _current->ptr = _result;
+    set_intermediate_to_const(operand1, result);
     #else
-    _current->type = NIL;
     operand1->ptr = result;
-    _current->ptr = (void*)result;
     #endif
 }

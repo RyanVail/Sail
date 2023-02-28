@@ -1,5 +1,5 @@
 /*
- * This holds a lot of functions that apply to the intermediate repersentation
+ * This holds a lot of functions that apply to the intermediate representation
  * of structs.
  */
 // TODO: Recursive structs are possible.
@@ -9,7 +9,7 @@
 
 static hash_table intermediate_structs = { sizeof(struct_variable), NULLPTR };
 
-/* This initializes the intermediate structs hashtable with the inputed size. */
+/* This inits the intermediate struct's hashtable with the inputted size. */
 void init_struct_hash_table(u8 hash_table_size)
 {
     intermediate_structs = hash_table_init(hash_table_size);
@@ -18,15 +18,15 @@ void init_struct_hash_table(u8 hash_table_size)
 /* This frees all of the intermediate structs. */
 void free_intermediate_structs()
 {
-    //
+    // TODO: Implement this
 }
 
 /* This returns a pointer to the struct with the same hashed name. */
-intermediate_struct* find_struct(u32 struct_hash)
+intermediate_struct* get_struct(u32 struct_hash)
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs have not been inited yet");
+        send_error("Intermediate structs have not been initted yet");
     #endif
 
     hash_table_bucket* bucket = \
@@ -37,13 +37,13 @@ intermediate_struct* find_struct(u32 struct_hash)
 
 /*
  * This function attemps the create a struct with "struct_name". Returns a
- * pointer to the newely created struct. Sends errors if any are encountered.
+ * pointer to the newly created struct. Sends errors if any are encountered.
  */
 intermediate_struct* create_struct(u8 flags, char* struct_name)
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs have not been inited yet");
+        send_error("Intermediate structs have not been initted yet");
     #endif
 
     /* If this name is invalid. */
@@ -57,29 +57,26 @@ intermediate_struct* create_struct(u8 flags, char* struct_name)
     HASH_STRING(struct_name);
 
     /* Tests if the struct already exists. */
-    if (find_struct(result_hash) != NULLPTR) {
+    if (get_struct(result_hash) != NULLPTR) {
         printf("\x1b[091mERROR:\x1b[0m The struct name: \"%s\" has already been used.\n", struct_name);
         exit(-1);
     }
 
-    // TODO: This is doing this logic twice, once in "find_struct" and here.
+    // TODO: This is doing this logic twice, once in "get_struct" and here.
     hash_table_bucket* struct_bucket = \
         hash_table_insert_hash(&intermediate_structs, result_hash);
 
     /* Allocating the struct's name*/
     char* new_struct_name = malloc(strlen(struct_name)+1);
-    if (new_struct_name == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(new_struct_name);
     strcpy(new_struct_name, struct_name);
 
-    /* Initing the new struct's contents. */
+    /* Initting the new struct's contents. */
     struct_bucket->value = malloc(sizeof(intermediate_struct));
     intermediate_struct* _struct = struct_bucket->value;
-    if (_struct == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(_struct);
     _struct->flags = flags;
     _struct->contents.top = NULLPTR;
-    _struct->contents.type_size = sizeof(struct_variable);
     _struct->hash = result_hash;
     _struct->name = new_struct_name;
     _struct->byte_size = __UINT16_MAX__;
@@ -87,29 +84,12 @@ intermediate_struct* create_struct(u8 flags, char* struct_name)
 }
 
 /*
- * This finds and returns the "struct_variable" of the inputed variable. Returns
- * NULLPTR if nothing is found.
+ * This finds and returns the "struct_variable" variable from the inputted
+ * struct ptr. This returns NULLPTR if the variable wasn't found.
  */
-struct_variable* get_variable_from_struct(u32 struct_hash, char* var_name)
+struct_variable* get_variable_from_struct_ptr(intermediate_struct* _struct, \
+char* var_name)
 {
-    #if DEBUG
-    if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs have not been inited yet");
-    #endif
-
-    /* Getting the struct bucket. */
-    hash_table_bucket* bucket = \
-        hash_table_at_hash(&intermediate_structs, struct_hash);
-
-    #if DEBUG
-    if (bucket == NULLPTR)
-        send_error("Unknown struct");
-    #endif
-
-    /* Getting the struct. */
-    intermediate_struct* _struct = ((intermediate_struct*)bucket->value);
-
-    /* Finding and returning the variable. */
     HASH_STRING(var_name);
     link* _var = _struct->contents.top;
     while (true) {
@@ -122,19 +102,42 @@ struct_variable* get_variable_from_struct(u32 struct_hash, char* var_name)
 }
 
 /*
- * This adds the inputed variable to the inputed struct. Returns true if it was
- * successful otherwise false.
+ * This finds and returns the "struct_variable" variable from the inputted
+ * struct hash. This returns NULLPTR if the variable wasn't found.
+ */
+struct_variable* get_variable_from_struct_hash(u32 struct_hash, char* var_name)
+{
+    #if DEBUG
+    if (intermediate_structs.contents == NULLPTR)
+        send_error("Intermediate structs have not been initted yet");
+    #endif
+
+    /* Getting the struct bucket. */
+    hash_table_bucket* bucket = \
+        hash_table_at_hash(&intermediate_structs, struct_hash);
+
+    #if DEBUG
+    if (bucket == NULLPTR)
+        send_error("Unknown struct variable");
+    #endif
+
+    /* Getting the struct. */
+    intermediate_struct* _struct = ((intermediate_struct*)bucket->value);
+
+    /* Finding and returning the variable. */
+    return get_variable_from_struct_ptr(_struct, var_name);
+}
+
+/*
+ * This adds the inputted variable to the inputted struct. Returns true if it
+ * was successful otherwise false.
  */
 bool add_variable_to_struct(intermediate_struct* _struct, type var_type, \
 char* var_name)
 {
-    // TODO: This should check if the variable already exists. Maybe split
-    // "get_variable_from_struct" into two parts, one part that gets the
-    // "intermediate_struct" and the other finds the variable.
-
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs have not been inited yet");
+        send_error("Intermediate structs have not been initted yet");
     #endif
 
     #if DEBUG
@@ -142,17 +145,19 @@ char* var_name)
         send_error("Unknown struct");
     #endif
 
+    /* Checking if the variable already exists. */
+    if (get_variable_from_struct_ptr(_struct, var_name) != NULLPTR)
+        send_error("Repeated variable entry into struct");
+
     /* Allocating the variable name. */
     char* new_var_name = malloc(sizeof(var_name)+1);
-    if (new_var_name == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(new_var_name);
     strcpy(new_var_name, var_name);
 
     /* Making the variable "struct_variable". */
     HASH_STRING(var_name);
     struct_variable* struct_var = malloc(sizeof(struct_variable));
-    if (struct_var == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(struct_var);
 
     /* Inserting the variable into the hash table. */
     struct_var->hash = result_hash;
@@ -170,7 +175,7 @@ void reverse_struct_variables(intermediate_struct* _struct)
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs have not been inited yet");
+        send_error("Intermediate structs have not been initted yet");
     #endif
 
     /* Making a copy of the struct's variables. */
@@ -179,23 +184,61 @@ void reverse_struct_variables(intermediate_struct* _struct)
 
     /* Copying over the variables. */
     struct_variable* _var;
-    while (!IS_STACK_EMPTY(old_stack)) {
+    while (!STACK_IS_EMPTY(old_stack)) {
         _var = stack_pop(&old_stack);
         stack_push(&(_struct->contents), _var);
     }
 }
 
 /*
- * This returns a pointer to the "intermediate_stucts" hashtable.
+ * This returns a pointer to the "intermediate_structs" hashtable.
  */
 hash_table* get_intermediate_structs()
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs have not been inited yet");
+        send_error("Intermediate structs have not been initted yet");
     #endif
 
     return &intermediate_structs;
+}
+
+/*
+ * This function goes through all of the defined struct in the hash table and
+ * generates their memory layout and anything else using the inputted
+ * "struct_generator" function.
+ */
+void generate_structs(void struct_generator(intermediate_struct*))
+{
+    START_PROFILING("generate all struct's memory layout", "compile file");
+
+    hash_table_bucket* linked_bucket;
+    intermediate_struct* current_struct;
+
+    /* Going through all structs in the struct hash table. */
+    for (u32 i=0; i < (1 << intermediate_structs.size); i++) {
+        linked_bucket=&((hash_table_bucket*)intermediate_structs.contents)[i];
+
+        /* Going through the linked buckets. */
+        while (linked_bucket != NULLPTR) {
+            /* If this bucket doesn't have anything just continue. */
+            if (linked_bucket->hash == 0) {
+                linked_bucket = linked_bucket->next;
+                continue;
+            }
+
+            /* Making the memory layout of the current struct. */
+            current_struct = linked_bucket->value;
+            if (current_struct != NULLPTR) {
+                reverse_struct_variables(current_struct);
+                (*struct_generator)(current_struct);
+            }
+
+            linked_bucket = linked_bucket->next;
+        }
+    }
+
+    END_PROFILING("generate all struct's memory layout", true);
 }
 
 /*
@@ -207,13 +250,12 @@ struct_variable* generate_padding_struct_variable(u32 bytes_of_padding)
 {
     #if DEBUG
     if (intermediate_structs.contents == NULLPTR)
-        send_error("Intermediate structs have not been inited yet");
+        send_error("Intermediate structs have not been initted yet");
     #endif
 
     /* Creating the struct variable. */
     struct_variable* struct_var = malloc(sizeof(struct_variable));
-    if (struct_var == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(struct_var);
 
     /* Setting to needed values and returning the struct variable. */
     struct_var->hash = 0;
@@ -225,7 +267,7 @@ struct_variable* generate_padding_struct_variable(u32 bytes_of_padding)
 
 /*
  * This function prints all of the variables in the struct. This function is for
- * debugging and is not noramlly called.
+ * debugging and is not normally called.
  */
 void print_struct(intermediate_struct* _struct)
 {

@@ -5,36 +5,31 @@
 
 #include<intermediate/optimization/usescopepass.h>
 #include<intermediate/intermediate.h>
-#if DEBUG && linux
-#include<time.h>
-#include<cli.h>
-#endif
 
 void optimization_do_use_scope_pass()
 {
-    #if DEBUG && linux
-    clock_t starting_time = clock();
-    #endif
+    START_PROFILING("do the use scope optimization pass", \
+    "do all optimization passes");
 
-    vector intermediates = { 0, 0, 0, sizeof(intermediate) };
-    vector output_intermediates = { 0, 0, 0, sizeof(intermediate) };
+    vector intermediates = { NULLPTR, 0, 0, sizeof(intermediate) };
+    vector output_intermediates = { NULLPTR, 0, 0, sizeof(intermediate) };
     intermediate* start_scope_ptr = 0;
 
     // TODO: "intermediates" should be a ptr to the vector of intermediates like
     // every other optimization pass.
     intermediates = *get_intermediate_vector();
     output_intermediates = \
-        vector_init_with(sizeof(intermediate), intermediates.size);
+        vector_init(sizeof(intermediate), intermediates.size);
 
     // TODO: This should be a hash table.
-    vector scope_uses = vector_init_with(sizeof(u32), 4);
+    vector scope_uses = vector_init(sizeof(u32), 4);
 
     for (u32 i=0; i < VECTOR_SIZE(intermediates); i++) {
         intermediate* _current = vector_at(&intermediates, i, 0);
 
-        if (_current->type >= VAR_DECLERATION && _current->type <= VAR_MEM) {
+        if (_current->type >= VAR_DECLARATION && _current->type <= VAR_MEM) {
             u32 _var_id = 0;
-            if (_current->type == VAR_DECLERATION)
+            if (_current->type == VAR_DECLARATION)
                 _var_id = ((variable_symbol*)_current->ptr)->hash;
             else
                 _var_id = (u32)_current->ptr;
@@ -55,9 +50,8 @@ void optimization_do_use_scope_pass()
                 goto optimization_do_use_scope_pass_put_intermediate_label;
 
             vector* new_scope_uses = malloc(sizeof(vector));
-            if (new_scope_uses == NULLPTR)
-                handle_error(0);
-            *new_scope_uses = vector_init_with(sizeof(u32), scope_uses.size);
+            CHECK_MALLOC(new_scope_uses);
+            *new_scope_uses = vector_init(sizeof(u32), scope_uses.size);
 
             // TODO: This should use "memcpy".
             for (u8 i=0; i < VECTOR_SIZE(scope_uses); i++)
@@ -76,20 +70,17 @@ void optimization_do_use_scope_pass()
             optimization_do_use_scope_pass_put_intermediate_label: ;
 
             if (i != VECTOR_SIZE(intermediates) - 1) {
-                intermediate _intermediate = { VAR_USE, 0 };
+                intermediate _intermediate = { VAR_USE, NULLPTR };
                 vector_append(&output_intermediates, &_intermediate);
                 start_scope_ptr = vector_at(&output_intermediates, \
                     VECTOR_SIZE(output_intermediates)-1, 0);
             }
         }
     }
+
+    END_PROFILING("do the use scope optimization pass", true);
+
     free(scope_uses.contents);
     free_intermediates(false, false, false);
     *get_intermediate_vector() = output_intermediates;
-
-    #if DEBUG && linux
-    if (get_global_cli_options()->time_compilation)
-        printf("Took %f ms to do the use scope pass.\n", \
-            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
-    #endif
 }

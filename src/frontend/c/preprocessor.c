@@ -8,10 +8,6 @@
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
 #include<intermediate/intermediate.h>
-#if DEBUG && linux
-#include<cli.h>
-#include<time.h>
-#endif
 
 static char white_space_c[] = { ' ', '\t' };
 static char special_c[] = { '>', '<', '=', '!', '+', '-', '*', '/', '{', '}', \
@@ -25,11 +21,11 @@ typedef enum macro_status {
     DONT_SAVE_LINE,     /* Don't add the current line to the output file. */
 } macro_status;
 
-static vector defined = { 0, 0, 0, sizeof(u32) };
+static vector defined = { NULLPTR, 0, 0, sizeof(u32) };
 // TODO: ^^^ This should be a hash table. ^^^
-static vector tokenized_file = { 0, 0, 0, sizeof(char*) };
-static vector new_file = { 0, 0, 0, sizeof(char*) };
-static stack operand_stack = { NULLPTR, sizeof(i64) };
+static vector tokenized_file = { NULLPTR, 0, 0, sizeof(char*) };
+static vector new_file = { NULLPTR, 0, 0, sizeof(char*) };
+static stack operand_stack = { NULLPTR };
 
 static inline void C_expand_macro(vector* new_file, u32* i, vector* file);
 static inline macro_status C_read_macro(vector* file, u32* i);
@@ -125,11 +121,9 @@ vector C_preprocess_file(char* file_name)
 
     set_tokenizer_chars(white_space_c, special_c);
 
-    tokenized_file = tokenize_file(file_name);
+    tokenized_file = tokenize_file(file_name).token_vector;
 
-    #if DEBUG && linux
-    clock_t starting_time = clock();
-    #endif
+    START_PROFILING("preprocess file", "compile file");
 
     for (u32 i=0; i < tokenized_file.apparent_size; i++) {
         if (*(char**)vector_at(&tokenized_file, i, false) == NULL)
@@ -143,16 +137,14 @@ vector C_preprocess_file(char* file_name)
     }
 
     free(tokenized_file.contents);
-    #if DEBUG && linux
-    if (get_global_cli_options()->time_compilation)
-        printf("Took %f ms to preprocess file.\n", \
-            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f);
-    #endif
+
+    END_PROFILING("preprocess file", true);
+
     return new_file;
 }
 
 /*
- * This returns the file index of a macro by the same name as the inputed
+ * This returns the file index of a macro by the same name as the inputted
  * "char*" or "__UINT32_MAX__". The returned index is one more than where the
  * name is located.
  */
@@ -224,7 +216,7 @@ static inline void C_skip_single_line_comment(vector* file, u32* i)
 
 /*
  * This is a helper function of "C_process_if_macro". This adds the numeral
- * value of the inputed ASCII number at the inputed index to the operand_stack.
+ * value of the inputted ASCII number at the inputted index to the operand_stack.
  * Returns "__INTPTR_MAX__" if nothing was read.
  */
 char** C_preprocessor_process_operand(char** token)
@@ -235,8 +227,7 @@ char** C_preprocessor_process_operand(char** token)
 
     /* Allocating space for the number. */
     i64* num = malloc(sizeof(i64));
-    if (num == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(num);
     *num = get_ascii_number(*token);
 
     /* Adding the num to the stack and returning the current token. */
@@ -269,7 +260,7 @@ static inline macro_status C_process_if_macro(vector* file, u32 *i)
 
     // TODO: This doesn't account for the '?' and ':' operators.
 
-    /* Processing the expression after the if statment. */
+    /* Processing the expression after the if statement. */
     C_parse_operation(&index, &C_preprocessor_process_operator, \
     &C_preprocessor_process_operand);
 
@@ -280,7 +271,7 @@ static inline macro_status C_process_if_macro(vector* file, u32 *i)
 
     i64 result = *(i64*)stack_top(&operand_stack);
 
-    while (!IS_STACK_EMPTY(operand_stack))
+    while (!STACK_IS_EMPTY(operand_stack))
         free(stack_pop(&operand_stack));
 
     if (result >= 1)

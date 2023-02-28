@@ -2,31 +2,33 @@
  * This handles everything to do with the symbol table. These functions should
  * be used during the tokens to intermediate stage.
  */
+// TODO: The "add" functions should return the hash of the variable or function
+// symbol instead of a bool so a "get" function shouldn't have to be called
+// after creating the function or variable.
 
-#include<datastructures/hashtable.h>
+#include<datastructures/hash_table.h>
 #include<intermediate/symboltable.h>
 #include<types.h>
 
 #if DEBUG
-#define CHECK_HASH_TABLES_HAVE_BEEN_INITED() \
+#define CHECK_HASH_TABLES_HAVE_BEEN_INITTED() \
     if (function_symbols.contents == NULLPTR) \
-        send_error("Function's symbol hash table hasn't been inited"); \
+        send_error("Function's symbol hash table hasn't been initted"); \
     if (variable_symbols.contents == NULLPTR) \
-        send_error("Variable's symbol hash table hasn't been inited");
+        send_error("Variable's symbol hash table hasn't been initted");
 #else
-#define CHECK_HASH_TABLES_HAVE_BEEN_INITED()
+#define CHECK_HASH_TABLES_HAVE_BEEN_INITTED()
 #endif
 
-hash_table function_symbols = { 0, 0 };
-hash_table variable_symbols = { 0, 0 };
-
+hash_table function_symbols = { 0, NULLPTR };
+hash_table variable_symbols = { 0, NULLPTR };
 
 /*
  * This returns a pointer to the function symbol if found or a null pointer
  */
 function_symbol* get_function_symbol(char* name, u32 hash)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
+    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
 
     /* Does one get fired for writing code like this? */
     hash_table_bucket* function_bucket = name[0] == '\0' ? \
@@ -41,7 +43,7 @@ function_symbol* get_function_symbol(char* name, u32 hash)
  */
 variable_symbol* get_variable_symbol(char* name, u32 hash)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
+    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
 
     /* Does one get fired for writing code like this? */
     hash_table_bucket* variable_bucket = name[0] == '\0' ? \
@@ -53,18 +55,17 @@ variable_symbol* get_variable_symbol(char* name, u32 hash)
 
 /*
  * This adds a variable symbol to the symbol table. Returns true if adding the
- * variable symbol was a sucess.
+ * variable symbol was a success.
  */
 bool add_variable_symbol(char* name, type type, u8 flags)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
+    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
 
     if (get_variable_symbol(name, 0) != NULLPTR)
         return false;
 
     variable_symbol* _variable = malloc(sizeof(variable_symbol));
-    if (_variable == NULLPTR)
-        send_error(0);
+    CHECK_MALLOC(_variable);
 
     _variable->flags = flags;
     _variable->uses = 0;
@@ -96,14 +97,13 @@ void add_variable_symbol_ptr(variable_symbol* _variable_symbol)
  */
 bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITED();
+    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
 
     if (get_function_symbol(name, 0))
         return false;
 
     function_symbol* _function = malloc(sizeof(function_symbol));
-    if (_function == NULLPTR)
-        send_error(0);
+    CHECK_MALLOC(_function);
 
     _function->inputs = inputs;
     _function->return_type = _return;
@@ -122,7 +122,7 @@ bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
 /*
  * This clears all variables from the symbol table that are in scope without
  * freeing their variable symbol structs since they should be pointed to by the
- * "VAR_DECLERATION" intermediates.
+ * "VAR_DECLARATION" intermediates.
  */
 void clear_variables_in_scope()
 {
@@ -163,7 +163,7 @@ void free_symbol_table()
 
     current_bucket = function_symbols.contents;
 
-    for (; current_bucket < function_symbols.contents + \
+    for (; current_bucket < (u8*)function_symbols.contents + \
     sizeof(hash_table_bucket) * (1 << function_symbols.size); current_bucket++)
     {
         if (current_bucket->next != 0) {

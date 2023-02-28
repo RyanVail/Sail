@@ -7,7 +7,7 @@
 
 #include<intermediate/enum.h>
 #include<frontend/common/parser.h>
-#include<datastructures/hashtable.h>
+#include<datastructures/hash_table.h>
 
 static hash_table enum_entries = { sizeof(enum_entry), NULLPTR };
 
@@ -25,7 +25,7 @@ void free_enum_entries()
 {
     #if DEBUG
     if (enum_entries.contents == NULLPTR)
-        send_error("Intermediate enums have not been inited yet");
+        send_error("Intermediate enums have not been initted yet");
     #endif
 }
 
@@ -37,7 +37,7 @@ enum_entry* get_enum_entry(u32 hash)
 {
     #if DEBUG
     if (enum_entries.contents == NULLPTR)
-        send_error("Intermediate enums have not been inited yet");
+        send_error("Intermediate enums have not been initted yet");
     #endif
 
     hash_table_bucket* _bucket = hash_table_at_hash(&enum_entries, hash);
@@ -53,7 +53,7 @@ char* entry_name)
 {
     #if DEBUG
     if (enum_entries.contents == NULLPTR)
-        send_error("Intermediate enums have not been inited yet");
+        send_error("Intermediate enums have not been initted yet");
     #endif
 
     /* Hash the variable name. */
@@ -79,8 +79,7 @@ char* entry_name)
     /* Putting the enum entry into a bucket. */
     _bucket->value = malloc(sizeof(enum_entry));
     enum_entry* _entry = _bucket->value;
-    if (_entry == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(_entry);
     _entry->value = value;
     _entry->hash = result_hash;
     _entry->parent_enum = parent_enum;

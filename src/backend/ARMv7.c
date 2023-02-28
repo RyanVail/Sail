@@ -6,11 +6,11 @@
  * have the "intermediate_kind" of "VARIABLE_ACCESS". Registers that had
  * variables in them and that are now being operated on have the
  * "intermediate_kind" of "VAR_RETURN". Variables that are being defined and
- * come from "VAR_DECLERATION" keep the "intermediate_type" of "VAR_DECLERATION"
+ * come from "VAR_DECLARATION" keep the "intermediate_type" of "VAR_DECLARATION"
  * till they are defined.
  */
 
-// TOOD: The reg struct should be renamed into something like "reg_content" and
+// TODO: The reg struct should be renamed into something like "reg_content" and
 // reg should be a typedef of a u8.
 // TODO: This doesn't support branches longer than the 24 bit maximum in one
 // instruction.
@@ -18,10 +18,6 @@
 #include<backend/ARMv7.h>
 #include<intermediate/intermediate.h>
 #include<intermediate/struct.h>
-#if DEBUG && linux
-#include<time.h>
-#include<cli.h>
-#endif
 
 typedef enum location_type {
     STACK_INDEX,
@@ -69,17 +65,17 @@ typedef struct control_flow {
     u32* instruction;
 } control_flow;
 
-static bin output_bin = { 0, 0 };
+static bin output_bin = { NULLPTR, 0 };
 static reg regs[GENERAL_REGISTER_COUNT];
-static vector variable_priorities = { 0, 0, 0, 0 };
+static vector variable_priorities = { NULLPTR, 0, 0, 0 };
 
 /*
  * This is the operand stack which just holds the locations of operands and
  * their types.
  */
-static stack value_locations = { 0, sizeof(value_location) };
-static stack values_on_stack = { 0, sizeof(value_on_stack) };
-static stack control_flow_stack = { 0, sizeof(control_flow) };
+static stack value_locations = { NULLPTR };
+static stack values_on_stack = { NULLPTR };
+static stack control_flow_stack = { NULLPTR };
 static u32 current_offset = 0;
 
 #define ASSEMBLE_MOVT(condition, destination_reg, _immediate) \
@@ -134,7 +130,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate);
 
 /*
  * This returns a "bin" which contains the outputed ARMv7 machine code generated
- * from the inputed intermediates.
+ * from the inputted intermediates.
  */
 bin ARMv7_intermediates_into_binary(vector* intermediates)
 {
@@ -147,7 +143,7 @@ bin ARMv7_intermediates_into_binary(vector* intermediates)
 }
 
 /*
- * This adds the inputed machine code without a label to "output_bin".
+ * This adds the inputted machine code without a label to "output_bin".
  */
 static inline void ARMv7_add_asm(u32 machine_code_to_add)
 {
@@ -190,8 +186,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         ARMv7_add_asm(1 << 28 | 5 << 25);
     case LOOP:
         new_control_flow = malloc(sizeof(control_flow));
-        if (new_control_flow == NULLPTR)
-            send_error(0);
+        CHECK_MALLOC(new_control_flow);
 
         new_control_flow->intermediate = _intermediate.type;
         new_control_flow->offset = current_offset;
@@ -209,7 +204,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case END:
         // TODO: This shouldn't be as nested as it is.
         end_control_flow = NULLPTR;
-        if (!IS_STACK_EMPTY(control_flow_stack)) {
+        if (!STACK_IS_EMPTY(control_flow_stack)) {
             end_control_flow = stack_pop(&control_flow_stack);
             if (end_control_flow != NULLPTR) {
                 i32 new_offset = end_control_flow->offset - current_offset;
@@ -226,7 +221,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         clear_variables_in_scope();
         break;
     case CLEAR_STACK:
-        while (!(IS_STACK_EMPTY(value_locations)))
+        while (!(STACK_IS_EMPTY(value_locations)))
             free(stack_pop(&value_locations));
         break;
     case NEG:
@@ -242,8 +237,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         break;
     case CONST:
         _var = malloc(sizeof(value_location));
-        if (_var == NULLPTR)
-            handle_error(0);
+        CHECK_MALLOC(_var);
         #if PTRS_ARE_64BIT
         u32 immediate = ARMv7_get_immediate_of_const((u64)_intermediate.ptr);
         if (immediate != __UINT32_MAX__) {
@@ -288,15 +282,14 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case CONST_PTR:
         // TODO: Add constant pointer things here
         break;
-    case VAR_DECLERATION:
+    case VAR_DECLARATION:
         add_variable_symbol_ptr((variable_symbol*)_intermediate.ptr);
     case VAR_ACCESS:
     case VAR_ASSIGNMENT:
         _var = malloc(sizeof(value_location));
-        if (_var == NULLPTR)
-            handle_error(0);
+        CHECK_MALLOC(_var)
 
-        _var->value_type = _intermediate.type == VAR_DECLERATION ? \
+        _var->value_type = _intermediate.type == VAR_DECLARATION ? \
         ((variable_symbol*)_intermediate.ptr)->type : ((variable_symbol*) \
         get_variable_symbol("",(u32)_intermediate.ptr))->type;
 
@@ -315,7 +308,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         // TODO: This logic still needs to be added
         printf("%u\n", _first->first);
         if (_second->type == REG_INDEX
-        && regs[_second->first].content.type == VAR_DECLERATION)
+        && regs[_second->first].content.type == VAR_DECLARATION)
             regs[_second->first].content.type = VAR_ASSIGNMENT;
         printf("%u\n", regs[_second->first].content.type);
         break;
@@ -355,7 +348,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case LESS_THAN_EQUAL:
         _first = stack_pop(&value_locations);
         _second = stack_top(&value_locations);
-        u8 operational_codes[] = { 0, 1, 12, 10, 11, 13 };
+        u8 operational_codes[] = { 1, 0, 12, 10, 11, 13 };
 
         /*
          * This is an ugly way of getting the immediate value into a register.
@@ -371,10 +364,10 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
 
         // MOV<operation_code> #1
         ARMv7_add_asm(_second->first << 12 | 0x03a00001 \
-        | operational_codes[_intermediate.type - IS_EQUAL] << 28);
+        | operational_codes[_intermediate.type - NOT_EQUAL] << 28);
         // MOV<!operation_code> #0
         ARMv7_add_asm(_second->first << 12 | 0x03a00000 \
-        | operational_codes[_intermediate.type - IS_EQUAL + 1] << 28);
+        | operational_codes[_intermediate.type - NOT_EQUAL + 1] << 28);
 
         free(_first);
         break;
@@ -387,9 +380,9 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case OR:
         _first = stack_pop(&value_locations);
         _second = stack_top(&value_locations);
-        // TODO: This logic should be put into a switch statments so the
+        // TODO: This logic should be put into a switch statements so the
         // compiler can optimize it how it likes and it would output the same
-        // thing anyway on most compulation levels.
+        // thing anyway on most computation levels.
         u8 _operational_codes[] = { 4, 2, 0, 0, 0, 1, 12 };
         if (_second->type == REG_INDEX)
             ARMv7_add_asm(ASSEMBLE_DATA_NO_SHIFT(14, \
@@ -407,7 +400,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
 }
 
 /*
- * This returns the priority of the inputed variable id.
+ * This returns the priority of the inputted variable id.
  */
 static inline u32 ARMv7_get_variable_priority(u32 variable_id)
 {
@@ -419,8 +412,8 @@ static inline u32 ARMv7_get_variable_priority(u32 variable_id)
 }
 
 /*
- * This returns the 12 bit immediate of the inputed 32 bit constant.
- * _UINT32_MAX__ is returned if the inputed constant is invalid.
+ * This returns the 12 bit immediate of the inputted 32 bit constant.
+ * _UINT32_MAX__ is returned if the inputted constant is invalid.
  */
 static u32 ARMv7_get_immediate_of_const(u32 _const)
 {
@@ -437,7 +430,7 @@ static u32 ARMv7_get_immediate_of_const(u32 _const)
 }
 
 /*
- * This puts the inputed constant into the desired register.
+ * This puts the inputted constant into the desired register.
  */
 static inline void ARMv7_put_u32_const_into_register(u32 _const, u8 _reg)
 {
@@ -460,7 +453,7 @@ static inline void ARMv7_put_u32_const_into_register(u32 _const, u8 _reg)
 
     u32 immediate_result = __UINT32_MAX__;
 
-    // Find out why this if statment is here I added it for some reason then
+    // Find out why this if statement is here I added it for some reason then
     // removed it and things broke.
     if ((_const <  __UINT16_MAX__)) {
         is_complement = true;
@@ -479,7 +472,7 @@ static inline void ARMv7_put_u32_const_into_register(u32 _const, u8 _reg)
 }
 
 /*
- * This copies the inputed variable into the destination reg.
+ * This copies the inputted variable into the destination reg.
  */
 static inline void ARMv7_copy_variable(u32 _var_hash, u8 _reg)
 {
@@ -579,7 +572,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
     // if (regs[lowest_priority].content.type == VAR_ACCESS
     // && (_intermediate.type == VAR_ACCESS
     // || _intermediate.type == VAR_ASSIGNMENT)) {
-        // TODO: I don't know what this if statment was meant to do.
+        // TODO: I don't know what this if statement was meant to do.
     // }
 
     ARMv7_save_register(lowest_priority_reg);
@@ -601,7 +594,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
         0, false, lowest_priority_reg, false, false));
         break;
     case VAR_ACCESS:
-        ARMv7_copy_variable(_intermediate.ptr, lowest_priority_reg);
+        ARMv7_copy_variable((u32)_intermediate.ptr, lowest_priority_reg);
         break;
     }
 
@@ -610,7 +603,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
 
 /*
  * This takes in a pointer to a struct and generates its padding and memory
- * layout. This is a helper function for "ARMv7_generate_structs".
+ * layout.
  */
 void ARMv7_generate_struct(intermediate_struct* _struct)
 {
@@ -664,56 +657,7 @@ void ARMv7_generate_struct(intermediate_struct* _struct)
     }
 
     _struct->byte_size = allignment;
-
-    #if DEBUG
     reverse_struct_variables(_struct);
-    print_struct(_struct);
-    #endif
-}
-
-// TODO: This function should be shared in "struct.c" and take in a function ptr.
-/*
- * This function goes through all defined structs and generates their memory
- * layout and padding.
- */
-void ARMv7_generate_structs()
-{
-    #if DEBUG && linux
-    clock_t starting_time = clock();
-    #endif
-
-    hash_table* struct_hash_table = get_intermediate_structs();
-    hash_table_bucket* linked_bucket;
-    intermediate_struct* current_struct;
-
-    /* Going through all structs in the struct hash table. */
-    for (u32 i=0; i < (1 << struct_hash_table->size); i++) {
-        linked_bucket = &((hash_table_bucket*)struct_hash_table->contents)[i];
-
-        /* Going through the linked buckets. */
-        while (linked_bucket != NULLPTR) {
-            /* If this bucket doesn't have anything just continue. */
-            if (linked_bucket->hash == 0) {
-                linked_bucket = linked_bucket->next;
-                continue;
-            }
-
-            /* Making the memory layout of the current struct. */
-            current_struct = linked_bucket->value;
-            if (current_struct != NULLPTR) {
-                reverse_struct_variables(current_struct);
-                ARMv7_generate_struct(current_struct);
-            }
-
-            linked_bucket = linked_bucket->next;
-        }
-    }
-
-    #if DEBUG && linux
-    if (get_global_cli_options()->time_compilation)
-        printf("Took %f ms to generate all struct's memory layout.\n", \
-            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
-    #endif
 }
 
 /*
@@ -721,7 +665,7 @@ void ARMv7_generate_structs()
  */
 void ARMv7_clear_registers()
 {
-    intermediate _intermediate = { VAR_RETURN, 0 };
+    intermediate _intermediate = { VAR_RETURN, NULLPTR };
     for (u32 i=0; i < GENERAL_REGISTER_COUNT; i++) {
         regs[i].content = _intermediate;
     }
@@ -732,7 +676,7 @@ void ARMv7_clear_registers()
  */
 void ARMv7_free_all()
 {
-    while (!(IS_STACK_EMPTY(value_locations)))
+    while (!(STACK_IS_EMPTY(value_locations)))
         free(stack_pop(&value_locations));
 }
 

@@ -1,16 +1,15 @@
 /*
  * This holds the intermediate enum and other general functions involving
- * intermediates. Intermediates should be feed in to "add_intermediate" in
- * reverse polish notation.
+ * intermediates.
  */
 // TODO: A lot of these function names are not specific enough like
-// "add_operand" which shuold be called something like
+// "add_operand" which should be called something like
 // "add_intermediate_operand"
 #include<intermediate/intermediate.h>
 #include<frontend/common/parser.h>
 
-static stack operand_stack = { 0, sizeof(operand) };
-static vector intermediates_vector = { 0, 0, 0, sizeof(intermediate) };
+static stack operand_stack = { NULLPTR };
+static vector intermediates_vector = { NULLPTR, 0, 0, sizeof(intermediate) };
 
 /*
  * This takes in an operand and adds the intermediates to
@@ -38,10 +37,10 @@ void pop_operand(bool dual, bool comparison)
     operand* _first_operand = \
     dual || comparison ? stack_pop(&operand_stack) : stack_top(&operand_stack);
 
-    if (!_first_operand->inited)
+    if (!_first_operand->initted)
         add_operand_to_intermediates(_first_operand->intermediate);
 
-    _first_operand->inited = true;
+    _first_operand->initted = true;
 
     if (!dual) {
         if (_first_operand->type.kind == VOID_TYPE) {
@@ -59,10 +58,10 @@ void pop_operand(bool dual, bool comparison)
     if (_second_operand->intermediate.type == VAR_RETURN)
         goto pop_operand_second_operand_is_place_holder_label;
 
-    if (!_second_operand->inited)
+    if (!_second_operand->initted)
         add_operand_to_intermediates(_second_operand->intermediate);
 
-    _second_operand->inited = true;
+    _second_operand->initted = true;
 
     pop_operand_second_operand_is_place_holder_label:
 
@@ -72,7 +71,7 @@ void pop_operand(bool dual, bool comparison)
         free(_first_operand);
     if (comparison) {
         free(_second_operand);
-        intermediate _to_add_intermediate = { COMPARISON_RETURN, 0 };
+        intermediate _to_add_intermediate = { COMPARISON_RETURN, NULLPTR };
         add_operand(_to_add_intermediate, true);
     }
 }
@@ -120,7 +119,7 @@ void process_operation(intermediate_type _operation)
         pop_operand(false, false);
         break;
     // TODO: More operators need to be added.
-    case MEM_ACCESS:
+    case MEM_DEREF:
         top_operand = stack_top(&operand_stack);
         if (IS_TYPE_STRUCT(top_operand->type))
             top_operand->type.kind += (1 << 16);
@@ -137,14 +136,13 @@ void process_operation(intermediate_type _operation)
         pop_operand(false, false);
         break;
     default:
-    // TODO: Find out if this should always compile or not.
         #if DEBUG
         send_error("Unexpected operation");
         #endif
         break;
     }
 
-    intermediate _intermediate = { _operation, 0 };
+    intermediate _intermediate = { _operation, NULLPTR };
     add_intermediate(_intermediate);
 }
 
@@ -162,7 +160,7 @@ void add_intermediate(intermediate _intermediate)
 void cast_top_operand(type _type)
 {
     #if DEBUG
-    if (IS_STACK_EMPTY(operand_stack))
+    if (STACK_IS_EMPTY(operand_stack))
         send_error(\
             "Attempted to cast the top operand when there are no operands.");
     #endif
@@ -178,9 +176,8 @@ void set_type_of_operand(operand* _operand)
 {
     #if DEBUG
     if (_operand->intermediate.type >= INC
-    && _operand->intermediate.type <= LESS_THAN_EQUAL) {
+    && _operand->intermediate.type <= LESS_THAN_EQUAL)
         send_error("Cannot get the type of invalid intermediate");
-    }
     #endif
 
     type _type = { 0, VOID_TYPE };
@@ -202,7 +199,7 @@ void set_type_of_operand(operand* _operand)
         _type.kind = DOUBLE_TYPE;
         _operand->type = _type;
         break;
-    case VAR_DECLERATION:
+    case VAR_DECLARATION:
         _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
         break;
     case VAR_ASSIGNMENT:
@@ -229,13 +226,12 @@ void set_type_of_operand(operand* _operand)
 /*
  * This adds an operand onto the "operand_stack" from an intermediate.
  */
-void add_operand(intermediate _intermediate, bool inited)
+void add_operand(intermediate _intermediate, bool initted)
 {
     operand* _operand = malloc(sizeof(operand));
-    if (_operand == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(_operand);
     _operand->intermediate = _intermediate;
-    _operand->inited = inited;
+    _operand->initted = initted;
     set_type_of_operand(_operand);
     stack_push(&operand_stack, _operand);
 }
@@ -245,7 +241,7 @@ void add_operand(intermediate _intermediate, bool inited)
  */
 void clear_operand_stack()
 {
-    while (!(IS_STACK_EMPTY(operand_stack)))
+    while (!(STACK_IS_EMPTY(operand_stack)))
         free((char*)stack_pop(&operand_stack));
 }
 
@@ -257,7 +253,7 @@ void free_intermediates(bool free_variable_symbols, bool free_var_vectors, \
 bool free_constants)
 {
     while (intermediates_vector.apparent_size != 0) {
-        register intermediate* _intermediate = vector_pop(&intermediates_vector);
+        intermediate* _intermediate = vector_pop(&intermediates_vector);
 
         #if !PTRS_ARE_64BIT
         if (free_constants && _intermediate->ptr != NULLPTR
@@ -265,7 +261,7 @@ bool free_constants)
             free(_intermediate->ptr);
         #endif
     
-        if (free_variable_symbols && _intermediate->type == VAR_DECLERATION)
+        if (free_variable_symbols && _intermediate->type == VAR_DECLARATION)
             free(_intermediate->ptr);
 
         if (free_var_vectors && (_intermediate->type == REGISTER
@@ -276,6 +272,7 @@ bool free_constants)
         free(_intermediate);
     }
     free(intermediates_vector.contents);
+    intermediates_vector.contents = NULLPTR;
 }
 
 /*
@@ -286,7 +283,7 @@ vector* get_intermediate_vector()
     return &intermediates_vector;
 }
 
-/* This adds the inputed f32 onto the operand stack. */
+/* This adds the inputted f32 onto the operand stack. */
 void add_float(f32 value)
 {
     #if DEBUG && FLOATS_IN_PTRS
@@ -298,23 +295,21 @@ void add_float(f32 value)
     intermediate _intermediate = { FLOAT, F32_TO_VOIDPTR(value) };
     #else
     f32* new_float = malloc(sizeof(f32));
-    if (new_float == NULLPTR)
-        send_error(0);
+    CHECK_MALLOC(new_float);
     *new_float = value;
     intermediate _intermediate = { FLOAT, new_float };
     #endif
     add_operand(_intermediate, false);
 }
 
-/* This adds the inputed f64 onto the operand stack. */
+/* This adds the inputted f64 onto the operand stack. */
 void add_double(f64 value)
 {
     #if PTRS_ARE_64BIT && FLOATS_IN_PTRS
     intermediate _intermediate = { DOUBLE, F64_TO_VOIDPTR(value) };
     #else
     f64* new_double = malloc(sizeof(f64));
-    if (new_double == NULLPTR)
-        send_error(0);
+    CHECK_MALLOC(new_double);
     *new_double = value;
     intermediate _intermediate = { DOUBLE, new_double };
     #endif
@@ -322,38 +317,45 @@ void add_double(f64 value)
 }
 
 /*
- * This adds the inputed constant number to the operand stack. This will convert
+ * This puts the const num into the inputted "_intermediate" be that as a
+ * "CONST" intermediate or a "CONST_PTR" based on the "const_num".
+ */
+void set_intermediate_to_const(intermediate* _intermediate, i64 const_num)
+{
+    #if !PTRS_ARE_64BIT
+    if (const_num < ~__UINTPTR_MAX__ || const_num > __UINTPTR_MAX__) {
+        if (_intermediate->type != CONST_PTR) {
+            _intermediate->ptr = malloc(sizeof(i64));
+            CHECK_MALLOC(_intermediate->ptr);
+        }
+        *(i64*)_intermediate->ptr = const_num;
+        _intermediate->type = CONST_PTR;
+    } else {
+        if (_intermediate->type == CONST_PTR)
+            free(_intermediate->ptr);
+        _intermediate->ptr = (void*)const_num;
+        _intermediate->type = CONST;
+    }
+    #else
+    _intermediate->ptr = (void*)const_num;
+    _intermediate->type = CONST;
+    #endif
+}
+
+/*
+ * This adds the inputted constant number to the operand stack. This will convert
  * it into a "CONST_PTR" if it can't fit into a pointer but it's a "CONST" by
  * default.
  */
 void add_const_num(i64 const_num)
 {
-    /*
-     * If we have an i64 larger than the size of a pointer we store the value
-     * on the heap and make the pointer point to the value.
-     */
-    #if !PTRS_ARE_64BIT
-    intermediate _operand;
-    i64* _const_num;
-    if (const_num < ~((i64)1 << ((sizeof(void*) << 3))-1)
-    || const_num > ((i64)1 << ((sizeof(void*) << 3)-1))) {
-        _const_num = malloc(sizeof(i64));
-        if (_const_num == NULLPTR)
-            handle_error(0);
-        *_const_num = const_num;
-        intermediate _operand = { CONST_PTR, _const_num };
-    } else {
-        _const_num = (void*)const_num;
-        intermediate _operand = { CONST, _const_num };
-    }
-    #else
-    intermediate _operand = { CONST, (void*)const_num };
-    #endif
+    intermediate _operand = { NIL, NULLPTR };
+    set_intermediate_to_const(&_operand, const_num);
     add_operand(_operand, false);
 }
 
 /*
- * If the ASCII number at the inputed token is valid it adds it to the
+ * If the ASCII number at the inputted token is valid it adds it to the
  * intermediates. Returns true if a number was added, otherwise false.
  */
 bool add_if_ascii_num(char* token)
@@ -367,7 +369,7 @@ bool add_if_ascii_num(char* token)
 }
 
 /*
- * If the inputed token is a valid float or double it adds it to the
+ * If the inputted token is a valid float or double it adds it to the
  * intermediates. Returns the ending index of the float if something was added,
  * otherwise 0.
  */
@@ -404,9 +406,9 @@ stack* get_operand_stack()
 #if DEBUG
 
 // TODO: Replace this array with something less temp.
-const char* INTERMEDIATES_TEXT[] = { "Incrament", "Decrament", "Not", \
+const char* INTERMEDIATES_TEXT[] = { "Increment", "Decrement", "Not", \
 "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", \
-"LSR", "Mod", "==", "!=", ">", ">=", "<", "<=", "=", "Var decleration", \
+"LSR", "Mod", "!=", "==", ">", ">=", "<", "<=", "=", "Var declaration", \
 "Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", \
 "Else", "Loop", "End", "Continue", "Return", "Break", "Func def", "Func call", \
 "Goto", "Const", "Const ptr", "Float", "Double", "Get struct variable", \

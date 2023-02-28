@@ -1,6 +1,6 @@
 /*
- * This optimization pass goes through all of the intermediates and evalutes
- * arithments invloving constants.
+ * This optimization pass goes through all of the intermediates and evaluates
+ * arithmetics involving constants.
  */
 
 #ifndef INTERMEDIATE_OPTIMIZATION_CONSTANTPASS_H
@@ -11,7 +11,7 @@
 #include<intermediate/intermediate.h>
 
 /*
- * This goes through all of the the constants in the intermediates and evalutes
+ * This goes through all of the the constants in the intermediates and evaluates
  * them. Constants as in values inside of "CONST" / "CONSTPTR" intermediates.
  */
 void optimization_do_constant_pass();

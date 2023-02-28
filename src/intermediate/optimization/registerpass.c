@@ -6,10 +6,6 @@
 
 #include<intermediate/optimization/registerpass.h>
 #include<intermediate/intermediate.h>
-#if DEBUG && linux
-#include<time.h>
-#include<cli.h>
-#endif
 
 static inline void goto_start_of_next_basic_block(u32* location, \
 vector* intermediates, vector* output_intermediates);
@@ -33,25 +29,24 @@ void optimization_do_register_pass()
      * symbol.
      */
 
-    #if DEBUG && linux
-    clock_t starting_time = clock();
-    #endif
+    START_PROFILING("do the register optimization pass", \
+    "do all optimization passes");
 
     vector* intermediates = get_intermediate_vector();
 
     vector output_intermediates = \
-        vector_init_with(sizeof(intermediate), intermediates->size);
+        vector_init(sizeof(intermediate), intermediates->size);
 
-    vector ptrs = vector_init_with(sizeof(u32), 4);
-    vector uses = vector_init_with(sizeof(u8), 4);
+    vector ptrs = vector_init(sizeof(u32), 4);
+    vector uses = vector_init(sizeof(u8), 4);
 
     u32 location = 0;
     u32 start = 0;
 
     intermediate* start_scope_ptr = 0;
 
-    // TODO: The below if statments should be replaced with a switch statment so
-    // the compiler can decide how to optimize it.
+    // TODO: The below if statements should be replaced with a switch statement
+    // so the compiler can decide how to optimize it.
     for (; location < VECTOR_SIZE((*intermediates));) {
         intermediate* _current = vector_at(intermediates, location, 0);
 
@@ -85,16 +80,12 @@ void optimization_do_register_pass()
         location++;
     }
 
+    END_PROFILING("do the register optimization pass", true);
+
     free(uses.contents);
     free(ptrs.contents);
     free_intermediates(false, false, false);
     *intermediates = output_intermediates;
-
-    #if DEBUG && linux
-    if (get_global_cli_options()->time_compilation)
-        printf("Took %f ms to do the register pass.\n", \
-            (((float)clock() - starting_time) / CLOCKS_PER_SEC) * 1000.0f );
-    #endif
 }
 
 /*
@@ -108,9 +99,8 @@ u32 end, vector* intermediates, vector* output_intermediates)
 
     /* This reorders ptrs from highest to lowest uses badly. */
     vector* new_ptrs = malloc(sizeof(vector));
-    if (new_ptrs == NULLPTR)
-        handle_error(0);
-    *new_ptrs = vector_init_with(sizeof(u32), ptrs->size);
+    CHECK_MALLOC(new_ptrs);
+    *new_ptrs = vector_init(sizeof(u32), ptrs->size);
 
     // TODO: Replace this with something that isn't O(n^2)!
     for (u8 x=0; x < VECTOR_SIZE((*ptrs)); x++) {
@@ -137,13 +127,13 @@ u32 end, vector* intermediates, vector* output_intermediates)
     uses->apparent_size = 0;
 
     optimization_first_pass_process_basic_block_label:
-    // TODO: Using "memcpy" instead of appending can increase the speed of this.
+
     for (; start < end; start++)
         vector_append(output_intermediates, vector_at(intermediates,start,0));
 }
 
 /*
- * This incraments "location" adding all control flow operators till it reaches
+ * This increments "location" adding all control flow operators till it reaches
  * a token that isn't a control flow operator.
  */
 static inline void goto_start_of_next_basic_block(u32* location, \

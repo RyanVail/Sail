@@ -4,7 +4,7 @@
 #define VECTOR_SIZE(_vector) (_vector.apparent_size / sizeof(_vector.type_size))
 
 /* struct vector - This is a dynamicly allocated array
- * @contents: This is a pointer to the start of the string
+ * @contents: This is a pointer to the contents of the vector
  * @apparent_size: This is the size of the vector
  * @size: This is the true size of the vector
  * @type_size: This is the size of one type in the vector
@@ -28,9 +28,9 @@ void vector_try_to_shrink(vector *_vector);
 void vector_try_to_expand(vector *_vector);
 
 /*
- * This inits a vector with '1 << size' as a real size.
+ * This inits a vector with (1 << size) as a real size.
  */
-vector vector_init_with(u8 size_of_items, u8 size);
+vector vector_init(u8 size_of_items, u8 size);
 
 /*
  * This returns the value at the index in the vector.

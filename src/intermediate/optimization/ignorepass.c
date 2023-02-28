@@ -10,14 +10,14 @@ This uses index for simplicity rather than pointers.
 Tracking the uses of variable "c":
 |--------------|
 |REGISTER|VL RL|        VL = Var last used index
-|0| abc  |0   0|        RL = Reister last used index
+|0| abc  |0   0|        RL = Register last used index
 |1| ab   |0   1|
 |2| cb   |2   2|
 |3| b    |3   2|
 |--------------|
 */
 
-static inline void reset_ignore_indexs(vector* ignore_indexs, u32 i, \
+static inline void reset_ignore_indexes(vector* ignore_indexes, u32 i, \
 vector* intermediates)
 {
     u32 register_count = 0;
@@ -29,14 +29,14 @@ vector* intermediates)
             break;
     }
 
-    if (ignore_indexs->contents != NULLPTR) {
-        for (u32 x = 0; x < VECTOR_SIZE((*ignore_indexs)); x++)
-            free(((vector*)vector_at(ignore_indexs, x, 0))->contents);
-        free(ignore_indexs->contents);
+    if (ignore_indexes->contents != NULLPTR) {
+        for (u32 x = 0; x < VECTOR_SIZE((*ignore_indexes)); x++)
+            free(((vector*)vector_at(ignore_indexes, x, 0))->contents);
+        free(ignore_indexes->contents);
     }
 
-    vector _tmp_vector = { 0, 0, 0, sizeof(u32) };
-    vector_append(ignore_indexs, &_tmp_vector);
+    vector _tmp_vector = { NULLPTR, 0, 0, sizeof(u32) };
+    vector_append(ignore_indexes, &_tmp_vector);
 }
 
 /*
@@ -82,15 +82,15 @@ void optimization_do_ignore_pass()
 {
     vector* intermediates = get_intermediate_vector();
     vector output_intermediates = \
-        vector_init_with(sizeof(intermediate), intermediates->size);
+        vector_init(sizeof(intermediate), intermediates->size);
 
-    vector ignore_indexs = { 0, 0, 0, sizeof(vector) };
+    vector ignore_indexes = { NULLPTR, 0, 0, sizeof(vector) };
 
     for (u32 i=0; i < VECTOR_SIZE((*intermediates)); i++) {
         intermediate* _current = vector_at(intermediates, i, 0);
 
         if (_current->type == FUNC_DEF || i == 0)
-            reset_ignore_indexs(&ignore_indexs, 0, intermediates);
+            reset_ignore_indexes(&ignore_indexes, 0, intermediates);
 
         if (_current->type != VAR_USE)
             continue;

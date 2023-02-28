@@ -22,8 +22,6 @@ void skip_C_comments(vector* file, u32* current_index)
         send_error("'*' can't be white space for C style comment removal");
     #endif
 
-    // TODO: Comments in comments are broken becaues /*/ would count as both
-    // opening and closing a comment.
 
     if (*(char**)vector_at(file, *current_index, false) == NULL
     || **(char**)vector_at(file, *current_index, false) != '/')
@@ -61,9 +59,9 @@ void replace_C_const_chars(vector* file, u32 current_index)
 {
     #if DEBUG
     if (!is_special_char('\''))
-        send_error("\' has to be a special char for C const char replacment");
+        send_error("\' has to be a special char for C const char replacement");
     if (!is_special_char('\\'))
-        send_error("\\ has to be a special char for C const char replacment");
+        send_error("\\ has to be a special char for C const char replacement");
     #endif
 
     if (**(char**)vector_at(file, current_index, false) != '\'')
@@ -103,8 +101,7 @@ void replace_C_const_chars(vector* file, u32 current_index)
     /* This turns the "_result" into decimal chars. */
     u32 length = snprintf(NULL, 0, "%llu", _result);
     char* destination = malloc(length + 1);
-    if (destination == NULLPTR)
-        handle_error(0);
+    CHECK_MALLOC(destination);
     snprintf(destination, length + 1, "%llu", _result);
     *(char**)vector_at(file, _initial_index, false) = destination;
 }
@@ -119,10 +116,10 @@ void replace_C_escape_codes(vector* file, u32* current_index)
 {
     #if DEBUG
     if (!is_special_char('\\'))
-        send_error("\\ has to be a special char for C backslash replacment");
+        send_error("\\ has to be a special char for C backslash replacement");
     #endif
  
-    // TODO: This shouldn't blindly incrament "current_index" instead it should
+    // TODO: This shouldn't blindly increment "current_index" instead it should
     // find the next valid token.
     /*
      * "_next" is either the value of the escape code or the base if it's octal
@@ -194,8 +191,7 @@ void replace_C_escape_codes(vector* file, u32* current_index)
         /* This turns the "_result" into decimal chars. */
         u32 length = snprintf(NULL, 0, "%llu", _result);
         char* destination = malloc(length+1);
-        if (destination == NULL)
-            handle_error(0);
+        CHECK_MALLOC(destination)
         snprintf(destination, length + 1, "%llu", _result);
         destination[length] = '\0';
 

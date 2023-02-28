@@ -2,7 +2,7 @@
 #include<cli.h>
 #include<types.h>
 #include<datastructures/stack.h>
-#include<datastructures/hashtable.h>
+#include<datastructures/hash_table.h>
 #include<frontend/salmon/parser.h>
 #include<frontend/common/tokenizer.h>
 #include<frontend/salmon/preprocessor.h>
@@ -23,20 +23,21 @@
 #endif
 #include<frontend/common/parser.h>
 
+char* salmon_file_extensions[] = {"sal", "sah"};
+char* c_file_extensions[] = {"c", "h"};
+
 int main(i32 argc, char* args[])
 {
+    error_handler = NULLPTR;
+
     /* This is a fail safe. */
     #if DEBUG && PTRS_ARE_64BIT
     if (sizeof(void*) != 8)
         send_error( \
         "Set \"PTRS_ARE_64BIT\" flag in \"main.h\" to false and recompile");
     #endif
- 
-    // TODO: "hashtable.c" should be "hash_table.c" same with "hashtable.h".
-    // TOOD: Symbol table ids cannot be stored inside void pointers on 16 bit
-    // machines which may be a problem.
 
-    // process_cli_options(argc, args);
+    process_cli_options(argc, args);
 
     // vector _tmp = tokenize_file("test.sal");
     // for (u32 i=0; i < _tmp.apparent_size; i++) {
@@ -46,33 +47,50 @@ int main(i32 argc, char* args[])
 
     // init_symbol_table(8, 8);
 
-    // C_file_into_intermediate("../tests/fib.c");
+    // vector file = C_preprocess_file(file_name);
+    // if (file.contents == NULLPTR) {
+        // printf("Failed to preprocess C file: %s", file_name);
+        // exit(-1);
+    // }
+
+    // C_file_into_intermediates("../tests/fib.c");
 
     // print_intermediates();
 
     // optimization_do_register_pass();
 
-    // optimizaiton_do_use_scope_pass();
+    // optimization_do_use_scope_pass();
 
     // exit(0);
 
-	/* Initing the many many hash tables. */
+	/* Initting the many many hash tables. */
+
+
     init_enum_hash_table(4);
     init_typedef_hash_table(4);
     init_struct_hash_table(4);
     init_symbol_table(8, 8);
 
-    get_global_cli_options()->time_compilation = true;
+    // TODO: This currently doesn't free any of the symbols or files after
+    // compiling.
+    for (u32 i=0; i < VECTOR_SIZE(global_cli_options.input_files); i++) {
+        START_PROFILING("compile file", NULLPTR);
+        char** file_name = vector_at(&global_cli_options.input_files, i, false);
+        // salmon_file_into_intermediates("../tests/loop.sal");
+        salmon_file_into_intermediates(*file_name);
 
-    // TODO: This and C should be called "into_intermediates" with an 's'.
-    salmon_file_into_intermediate("../tests/loop.sal");
+        START_PROFILING("do all optimization passes", "compile file");
+        optimization_do_register_pass();
+        optimization_do_use_scope_pass();
+        optimization_do_constant_pass();
+        END_PROFILING("do all optimization passes", true);
+
+        generate_structs(&ARMv7_generate_struct);
+
+        END_PROFILING("compile file", false);
+    }
     // free_tokenized_file_vector(&_tmp);
-
-    optimization_do_register_pass();
-    optimization_do_use_scope_pass();
-    optimization_do_constant_pass();
-
-    ARMv7_generate_structs();
+    // exit(0);
 
     // print_intermediates();
 
@@ -115,7 +133,7 @@ int main(i32 argc, char* args[])
     // add_variable_symbol(_name, _a, 0);
 
     // add_variable_symbol("var", _a, 0);
-    // add_variable_symbol("var2", _a, 0);s
+    // add_variable_symbol("var2", _a, 0);
     
     // add_variable_symbol("episode", _a, 0);
     // free(_name);
@@ -127,3 +145,7 @@ int main(i32 argc, char* args[])
     free_symbol_table();
     free_intermediates(true, true, true);
 }
+
+#if DEBUG
+#include"debug/debug.c"
+#endif

@@ -49,7 +49,7 @@ typedef struct hash_table {
 hash_table_bucket* hash_table_at_hash(hash_table* _hash_table, u32 hash);
 
 /*
- * This returns a pointer to the bucket bound to the same hash as the inputed
+ * This returns a pointer to the bucket bound to the same hash as the inputted
  * string. If no bucket is found NULL is returned.
  */
 hash_table_bucket* hash_table_at_string(hash_table* _hash_table, char* _string);
@@ -68,7 +68,7 @@ hash_table_bucket* hash_table_insert_string(hash_table* _hash_table, \
 char* _string);
 
 /*
- * This initalizes and returns the hash table.
+ * This initializes and returns the hash table.
  */
 hash_table hash_table_init(u8 size);
 

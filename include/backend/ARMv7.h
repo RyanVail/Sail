@@ -21,16 +21,16 @@
 #define STACK_POINTER_REGISTER 13
 
 /*
- * This returns a "bin" which contains the outputed ARMv7 machine code generated
- * from the inputed intermediates.
+ * This returns a "bin" which contains the outputted ARMv7 machine code generated
+ * from the inputted intermediates.
  */
 bin ARMv7_intermediates_into_binary(vector* intermediates);
 
 /*
- * This function goes through all defined structs and generates their memory
- * layout and padding.
+ * This takes in a pointer to a struct and generates its padding and memory
+ * layout.
  */
-void ARMv7_generate_structs();
+void ARMv7_generate_struct(intermediate_struct* _struct);
 
 /*
  * This frees all of the dynamically allocated vectors and items in this file.

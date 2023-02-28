@@ -32,7 +32,7 @@ enum NUMS u32 {
 fn $main$ -> u32 {
     let f_test f32 16.25f = ;
     let dec NUMS EIGHT u32 FIVE u32 + =
-    2 NUMS dec 3 NUMS + + ;
+    999 NUMS dec 3 NUMS + + ;
     let c RGBA;
     let abc %RGBA% c # = ;
     let b %RGBA% c # = ;

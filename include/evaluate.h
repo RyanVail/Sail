@@ -18,7 +18,7 @@ typedef u8 operator;
 /* The logically highest value of the "operator" type. */
 #define __OPERATOR_MAX__ ((operator)-1)
 
-/* This evaluates the inputed expression and returns the result. */
+/* This evaluates the inputted expression and returns the result. */
 i64 evaluate_expression(i64 input0, i64 input1, operator _operator);
 
 #endif

@@ -3,7 +3,14 @@
 
 #include<common.h>
 
-#define IS_STACK_EMPTY(_stack) (_stack.top == NULLPTR)
+#define STACK_IS_EMPTY(_stack) (_stack.top == NULLPTR)
+
+/*
+ * This is a wrapper over "stack_push_malloc_with_size" that gets the type size
+ * of the derefrenced value and passes it as the "type_size".
+ */
+#define STACK_PUSH_MALLOC(_stack, value) \
+    stack_push_malloc_with_size((_stack), (value), sizeof((*value)))
 
 typedef struct link link;
 
@@ -16,27 +23,27 @@ typedef struct link {
     void* value;
 } link;
 
-// TODO: type_size is not used.
 /* struct stack - This is a simple stack data type
  * @top: This is the value on the top of the stack
- * @type_size: This is the size of the values inside the links
  */
 typedef struct stack {
     link* top;
-    u8 type_size;
 } stack;
 
-/*
- * This adds a value onto the stack.
- */
-// TODO: The allocation and transfter of data should be done in "stack_push"
-// to remove a large chunk of repetative code.
+/* This adds a value onto the stack. */
 void stack_push(stack* _stack, void* value);
+
+// TODO: More "stack_push"s calls should use this function instead.
+/* This adds the inputted value onto the stack and allocates space for it. */
+void stack_push_malloc_with_size(stack* _stack, void* value, u32 type_size);
 
 /*
  * This returns a pointer to the value on top of the stack.
  */
 void* stack_top(stack* _stack);
+
+/* This returns the value of the last link on the stack. */
+void* stack_last(stack* _stack);
 
 /*
  * This takes the top value off the stack.
