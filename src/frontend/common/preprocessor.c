@@ -4,33 +4,28 @@
 
 #include<frontend/common/preprocessor.h>
 
-// TODO: C style comments don't nest so this function can be simplified.
 /*
- * This function is meant to be run during the preprocessor loop and it skips
- * C style comments. This can leave the "current_index" pointing to the end of
- * the file, that has to be accounted for.
+ * This is a private helper function for "skip_C_comments". Return true if it
+ * read a comment. This keeps getting calling till it doesn't read a comment to
+ * make sure consecutive comments are not skipped.
  */
-void skip_C_comments(vector* file, u32* current_index)
+bool skip_C_comment(vector* file, u32* current_index)
 {
-    #if DEBUG
-    if (!is_special_char('/') && !is_special_char('*'))
-        send_error( \
-        "'/' and '*' should be a special chars for C style comment removal");
-    if (is_white_space_char('/'))
-        send_error("'/' can't be white space for C style comment removal");
-    if (is_white_space_char('*'))
-        send_error("'*' can't be white space for C style comment removal");
-    #endif
+    if (IS_VEC_END(*file, *current_index))
+        return false;
 
-
-    if (*(char**)vector_at(file, *current_index, false) == NULL
+    if (*(char**)vector_at(file, *current_index, false) == NULLPTR \
     || **(char**)vector_at(file, *current_index, false) != '/')
-        return;
+        return false;
 
     u32 tmp_index = *current_index;
     find_next_valid_token(file, &tmp_index);
-    if (**(char**)vector_at(file, tmp_index, false) != '*')
-        return;
+    if (IS_VEC_END(*file, tmp_index))
+        return false;
+
+    if (**(char**)vector_at(file, tmp_index, false) != '*' \
+    || IS_VEC_END(*file, tmp_index))
+        return false;
 
     for (; *current_index <= VECTOR_SIZE((*file))-2;) {
         char first_token = **(char**)vector_at(file, *current_index, false);
@@ -45,9 +40,30 @@ void skip_C_comments(vector* file, u32* current_index)
             free(*(char**)vector_at(file, *current_index, false));
             *(char**)vector_at(file, *current_index, false) = NULL;
             find_next_valid_token(file, current_index);
-            return;
+            return true;
         }
     }
+}
+
+/*
+ * This function is meant to be run during the preprocessor loop and it skips
+ * C style comments. This returns true if it skipped a comment and in which case
+ * needs to be run again. This can leave the "current_index" pointing to the end of
+ * the file, that has to be accounted for.
+ */
+void skip_C_comments(vector* file, u32* current_index)
+{
+    #if DEBUG
+    if (!is_special_char('/') && !is_special_char('*'))
+        send_error( \
+        "'/' and '*' should be a special chars for C style comment removal");
+    if (is_white_space_char('/'))
+        send_error("'/' can't be white space for C style comment removal");
+    if (is_white_space_char('*'))
+        send_error("'*' can't be white space for C style comment removal");
+    #endif
+
+    while (skip_C_comment(file, current_index));
 }
 
 /*

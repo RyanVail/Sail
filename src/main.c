@@ -65,7 +65,7 @@ int main(i32 argc, char* args[])
 
 	/* Initting the many many hash tables. */
 
-
+    // TODO: There should be function to init these like free_intermediates()
     init_enum_hash_table(4);
     init_typedef_hash_table(4);
     init_struct_hash_table(4);
@@ -88,7 +88,25 @@ int main(i32 argc, char* args[])
         generate_structs(&ARMv7_generate_struct);
 
         END_PROFILING("compile file", false);
+
+        #if DEBUG
+        if (global_cli_options.print_intermediates)
+            print_intermediates();
+        #endif
+
+        // TODO: This needs a shared function
+        clear_intermediate_typedefs();
+        clear_intermediate_structs();
+        clear_intermediate_enums();
+        clear_symbol_table();
+        free_intermediates(true, true, true);
     }
+    // TODO: Free intermediates needs to free all of the new intermediates.
+    free_intermediates(true, true, true);
+    free_intermediate_typedefs();
+    free_intermediate_structs();
+    free_intermediate_enums();
+    free_symbol_table();
     // free_tokenized_file_vector(&_tmp);
     // exit(0);
 

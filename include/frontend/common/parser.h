@@ -9,6 +9,60 @@
 #include<common.h>
 #include<types.h>
 
+/* The types of printing errors can have between ranges. */
+typedef enum error_range_type {
+    ERROR_RANGE_TYPE_NORMAL,
+    ERROR_RANGE_TYPE_SUCCESS,
+    ERROR_RANGE_TYPE_FAILED,
+    ERORR_RANGE_TYPE_CORRECTION,
+} error_range_type;
+
+/* struct error_token_range - This is the range of tokens that are printed
+ * during error reports
+ * @type: The type of the error, used to decide which color to use
+ * @spaced: If the tokens should be printed with spaced between them
+ * @starting_token: The starting range of the error tokens
+ * @ending_token: The ending range of the error tokens
+ * @overide_token: If this isn't a NULLPTR this will be printed out instead of
+ * the tokens between the starting and ending token and without the type color
+ * ending token should still be set to the last token so the index of the token
+ * can still be found. This will get freeded after printing // TODO: This dumb
+ * index finding thing should be replaced with these ranges also holding their
+ * indexes.
+ */
+typedef struct error_token_range {
+    error_range_type type;
+    bool spaced;
+    char** starting_token;
+    char** ending_token;
+    char* overide_token;
+} error_token_range;
+
+/*
+ * This handles common errors that come up and shouldn't be set to the main
+ * error handler, rather be called on specific error types.
+ */
+error_token_range parser_handle_error(parsing_error _error, char** token);
+
+#if DESCRIPTIVE_ERRORS
+/*
+ * This function and enum is used by "parser_handle_error" to give descriptive
+ * errors on invalid names.
+ */
+typedef enum invalid_name_type {
+    INVALID_NAME_TYPE_INVALID_CHAR = 1,
+    INVALID_NAME_TYPE_STARTS_WITH_NUMBER = 2,
+    INVALID_NAME_TYPE_IS_IN_INVALID_NAMES = 4,
+    INVALID_NAME_TYPE_IS_A_TYPE = 8,
+    INVALID_NAME_TYPE_IS_MODIFIER = 16,
+} invalid_name_type;
+/*
+ * This function and enum is used by "parser_handle_error" to give descriptive
+ * errors on invalid names.
+ */
+invalid_name_type get_why_invalid_name(char* name);
+#endif
+
 /*
  * This parses and returns the given type modifiers. This will increment token
  * till it reaches the end of the modifiers. unsigned and signed modifiers will

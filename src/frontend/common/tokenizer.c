@@ -89,6 +89,7 @@ tokenize_file_return tokenize_file(char* file_name)
                 new_source[source_line_index] = '\0';
                 CHECK_MALLOC(new_source);
                 vector_append(&source_vector, &new_source);
+                source_line_index = 0;
             }
 
             source_line_buffer[source_line_index] = file_buffer[i];

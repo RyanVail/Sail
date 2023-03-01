@@ -24,6 +24,131 @@ static char* DEFAULT_INVALID_NAMES[] = { "if", "fn", "let", "break", "return",
 static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
 
 /*
+ * This handles common errors that come up and shouldn't be set to the main
+ * error handler, rather be called on specific error types.
+ */
+error_token_range parser_handle_error(parsing_error _error, char** token)
+{
+    error_token_range _range;
+    memset(&_range, 0, sizeof(error_token_range));
+
+    vector _vec;
+    invalid_name_type _type;
+    bool last_char_was_error;
+    char* _token;
+    char _char;
+
+    switch (_error)
+    {
+    case PARSING_ERROR_INVALID_VAR_NAME:
+        #if DESCRIPTIVE_ERRORS
+        _type = get_why_invalid_name(*token);
+        /* Printing the full string reasons a name can be invalid. */
+        if (_type & INVALID_NAME_TYPE_IS_IN_INVALID_NAMES) {
+            printf("%s Name is invalid: %s\n", ERROR_STRING, *token);
+        } else if (_type & INVALID_NAME_TYPE_IS_A_TYPE) {
+            printf("%s Name is already the name of a type: %s\n", ERROR_STRING, \
+            *token);
+        } else if (_type & INVALID_NAME_TYPE_IS_MODIFIER) {
+            printf("%s Name is already the name of a type modifier: %s\n", \
+            ERROR_STRING, *token);
+        } else if (_type & INVALID_NAME_TYPE_STARTS_WITH_NUMBER) {
+            printf("%s Invalid name, starts with a number\n", ERROR_STRING);
+        }
+
+        _range.type = ERROR_RANGE_TYPE_FAILED;
+        _range.starting_token = token;
+        _range.ending_token = token;
+
+        if (!(_type & 0x3))
+            return _range;
+
+        /* This vector is just used to hold the colored token. */
+        _vec = vector_init(1, 4);
+
+        _token = *token;
+
+        /* This is quick and dirty macro to add a str to a vector of chars. */
+        #define ADD_STR_TO_VEC(_vec, _str) \
+            for (u32 i=0; _str[i] != '\0'; i++) { \
+                vector_append((_vec), &_str[i]); \
+            }
+
+        /* Creating the error token with the highlighting. */
+        for (_char = *_token; _char != '\0'; _token++) {
+            _char = *_token;
+            if (is_special_char(_char) || (48 <= _char && _char <= 57 && \
+            _char == *_token)) {
+                if (!last_char_was_error)
+                    ADD_STR_TO_VEC(&_vec, ERROR_COLOR_START);
+                vector_append(&_vec, &_char);
+                last_char_was_error = true;
+            } else {
+                if (last_char_was_error)
+                    ADD_STR_TO_VEC(&_vec, COLOR_END);
+                vector_append(&_vec, &_char);
+                last_char_was_error = false;
+            }
+        }
+
+        if (last_char_was_error)
+            ADD_STR_TO_VEC(&_vec, COLOR_END);
+
+        #undef ADD_STR_TO_VEC
+
+        _range.overide_token = _vec.contents;
+
+        #else
+        printf("%s The name: %s is invalid", ERROR_STRING, *token);
+        #endif
+        break;
+    }
+
+    return _range;
+}
+
+#if DESCRIPTIVE_ERRORS
+// TODO: This and invalid name should check for typedefs instead of the
+// functions that call it doing it seperatly.
+/*
+ * This function and enum is used by "parser_handle_error" to give descriptive
+ * errors on invalid names.
+ */
+invalid_name_type get_why_invalid_name(char* name)
+{
+    invalid_name_type result = 0;
+
+    /* Checks if the first letter is a number. */
+    if (48 <= name[0] && name[0] <= 57)
+        result |= INVALID_NAME_TYPE_STARTS_WITH_NUMBER;
+
+    /* Checks if the "name" matches anything in invalid names. */
+    for (u32 i=0; INVALID_NAMES[i][0] != '\0'; i++)
+        if (!strcmp(name, INVALID_NAMES[i]))
+            result |= INVALID_NAME_TYPE_IS_IN_INVALID_NAMES;
+
+    /* Checks if the "name" matches any type names. */
+    char** _types = get_type_names();
+    for (u32 i=0; (char)_types[i][0] != '\0'; i++)
+        if (!strcmp(name, _types[i]))
+            result |= INVALID_NAME_TYPE_IS_A_TYPE;
+
+    /* Checks if the "name" matches any type modifier names. */
+    char** _modifier = get_type_modifier_names();
+    for (u32 i=0; (char)_types[i][0] != '\0'; i++)
+        if (!strcmp(name, _types[i]))
+            result |= INVALID_NAME_TYPE_IS_MODIFIER;
+
+    /* Makes sure "name" doesn't have any special character. */
+    for (u32 i=0; name[i] != '\0'; i++)
+        if (is_special_char(name[i]))
+            result |= INVALID_NAME_TYPE_INVALID_CHAR;
+
+    return result;
+}
+#endif
+
+/*
  * This parses and returns the given type modifiers. This will increment token
  * till it reaches the end of the modifiers. unsigned and signed modifiers will
  * change the first bit of the returning kind. This will skip tokens that are
@@ -315,9 +440,16 @@ bool is_invalid_name(char* name)
         if (!strcmp(name, _types[i]))
             return true;
 
-    /* Makes sure our "name" isn't a special character. */
-    if(is_special_char(name[0]))
-        return true;
+    /* Checks if the "name" matches any type modifier names. */
+    char** _modifier = get_type_modifier_names();
+    for (u32 i=0; (char)_types[i][0] != '\0'; i++)
+        if (!strcmp(name, _types[i]))
+            return true;
+
+    /* Makes sure "name" doesn't have any special character. */
+    for (u32 i=0; name[i] != '\0'; i++)
+        if (is_special_char(name[i]))
+            return true;
 
     return false;
 }

@@ -69,3 +69,41 @@ intermediate_typedef* add_typedef(char* typedef_name, type typedef_type)
     _typedef->type = typedef_type;
     return _typedef;
 }
+
+/* This clears all of the intermediate typedefs. */
+void clear_intermediate_typedefs()
+{
+    // TODO: There should be a common function to do this that does some magic
+    // with function ptrs theres should also be one to go through stacks and
+    // vectors like in the "free_intermediate_structs" function.
+    hash_table_bucket* current_bucket = intermediate_typedefs.contents;
+    hash_table_bucket* linked_bucket = NULLPTR;
+    for (u32 i=0; i < (1 << intermediate_typedefs.size); i++) {
+        if (current_bucket->next != NULLPTR) {
+            linked_bucket = current_bucket->next;
+            do {
+                void* tmp = linked_bucket->next;
+                if (linked_bucket->value != NULLPTR) {
+                    free(linked_bucket->value);
+                    linked_bucket->value = NULLPTR;
+                }
+                free(linked_bucket);
+                linked_bucket = tmp;
+            } while (linked_bucket != NULLPTR);
+        }
+
+        if (current_bucket != NULLPTR && current_bucket->value != NULLPTR)
+            free(current_bucket->value);
+        current_bucket->value = NULLPTR;
+        current_bucket->next = NULLPTR;
+        current_bucket->hash = 0;
+        current_bucket++;
+    }
+}
+
+/* This frees all of the intermediate typedefs. */
+void free_intermediate_typedefs()
+{
+    clear_intermediate_typedefs();
+    free(intermediate_typedefs.contents);
+}

@@ -120,10 +120,12 @@ void debug_profiler_start(char* profile_name, char* parent_name)
     new_profile->depth = depth;
     new_profile->hash = result_hash;
     new_profile->name = new_name;
-    new_profile->ending_time = NULL;
+    new_profile->ending_time = 0;
     new_profile->starting_time = clock();
 
     /* Adding the profile to the stack. */
+    // stack_push_last(_stack, new_profile); // TODO: Why does using
+    // "stack_push_last" break this???
     stack_push(_stack, new_profile);
 }
 

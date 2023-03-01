@@ -1,7 +1,14 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#define VECTOR_SIZE(_vector) (_vector.apparent_size / sizeof(_vector.type_size))
+#define VECTOR_SIZE(_vector) ((_vector).apparent_size / \
+sizeof((_vector).type_size))
+
+/*
+ * This returns true if the inputted index is outside of the end bounds of the
+ * inputted vector.
+ */
+#define IS_VEC_END(_vec, _index) ((_index) >= (VECTOR_SIZE(_vec)))
 
 /* struct vector - This is a dynamicly allocated array
  * @contents: This is a pointer to the contents of the vector

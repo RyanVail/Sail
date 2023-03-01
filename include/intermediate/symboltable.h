@@ -37,9 +37,7 @@ typedef struct variable_symbol {
     u8 uses;
 } variable_symbol;
 
-/*
- * This initializes symbol tables vectors.
- */
+/* This initializes symbol tables vectors. */
 void init_symbol_table(u8 function_init_size, u8 variable_init_size);
 
 /*
@@ -48,14 +46,10 @@ void init_symbol_table(u8 function_init_size, u8 variable_init_size);
  */
 bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion);
 
-/*
- * This returns a pointer to the function symbol if found or a null pointer
- */
+/* This returns a pointer to the function symbol if found or a null pointer. */
 function_symbol* get_function_symbol(char* name, u32 hash);
 
-/*
- * This returns a pointer to the variable symbol if found or a null pointer
- */
+/* This returns a pointer to the variable symbol if found or a null pointer. */
 variable_symbol* get_variable_symbol(char* name, u32 hash);
 
 /*
@@ -64,9 +58,7 @@ variable_symbol* get_variable_symbol(char* name, u32 hash);
  */
 bool add_variable_symbol(char* name, type type, u8 flags);
 
-/*
- * This adds a variable symbol pointer to the symbol table.
- */
+/* This adds a variable symbol pointer to the symbol table. */
 void add_variable_symbol_ptr(variable_symbol* _variable_symbol);
 
 /*
@@ -76,14 +68,13 @@ void add_variable_symbol_ptr(variable_symbol* _variable_symbol);
  */
 void clear_variables_in_scope();
 
-/*
- * This inits the symbol table.
- */
+/* This inits the symbol table. */
 void init_symbol_table(u8 function_init_size, u8 variable_init_size);
 
-/*
- * This frees all the memory that is token up by the symbol table
- */
+/* This clears all entries in the symbol table. */
+void clear_symbol_table();
+
+/* This frees all the memory that is token up by the symbol table. */
 void free_symbol_table();
 
 #endif

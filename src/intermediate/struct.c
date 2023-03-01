@@ -15,12 +15,6 @@ void init_struct_hash_table(u8 hash_table_size)
     intermediate_structs = hash_table_init(hash_table_size);
 }
 
-/* This frees all of the intermediate structs. */
-void free_intermediate_structs()
-{
-    // TODO: Implement this
-}
-
 /* This returns a pointer to the struct with the same hashed name. */
 intermediate_struct* get_struct(u32 struct_hash)
 {
@@ -261,6 +255,49 @@ struct_variable* generate_padding_struct_variable(u32 bytes_of_padding)
     struct_var->hash = 0;
     struct_var->name = (void*)bytes_of_padding;
     return struct_var;
+}
+
+/* This clears all of the intermediate structs. */
+void clear_intermediate_structs()
+{
+    hash_table_bucket* current_bucket = intermediate_structs.contents;
+    hash_table_bucket* linked_bucket = NULLPTR;
+    for (u32 i=0; i < (1 << intermediate_structs.size); i++) {
+        if (current_bucket->next != NULLPTR) {
+            linked_bucket = current_bucket->next;
+            do {
+                void* tmp = linked_bucket->next;
+                if (linked_bucket->value != NULLPTR) {
+                    link* _link = ((intermediate_struct*)linked_bucket->value) \
+                        ->contents.top;
+                    while (_link != NULLPTR) {
+                        link* next_link = _link->next;
+                        free(((struct_variable*)_link->value)->name);
+                        free(_link);
+                        _link = next_link;
+                    }
+                    free(linked_bucket->value);
+                    linked_bucket->value = NULLPTR;
+                }
+                linked_bucket->hash = 0;
+                free(linked_bucket);
+                linked_bucket = tmp;
+            } while (linked_bucket != NULLPTR);
+        }
+        if (current_bucket->value != NULLPTR)
+            free(current_bucket->value);
+        current_bucket->value = NULLPTR;
+        current_bucket->next = NULLPTR;
+        current_bucket->hash = 0;
+        current_bucket++;
+    }
+}
+
+/* This frees all of the intermediate structs. */
+void free_intermediate_structs()
+{
+    clear_intermediate_structs();
+    free(intermediate_structs.contents);
 }
 
 #if DEBUG

@@ -27,8 +27,6 @@ typedef struct enum_entry {
  */
 void init_enum_hash_table(u8 entry_size);
 
-/* This frees all of the intermediate enums. */
-void free_intermediate_enums();
 
 /*
  * This finds and returns the enum entry with the same hash. If no entry is
@@ -42,5 +40,14 @@ enum_entry* get_enum_entry(u32 hash);
  */
 enum_entry* add_enum_entry(intermediate_typedef* parent_enum, i64 value, \
 char* entry_name);
+
+/* This clears all of the enums. */
+void clear_intermediate_enums();
+
+/*
+ * This frees all of the intermediate enums. Freeing the typedef parents needs
+ * to be done seperatly.
+ */
+void free_intermediate_enums();
 
 #endif

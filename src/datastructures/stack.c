@@ -46,19 +46,44 @@ void* stack_top(stack* _stack)
     return _stack->top->value;
 }
 
-/* This returns the value of the last link on the stack. */
-void* stack_last(stack* _stack)
+/* This returns the last link on the stack. */
+link* stack_last_link(stack* _stack)
 {
     link* _tmp_link = _stack->top;
 
     while (_tmp_link != NULLPTR) {
         if (_tmp_link->next == NULLPTR)
             break;
-
         _tmp_link = _tmp_link->next;
     }
 
-    return _tmp_link == NULLPTR ? NULLPTR : _tmp_link->value;
+    return _tmp_link;
+}
+
+/* This returns the value of the last link on the stack. */
+void* stack_last(stack* _stack)
+{
+    link* _link = stack_last_link(_stack);
+    return _link == NULLPTR ? NULLPTR : _link->value;
+}
+
+/* This adds the inputted value to the end of the stack. */
+void stack_push_last(stack* _stack, void* value)
+{
+    link* _tmp_link = stack_last_link(_stack);
+
+    link* _new_top;
+    if (_tmp_link == NULLPTR) {
+        _stack->top = malloc(sizeof(link));
+        _new_top = _stack->top;
+    } else {
+        _tmp_link->next = malloc(sizeof(link));
+        _new_top = _tmp_link->next;
+    }
+
+    CHECK_MALLOC(_new_top);
+    _new_top->next = NULLPTR;
+    _new_top->value = value;
 }
 
 /*

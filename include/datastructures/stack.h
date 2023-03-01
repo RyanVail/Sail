@@ -42,8 +42,14 @@ void stack_push_malloc_with_size(stack* _stack, void* value, u32 type_size);
  */
 void* stack_top(stack* _stack);
 
+/* This returns the last link on the stack. */
+link* stack_last_link(stack* _stack);
+
 /* This returns the value of the last link on the stack. */
 void* stack_last(stack* _stack);
+
+/* This adds the inputted value to the end of the stack. */
+void stack_push_last(stack* _stack, void* value);
 
 /*
  * This takes the top value off the stack.

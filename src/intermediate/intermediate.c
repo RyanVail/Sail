@@ -34,8 +34,8 @@ void pop_operand(bool dual, bool comparison)
     if (stack_size(&operand_stack) < (u32)dual+1)
         send_error("Not enough operands to perform operation");
 
-    operand* _first_operand = \
-    dual || comparison ? stack_pop(&operand_stack) : stack_top(&operand_stack);
+    operand* _first_operand = dual || comparison ? stack_pop(&operand_stack) : \
+    stack_top(&operand_stack);
 
     if (!_first_operand->initted)
         add_operand_to_intermediates(_first_operand->intermediate);

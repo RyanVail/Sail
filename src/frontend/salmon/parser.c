@@ -34,27 +34,16 @@ static inline void salmon_parse_typedef(vector* file, u32* location);
 const char* error_range_type_colors[] = {"", "\x1b[0935m", "\x1b[091m"};
 
 #if DESCRIPTIVE_ERRORS
-typedef enum error_range_type {
-    ERROR_RANGE_TYPE_NORMAL,
-    ERROR_RANGE_TYPE_SUCCESS,
-    ERROR_RANGE_TYPE_FAILED,
-    ERORR_RANGE_TYPE_CORRECTION,
-} error_range_type;
-
-typedef struct error_token_range {
-    error_range_type type;
-    bool spaced;
-    char** starting_token;
-    char** ending_token;
-} error_token_range;
 
 static vector* error_file_vec;
 
+/* This returns "__UINT32_MAX__" if it wasn't found. */
 u32 salmon_error_file_get_token_index(vector* _vec, char** token)
 {
-    for (u32 i=0; VECTOR_SIZE((*_vec)); i++)
+    for (u32 i=0; i < VECTOR_SIZE((*_vec)); i++)
         if (vector_at(_vec, i, false) == token)
             return i;
+    return __UINT32_MAX__;
 }
 
 #endif
@@ -77,6 +66,8 @@ void salmon_parser_handle_error()
 
     /* The current error token range. */
     error_token_range current_range;
+    current_range.overide_token = NULLPTR;
+    current_range.spaced = false;
 
     /* The type of the token range. */
     error_token_range current_range_type;
@@ -95,13 +86,14 @@ void salmon_parser_handle_error()
     switch (errno)
     {
     case PARSING_ERROR_TYPE_PTRS_UNEQUAL:
+        // TODO: These should still try and print the token that caused the
+        // error.
         printf("%s Unequal ptr symbols before and after type\n", \
         ERROR_STRING);
 
         #if DESCRIPTIVE_ERRORS
         current_token = stack_pop(&error_value);
         current_range.type = ERROR_RANGE_TYPE_FAILED;
-        current_range.spaced = false;
         current_range.starting_token = current_token;
         value = 0;
 
@@ -120,7 +112,7 @@ void salmon_parser_handle_error()
             value--;
         }
 
-        current_range.ending_token = current_token-1;
+        current_range.ending_token = current_token;
         STACK_PUSH_MALLOC(&error_token_ranges, &current_range);
         #endif
 
@@ -131,12 +123,18 @@ void salmon_parser_handle_error()
         #if DESCRIPTIVE_ERRORS
         current_token = stack_pop(&error_value);
         current_range.type = ERROR_RANGE_TYPE_FAILED;
-        current_range.spaced = false;
         current_range.starting_token = current_token;
-        current_range.ending_token = current_token;
+        current_range.ending_token = current_token + 1;
         STACK_PUSH_MALLOC(&error_token_ranges, &current_range);
         #endif
 
+        break;
+    case PARSING_ERROR_INVALID_VAR_NAME:
+        current_token = stack_pop(&error_value);
+        current_range = parser_handle_error(errno, current_token);
+        current_range.starting_token = current_token;
+        current_range.ending_token = current_token + 1;
+        STACK_PUSH_MALLOC(&error_token_ranges, &current_range);
         break;
     }
 
@@ -153,19 +151,25 @@ void salmon_parser_handle_error()
 
     current_token -= value;
 
-    for (; *(i32*)&value > 0; value--, \
-    current_token++) {
+    for (; *(i32*)&value > 0; value--, current_token++)
         if (*current_token != NULLPTR)
             printf("%s ", *current_token);
-    }
 
     /* Printing the errors. */
     while (!STACK_IS_EMPTY(error_token_ranges)) {
+        current_range = *(error_token_range*)stack_pop(&error_token_ranges);
+
+        if (current_range.overide_token != NULLPTR) {
+            current_token = current_range.ending_token;
+            printf("%s", current_range.overide_token);
+            free(current_range.overide_token);
+            continue;
+        }
+
         if (error_range_type_colors[current_range.type][0] != '\0')
             printf("%s", error_range_type_colors[current_range.type]);
 
-        current_range = *(error_token_range*)stack_pop(&error_token_ranges);
-        for (current_token = current_range.starting_token; current_token <= \
+        for (current_token = current_range.starting_token; current_token < \
         current_range.ending_token; current_token++) {
             printf("%s", *current_token);
             if (current_range.spaced)
@@ -191,12 +195,12 @@ void salmon_parser_handle_error()
         if (*current_token != NULLPTR)
             printf("%s ", *current_token);
     }
+    printf("\n");
     #endif
 
-    printf("\n");
 
-    #if DEBUG
     fflush(stdout);
+    #if DEBUG
     abort();
     #else
     exit(-1);
@@ -534,23 +538,30 @@ inline void salmon_parse_fn(vector* file, u32* location)
     add_intermediate(_intermediate);
 
 }
+/* This sets errno on errors. */
 inline void salmon_parse_let(vector* file, u32* location)
 {
     /* This is the variable name. */
     *location += 1;
-    if (is_invalid_name(*(char**)vector_at(file, *location, false)))
-        send_error("Invalid name");
+    if (is_invalid_name(*(char**)vector_at(file, *location, false))) {
+        stack_push(&error_value, vector_at(file, *location, false));
+        HANDLE_ERROR_WITH_CODE(PARSING_ERROR_INVALID_VAR_NAME);
+    }
     char* name = *(char**)vector_at(file, *location, false);
 
     /* This is the variable type. */
     *location += 1;
     type _type = get_type((char**)vector_at(file, *location, false));
     HANDLE_ERROR();
-    if (_type.kind == __UINT8_MAX__)
+    if (_type.kind == __UINT8_MAX__) {
+        stack_push(&error_value, vector_at(file, *location, false));
         HANDLE_ERROR_WITH_CODE(PARSING_ERROR_EXPECTED_TYPE);
+    }
 
-    if (!add_variable_symbol(name, _type, 0))
-        send_error("Variable name already used");
+    if (!add_variable_symbol(name, _type, 0)) {
+        stack_push(&error_value, vector_at(file, *location, false));
+        HANDLE_ERROR_WITH_CODE(PARSING_ERROR_VAR_NAME_USED);
+    }
 
     char** type_names = get_type_names();
 
@@ -769,7 +780,7 @@ static inline bool salmon_parse_struct_variable(vector* file, u32* location)
 
     /* Makes sure the variable is valid. */
     if (_var == NULLPTR)
-        send_error("Uknown struct variable");
+        send_error("Unknown struct variable");
 
     /* Adding the intermediate. */
     intermediate struct_var_intermediate = { GET_STRUCT_VARIABLE, _var->hash };

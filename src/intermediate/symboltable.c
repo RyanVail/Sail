@@ -153,34 +153,49 @@ void init_symbol_table(u8 function_init_size, u8 variable_init_size)
     variable_symbols = hash_table_init(variable_init_size);
 }
 
-/*
- * This frees all the memory that is token up by the symbol table
- */
-void free_symbol_table()
+/* This clears all entries in the symbol table. */
+void clear_symbol_table()
 {
     hash_table_bucket* current_bucket = variable_symbols.contents;
     hash_table_bucket* linked_bucket = NULLPTR;
 
     current_bucket = function_symbols.contents;
 
-    for (; current_bucket < (u8*)function_symbols.contents + \
+    // TODO: All of these dumb * sizeof(hash_table_bucket) should not exist
+    // anymore but a lot of code relieses on it.
+    for (; (u8*)current_bucket < (u8*)function_symbols.contents + \
     sizeof(hash_table_bucket) * (1 << function_symbols.size); current_bucket++)
     {
-        if (current_bucket->next != 0) {
+        if (current_bucket->next != NULLPTR) {
             linked_bucket = current_bucket->next;
             do {
-                free(((function_symbol*)linked_bucket->value)->inputs.contents);
-                free(linked_bucket->value);
+                if (current_bucket->value != NULLPTR) {
+                    function_symbol* _func = current_bucket->value;
+                    if (_func->inputs.contents != NULLPTR)
+                        free(_func->inputs.contents);
+                    free(linked_bucket->value);
+                }
                 linked_bucket = linked_bucket->next;
+                linked_bucket->value = NULLPTR;
+                linked_bucket->hash = 0;
             } while (linked_bucket->next != NULLPTR);
         }
-        if (current_bucket->value) {
+        if (current_bucket->value != NULLPTR) {
             function_symbol* _func = current_bucket->value;
             if (_func->inputs.contents != NULLPTR)
                 free(_func->inputs.contents);
             free(current_bucket->value);
+            current_bucket->hash = 0;
+            current_bucket->value = NULLPTR;
         }
     }
+}
+
+/* This frees all the memory that is token up by the symbol table. */
+void free_symbol_table()
+{
+    clear_symbol_table();
+
     free(function_symbols.contents);
     free(variable_symbols.contents);
 }

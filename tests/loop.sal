@@ -30,13 +30,14 @@ enum NUMS u32 {
 }
 
 fn $main$ -> u32 {
-    let f_test f32 16.25f = ;
+    let int f32 16.25f = ;
+    let acdec u32 32 u32 = ;
     let dec NUMS EIGHT u32 FIVE u32 + =
     999 NUMS dec 3 NUMS + + ;
     let c RGBA;
-    let abc %RGBA% c # = ;
-    let b %RGBA% c # = ;
     let test u32 3 u32 =
+    let b %RGBA% c # = ;
+    let abc %RGBA% c # = ;
     b@.A b@.A =
     b@.R 3 =
     b@.R 2 =
@@ -49,6 +50,132 @@ fn $main$ -> u32 {
     let acd NUMS FOUR = ;
 }
 
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/
+/*let file_handle %void% "test.txt" "r" $fopen$ =
+file_handle ! if $end$
+
+let buffer %u8% 4096 $stack$ =
+
+let bytes_read u32 0 =
+let counter u32 0 =
+
+loop {
+    bytes_read buffer 4096 1 file_handle $fread$ =
+    bytes_read ! if break
+    while {
+        buffer counter 1 $at$ $std_print_char$
+        counter counter ++ =
+        bytes_read bytes_read -- =
+    }
+    counter 0 =
+}*/
 /*let file_handle %void% "test.txt" "r" $fopen$ =
 file_handle ! if $end$
 

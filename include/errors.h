@@ -3,6 +3,7 @@
 
 #include<common.h>
 #include<datastructures/stack.h>
+#include<datastructures/vector.h>
 
 /*
  * This is a ptr to the current error handling function. This function is
@@ -41,6 +42,8 @@ extern stack error_value;
 
 // TODO: There should be a seperate macro for the error color.
 #define ERROR_STRING "\x1b[091mERROR:\x1b[0m"
+#define ERROR_COLOR_START "\x1b[091m"
+#define COLOR_END "\x1b[0m"
 
 /* This clears the "error_value" stack. */
 void clear_error_value_stack();
@@ -64,9 +67,7 @@ void handle_common_error(u32 error_code);
         HANDLE_COMMON_ERROR(0); \
     }
 
-/*
- * This handles sending custom error messages.
- */
+/* This handles sending custom error messages. */
 void send_error(char* error_message);
 
 /*
@@ -74,11 +75,22 @@ void send_error(char* error_message);
  * in error_ptr is show in the comment next to the enum entry.
  */
 typedef enum parsing_error {
-    PARSING_ERORR_SUCCESS,              /* Undefined. */
+    PARSING_ERORR_SUCCESS,              /* No values. */
     PARSING_ERROR_TYPE_PTRS_UNEQUAL,    /* The only ptr on the stack is the
                                         first token of the type. */
     PARSING_ERROR_EXPECTED_TYPE,        /* The only on the stack is the expected
-                                        type token. */
+                                        type token. */ 
+    PARSING_ERROR_REACHED_BOT,          /* No values. */
+    PARSING_ERROR_INVALID_VAR_NAME,     /* The name token is the only value. */
+    PARSING_ERROR_VAR_NAME_USED,        /* The name token is the only value. */
 } parsing_error;
+
+#if CHECK_MALLOC_RETURNS
+/*
+ * This reads errno and based on the value it will backtrace the parsing to the
+ * points that caused the error.
+ */
+void backtrace_parsing_error(vector* file, u32 index);
+#endif
 
 #endif

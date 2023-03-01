@@ -137,7 +137,8 @@ bin ARMv7_intermediates_into_binary(vector* intermediates)
     ARMv7_clear_registers();
     output_bin.contents.type_size = sizeof(u32);
     for (u32 i=0; i < VECTOR_SIZE((*intermediates)); i++) {
-        ARMv7_process_intermediate(*(intermediate*)vector_at(intermediates,i,0));
+        ARMv7_process_intermediate(*(intermediate*) \
+            vector_at(intermediates,i,0));
     }
     return output_bin;
 }

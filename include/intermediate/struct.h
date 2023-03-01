@@ -41,9 +41,6 @@ typedef struct intermediate_struct {
 /* This inits the intermediate struct's hashtable with the inputted size. */
 void init_struct_hash_table(u8 hash_table_size);
 
-/* This frees all of the intermediate structs. */
-void free_intermediate_structs();
-
 /* This finds and returns the struct with the same hash as the inputted hash. */
 intermediate_struct* get_struct(u32 struct_hash);
 
@@ -98,6 +95,12 @@ void generate_structs(void struct_generator(intermediate_struct*));
  * values and the name is a "u32" that holds the number of bytes of padding.
  */
 struct_variable* generate_padding_struct_variable(u32 bytes_of_padding);
+
+/* This clears all of the intermediate structs. */
+void clear_intermediate_structs();
+
+/* This frees all of the intermediate structs. */
+void free_intermediate_structs();
 
 #if DEBUG
 

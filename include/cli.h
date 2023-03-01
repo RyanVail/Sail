@@ -16,6 +16,7 @@ typedef enum compilation_target {
  * @compilation_target: The arcitecture and OS we are compiling for
  * @opt: The compilation optimization level
  * @time_compilation: If we are timing the compilation process (debug only)
+ * @print_intermediates: If the intermediates get printed (debug only)
  * @input_files: An array of the names of the input files
  * @input_files_length: The length of "input_files"
  * @output_file_name: The name of the output file
@@ -25,6 +26,7 @@ typedef struct cli_options {
 	u8 opt;
 	#if DEBUG
 	bool time_compilation;
+	bool print_intermediates;
 	#endif
 	vector input_files;
 	u8 input_files_length;

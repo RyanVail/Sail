@@ -8,6 +8,7 @@
 
 #include<common.h>
 
+// TODO: This should be a function.
 /*
  * This expands to a for loop that hashes "_string" and the result is found in
  * newly defined variable "result_hash".

@@ -26,13 +26,18 @@ vector salmon_preprocess_file(char* file_name)
             continue;
 
         replace_C_const_chars(&tokenized_file, i);
+
+        if (IS_VEC_END(tokenized_file, i))
+            break;
+
         replace_C_escape_codes(&tokenized_file, &i);
 
         // TODO: This /* */ code /* */ compiles the second comment because
         // skipping comments isn't done at the end of comments.
         skip_C_comments(&tokenized_file, &i);
-        if (i == VECTOR_SIZE(tokenized_file))
+        if (IS_VEC_END(tokenized_file, i))
             break;
+
         // printf("%s\n", *(char**)vector_at(&tokenized_file, i, false));
         vector_append(&new_file, vector_at(&tokenized_file, i, false));
     }

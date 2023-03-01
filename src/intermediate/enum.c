@@ -85,3 +85,34 @@ char* entry_name)
     _entry->parent_enum = parent_enum;
     return _entry;
 }
+
+/* This clears all of the enums. */
+void clear_intermediate_enums()
+{
+    hash_table_bucket* current_bucket = enum_entries.contents;
+    hash_table_bucket* linked_bucket = NULLPTR;
+    for (u32 i=0; i < (1 << enum_entries.size); i++) {
+        if (current_bucket->next != NULLPTR) {
+            linked_bucket = current_bucket->next;
+            do {
+                void* tmp = linked_bucket->next;
+                free(linked_bucket);
+                linked_bucket = tmp;
+            } while (linked_bucket != NULLPTR);
+        }
+        current_bucket->value = NULLPTR;
+        current_bucket->next = NULLPTR;
+        current_bucket->hash = 0;
+        current_bucket++;
+    }
+}
+
+/*
+ * This frees all of the intermediate enums freeing the typedef parents needs
+ * to be done seperatly.
+ */
+void free_intermediate_enums()
+{
+    clear_intermediate_enums();
+    free(enum_entries.contents);
+}

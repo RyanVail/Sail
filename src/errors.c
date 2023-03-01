@@ -40,9 +40,7 @@ void handle_common_error(u32 error_code)
 }
 #endif
 
-/*
- * This handles sending custom error messages.
- */
+/* This handles sending custom error messages. */
 void send_error(char* error_message)
 {
     printf("%s %s\n", ERROR_STRING, error_message);

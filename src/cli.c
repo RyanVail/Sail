@@ -16,7 +16,7 @@ ess\n\t-o <file>\t\t--output <file>\t\tAllows specification of output file\n\
 const char help_message[] = "Usage: Sail [options] files...\n\nOptions:\n\t-h\
 \t\t\t--help\t\t\tDisplays help\n\t-o <file>\t\t--output <file>\t\tAllows speci\
 fication of output file\n\t-O<level>\t\t--opt <level>\t\tLevel of optimization \
-0-3\n";
+0-3\n\t-I\t\t--intermediate\t\tPrints out the intermediates\n";
 #endif
 
 cli_options global_cli_options;
@@ -29,20 +29,17 @@ void process_cli_options(u32 argc, char *args[])
 {
 	vector input_files = vector_init(sizeof(char*), 2);
 	for (i32 i=1; i < argc; i++) {
-		if (!strcmp(args, "--")) {
-			if (!strcmp(args[i], "--help")) {
-				printf(help_message);
-				exit(0);
-			} else if (!strcmp(args[i], "--opt")) {
-				i++;
-				global_cli_options.opt = args[i][0]-48;
-			}
-			#if DEBUG
-			if (!strcmp(args[i], "--time"))
-				global_cli_options.time_compilation = true;
-			#endif
-		}
-		else if (args[i][0] == '-') {
+		if (!strcmp(args[i], "--help")) {
+			printf(help_message);
+			exit(0);
+		} else if (!strcmp(args[i], "--opt")) {
+			i++;
+			global_cli_options.opt = args[i][0]-48;
+		#if DEBUG
+		} else if (!strcmp(args[i], "--time")) {
+			global_cli_options.time_compilation = true;
+		#endif
+		} else if (args[i][0] == '-') {
 			switch(args[i][1])
 			{
 			case 'h':
@@ -57,14 +54,16 @@ void process_cli_options(u32 argc, char *args[])
 			case 't':
 				global_cli_options.time_compilation = true;
 				break;
+			case 'I':
+				global_cli_options.print_intermediates = true;
+				break;
 			#endif
 			}
-		}
-		else {
+		} else {
 			char* str = malloc(strlen(args[i])+1);
 			CHECK_MALLOC(str);
-			strcpy(str, &args[i]);
-			vector_append(&input_files, str);
+			strcpy(str, args[i]);
+			vector_append(&input_files, &str);
 		}
 	}
 	if (!VECTOR_SIZE(input_files))

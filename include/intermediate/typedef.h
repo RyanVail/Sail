@@ -37,4 +37,10 @@ intermediate_typedef* get_typedef(u32 hash);
 /* This creates a typedef and returns a pointer to it. */
 intermediate_typedef* add_typedef(char* typedef_name, type typedef_type);
 
+/* This clears all of the intermediate typedefs. */
+void clear_intermediate_typedefs();
+
+/* This frees all of the intermediate typedefs. */
+void free_intermediate_typedefs();
+
 #endif
