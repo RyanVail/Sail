@@ -7,9 +7,7 @@
 
 #include<common.h>
 
-/* 
- * This takes in a file name and returns the preprocessed version of it.
- */
+/* This takes in a file name and returns a preprocessed version of it. */
 vector C_preprocess_file(char* file_name);
 
 #endif

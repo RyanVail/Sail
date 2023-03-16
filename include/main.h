@@ -18,11 +18,28 @@
 
 // TODO: A few strings are too big to fit into the 80 char line limit.
 
-// TODO: There should be an optimization pass that replaces ors with ranges like
-// if ((u32)x == 0 || (u32)x == 1) can be replaced with if (x.min <= x <= 1)
-// and finally if (x <= 1).
-
 // TODO: Some structs have "contents" other have "content".
+
+// TODO: "if (bool) { value++; }" can be optimized as "value += bool;".
+
+// TODO: Add unit tests to the cli.
+/*
+ * This flag will make it so the compiler will both compile with unit tests and
+ * a runtime flag passed into the program to preform the unit tests.
+ */
+#ifndef UNIT_TESTS
+	#define UNIT_TESTS 0
+#endif
+
+/*
+ * This flag controls if this should compile using the internal standard C
+ * library or not. This doesn't stop the standard C library from being included
+ * that has to be done externally. The C library included with Sail is not meant
+ * to be fast or efficent, it is just to one day make it self hosting.
+ */
+#ifndef USE_INTERNAL_STD
+	#define USE_INTERNAL_STD 1
+#endif
 
 /*
  * This flag controls if there should be more descriptive errors. To get more
@@ -30,7 +47,21 @@
  * tokenized version that holds the lines, line index, and files tokens come
  * from.
  */
-#define DESCRIPTIVE_ERRORS 1
+#ifndef DESCRIPTIVE_ERRORS
+	#define DESCRIPTIVE_ERRORS 1
+#endif
+
+// TODO: It would make more sense for this to be a flag while compiling and
+// selected by front ends.
+/*
+ * This flag controls if the compiler should be compiled with runtime checks
+ * these runtime checks are optional during compilation but will allow the
+ * runtime to do analysis of predefined array bounds assuming the front end sets
+ * the array's bounds.
+ */
+#ifndef RUNTIME_ARRAY_BOUND_CHECKS
+	#define RUNTIME_ARRAY_BOUND_CHECKS 1
+#endif
 
 /*
  * This flag changes if the function "get_lowest_type" uses the predefined C
@@ -39,29 +70,39 @@
  * set to true it cause problems for platforms in which type sizes are non
  * normal and if the type names are changed.
  */
-#define USE_PREDEF_TYPE_MAXES 1
+#ifndef USE_PREDEF_TYPE_MAXES
+	#define USE_PREDEF_TYPE_MAXES 1
+#endif
 
 /*
  * This flag turns on index checking for vectors and also makes sure a vector
  * is initted before operation on it.
  */
-#define VECTOR_CHECK_BOUNDS 1
+#ifndef VECTOR_CHECK_BOUNDS
+	#define VECTOR_CHECK_BOUNDS 1
+#endif
 
 /* This turns on checks after mallocing memory and other heap operations. */
-#define CHECK_MALLOC_RETURNS 1
+#ifndef CHECK_MALLOC_RETURNS
+	#define CHECK_MALLOC_RETURNS 1
+#endif
 
 /*
  * This will make it so floating point numbers are stored in voidptrs during
  * compilation, which might cause some problems on specific platforms.
  */
-#define FLOATS_IN_PTRS 1
+#ifndef FLOATS_IN_PTRS
+	#define FLOATS_IN_PTRS 1
+#endif
 
 /*
  * The "DEBUG" flags makes a lot of runtime errors abort instead of calling
  * "exit(-1)" to allow for backtracing, as well as compiling with a lot of
  * runtime checks and errors that sadly cannot be in macros.
  */
-#define DEBUG 1
+#ifndef DEBUG
+	#define DEBUG 0
+#endif
 
 /*
  * This flag determines if we store values that are eight bytes long inside void
@@ -84,7 +125,7 @@
 #define TOKENIZER_TOKEN_BUFFER_SIZE 512
 
 #if DESCRIPTIVE_ERRORS
-#define TOKENIZER_SOURCE_LINE_BUFFER_SIZE 512
+	#define TOKENIZER_SOURCE_LINE_BUFFER_SIZE 512
 #endif
 
 #define SALMON_PARSING_ERROR_PRE_TOKENS 5

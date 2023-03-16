@@ -47,7 +47,7 @@ void optimization_do_register_pass()
 
     // TODO: The below if statements should be replaced with a switch statement
     // so the compiler can decide how to optimize it.
-    for (; location < VECTOR_SIZE((*intermediates));) {
+    for (; location < VECTOR_SIZE(*intermediates);) {
         intermediate* _current = vector_at(intermediates, location, 0);
 
         if ((_current->type >= IF) && (_current->type <= GOTO)) {
@@ -94,7 +94,7 @@ void optimization_do_register_pass()
 static inline void process_basic_block(vector* ptrs, vector* uses, u32 start, \
 u32 end, vector* intermediates, vector* output_intermediates)
 {
-    if (VECTOR_SIZE((*ptrs)) == 0)
+    if (VECTOR_SIZE(*ptrs) == 0)
         goto optimization_first_pass_process_basic_block_label;
 
     /* This reorders ptrs from highest to lowest uses badly. */
@@ -103,10 +103,10 @@ u32 end, vector* intermediates, vector* output_intermediates)
     *new_ptrs = vector_init(sizeof(u32), ptrs->size);
 
     // TODO: Replace this with something that isn't O(n^2)!
-    for (u8 x=0; x < VECTOR_SIZE((*ptrs)); x++) {
+    for (u8 x=0; x < VECTOR_SIZE(*ptrs); x++) {
         u8 highest_uses = 0;
         u8 highest_index = __UINT8_MAX__;
-        for (u8 y=0; y < VECTOR_SIZE((*ptrs)); y++) {
+        for (u8 y=0; y < VECTOR_SIZE(*ptrs); y++) {
             if (*(u32*)vector_at(ptrs, y, false) != __UINT32_MAX__
             && *(u8*)vector_at(uses, y, false) >= highest_uses) {
                 highest_index = y;
@@ -139,7 +139,7 @@ u32 end, vector* intermediates, vector* output_intermediates)
 static inline void goto_start_of_next_basic_block(u32* location, \
 vector* intermediates, vector* output_intermediates)
 {
-    for (; (*location) < VECTOR_SIZE((*intermediates)); *location += 1) {
+    for (; (*location) < VECTOR_SIZE(*intermediates); *location += 1) {
         intermediate* _current = vector_at(intermediates, *location, 0);
         if (_current->type < IF || _current->type > GOTO)
             return;

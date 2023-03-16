@@ -7,8 +7,9 @@
 #include<debug/profiler.h>
 #include<datastructures/stack.h>
 #include<datastructures/hash_table.h>
-#if linux
 #include<time.h>
+#if _WIN32
+#include <sys/timeb.h>
 #endif
 
 /* struct profile - This represents a debuging profile
@@ -21,8 +22,13 @@
  * @has_parent: If this profile is a child of another profile or not
  */
 typedef struct profile {
+    #if linux
     clock_t starting_time;
     clock_t ending_time;
+    #elif _WIN32
+    time_t starting_time;
+    time_t ending_time;
+    #endif
     stack children;
     char* name;
     u32 hash;
@@ -120,8 +126,12 @@ void debug_profiler_start(char* profile_name, char* parent_name)
     new_profile->depth = depth;
     new_profile->hash = result_hash;
     new_profile->name = new_name;
-    new_profile->ending_time = 0;
+    new_profile->ending_time = (time_t)0;
+    #if _WIN32
+    time(&new_profile->starting_time);
+    #else
     new_profile->starting_time = clock();
+    #endif
 
     /* Adding the profile to the stack. */
     // stack_push_last(_stack, new_profile); // TODO: Why does using
@@ -162,8 +172,13 @@ void debug_profiler_end_profile(profile* _profile, bool print_profile)
         }
         printf("%c ", point_to_print);
 
+        #if _WIN32
+        printf("Took %f ms to %s\n", (f32)(_profile->ending_time - \
+        _profile->starting_time) / 1000.0f);
+        #else
         printf("Took %f ms to %s\n", ((f32)_profile->ending_time - \
         _profile->starting_time) / CLOCKS_PER_SEC * 1000.0f, _profile->name);
+        #endif
     }
 
     for (link* current_link = _profile->children.top; current_link != NULLPTR;){
@@ -171,7 +186,7 @@ void debug_profiler_end_profile(profile* _profile, bool print_profile)
          * If this profile doesn't have an ending time it inherits this
          * profile's ending time.
          */
-        if (((profile*)current_link->value)->ending_time == NULL)
+        if (((profile*)current_link->value)->ending_time == 0)
             ((profile*)current_link->value)->ending_time =_profile->ending_time;
 
         debug_profiler_end_profile(current_link->value, print_profile);
@@ -200,7 +215,12 @@ void debug_profiler_end(char* profile_name, bool has_parent)
     if (!global_cli_options.time_compilation)
         return;
 
+    #if _WIN32
+    time_t ending_time;
+    time(&ending_time);
+    #else
     clock_t ending_time = clock();
+    #endif
 
     HASH_STRING(profile_name);
     profile* _profile = debug_profiler_search(result_hash, &profile_stack, \
@@ -209,7 +229,7 @@ void debug_profiler_end(char* profile_name, bool has_parent)
     if (has_parent && !_profile->has_parent)
         send_error("\"has_parent\" should be set to true for a child profile");
 
-    if (_profile->ending_time == NULL)
+    if (_profile->ending_time == 0)
         _profile->ending_time = ending_time;
 
     debug_profiler_end_profile(_profile, !_profile->has_parent);

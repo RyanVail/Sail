@@ -23,24 +23,19 @@ typedef struct intermediate_typedef {
 } intermediate_typedef;
 
 /*
- * This initializes the intermediate enum's hashtable with the equation 
- * (1 << "hash_table_size") for the true size.
- */
-void init_typedef_hash_table(u8 size);
-
-/*
  * This finds and returns the typedef with the same hash. If none are found
  * this will return NULLPTR.
  */
-intermediate_typedef* get_typedef(u32 hash);
+intermediate_typedef* get_typedef(hash_table* _typedefs, u32 hash);
 
 /* This creates a typedef and returns a pointer to it. */
-intermediate_typedef* add_typedef(char* typedef_name, type typedef_type);
+intermediate_typedef* add_typedef(hash_table* _typedefs, char* typedef_name, \
+type typedef_type);
 
 /* This clears all of the intermediate typedefs. */
-void clear_intermediate_typedefs();
+void clear_intermediate_typedefs(hash_table* _typedefs);
 
 /* This frees all of the intermediate typedefs. */
-void free_intermediate_typedefs();
+void free_intermediate_typedefs(hash_table* _typedefs);
 
 #endif

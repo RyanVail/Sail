@@ -66,7 +66,7 @@ inequality* inequality1)
 bool inequality_is_in_system(vector* inequalities, inequality* _inequality)
 {
     inequality* current_inequality = inequalities->contents;
-    for (u32 i=0; i < VECTOR_SIZE((*inequalities)); i++, current_inequality++){
+    for (u32 i=0; i < VECTOR_SIZE(*inequalities); i++, current_inequality++){
         if (!inequality_is_in_inequality(_inequality, \
         *(inequality**)vector_at(inequalities, i, false)))
             return false; 
@@ -84,7 +84,7 @@ bool add_to_inequality(vector* inequalities, inequality* _inequality)
     if (_inequality->operator == IS_EQUAL) {
         bool is_in_system = inequality_is_in_system(inequalities, _inequality);
         /* Freeing the system. */
-        while (VECTOR_SIZE((*inequalities))) {
+        while (VECTOR_SIZE(*inequalities)) {
             #if !VOID_PTR_64BIT
             intermediate* current_intermediate = vector_pop(inequalities);
             if (current_intermediate->type == CONST_PTR)
@@ -105,7 +105,7 @@ bool add_to_inequality(vector* inequalities, inequality* _inequality)
         operand0 = *(i64*)_inequality->operand.ptr;
     else if (_inequality->operand.type == CONST)
         operand0 = (i64)_inequality->operand.ptr;
-    for (u32 i=0; i < VECTOR_SIZE((*inequalities)); i++, current_inequality++) {
+    for (u32 i=0; i < VECTOR_SIZE(*inequalities); i++, current_inequality++) {
         // TODO: This logic should be in its own function per inequality so
         // testing if an inequality is in a system can add to "inequality0"
         // while going through the system.

@@ -27,7 +27,7 @@ bool skip_C_comment(vector* file, u32* current_index)
     || IS_VEC_END(*file, tmp_index))
         return false;
 
-    for (; *current_index <= VECTOR_SIZE((*file))-2;) {
+    for (; *current_index <= VECTOR_SIZE(*file)-2;) {
         char first_token = **(char**)vector_at(file, *current_index, false);
 
         free(*(char**)vector_at(file, *current_index, false));
@@ -89,7 +89,7 @@ void replace_C_const_chars(vector* file, u32 current_index)
 
     /* This reads in the chars and turns them into a number. */
     u64 _result = 0;
-    for (; current_index <= VECTOR_SIZE((*file))-1; current_index += 1) {
+    for (; current_index <= VECTOR_SIZE(*file)-1; current_index += 1) {
         find_next_valid_token(file, &current_index);
 
         // replace_C_escape_codes(file, &current_index);
@@ -115,10 +115,10 @@ void replace_C_const_chars(vector* file, u32 current_index)
     }
 
     /* This turns the "_result" into decimal chars. */
-    u32 length = snprintf(NULL, 0, "%llu", _result);
+    u32 length = snprintf(NULL, 0, "%llu", (long long unsigned int)_result);
     char* destination = malloc(length + 1);
     CHECK_MALLOC(destination);
-    snprintf(destination, length + 1, "%llu", _result);
+    snprintf(destination, length + 1, "%llu", (long long unsigned int)_result);
     *(char**)vector_at(file, _initial_index, false) = destination;
 }
 
@@ -205,10 +205,11 @@ void replace_C_escape_codes(vector* file, u32* current_index)
         u64 _result = strtoll(_begin, NULL, _next);
 
         /* This turns the "_result" into decimal chars. */
-        u32 length = snprintf(NULL, 0, "%llu", _result);
+        u32 length = snprintf(NULL, 0, "%llu", (long long unsigned int)_result);
         char* destination = malloc(length+1);
         CHECK_MALLOC(destination)
-        snprintf(destination, length + 1, "%llu", _result);
+        snprintf(destination, length + 1, "%llu", (long long unsigned int) \
+            _result);
         destination[length] = '\0';
 
         free(_begin - 1);

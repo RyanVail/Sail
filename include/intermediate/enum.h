@@ -22,32 +22,25 @@ typedef struct enum_entry {
 } enum_entry;
 
 /*
- * This initializes the intermediate enum's hashtable with the equation 
- * (1 << "hash_table_size") for the true size.
- */
-void init_enum_hash_table(u8 entry_size);
-
-
-/*
  * This finds and returns the enum entry with the same hash. If no entry is
  * found this returns NULLPTR.
  */
-enum_entry* get_enum_entry(u32 hash);
+enum_entry* get_enum_entry(hash_table* _enums, u32 hash);
 
 /*
  * This adds the enum entry to the hash table of entries and returns a pointer
- * to the entry. This exits on errors and prints the errors.
+ * to the entry. This returns NULLPTR on errors.
  */
-enum_entry* add_enum_entry(intermediate_typedef* parent_enum, i64 value, \
-char* entry_name);
+enum_entry* add_enum_entry(hash_table* _enums, intermediate_typedef* \
+parent_enum, i64 value, char* entry_name);
 
 /* This clears all of the enums. */
-void clear_intermediate_enums();
+void clear_intermediate_enums(hash_table* _enums);
 
 /*
- * This frees all of the intermediate enums. Freeing the typedef parents needs
+ * This frees all of the intermediate enums freeing the typedef parents needs
  * to be done seperatly.
  */
-void free_intermediate_enums();
+void free_intermediate_enums(hash_table* _enums);
 
 #endif

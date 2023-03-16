@@ -56,7 +56,7 @@ void optimization_do_constant_pass()
     intermediate* operand1;
     vector* intermediates = get_intermediate_vector();
 
-    for (; location < VECTOR_SIZE((*intermediates)); location++) {
+    for (; location < VECTOR_SIZE(*intermediates); location++) {
         intermediate* _current = vector_at(intermediates, location, false);
 
         switch(_current->type)
@@ -146,7 +146,7 @@ intermediate* operand1, intermediate* _current, type result_type)
     #endif
     /* Evaluating the constant expression. */
     #if PTRS_ARE_64BIT
-    result = evaluate_expression(operand1->ptr, operand0->ptr, \
+    result = evaluate_expression((i64)operand1->ptr, (i64)operand0->ptr, \
         _current->type);
     #else
     i64* operand0_value;
@@ -184,6 +184,6 @@ intermediate* operand1, intermediate* _current, type result_type)
     #if !PTRS_ARE_64BIT
     set_intermediate_to_const(operand1, result);
     #else
-    operand1->ptr = result;
+    operand1->ptr = (void*)result;
     #endif
 }

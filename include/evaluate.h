@@ -12,8 +12,8 @@
  */
 typedef u8 operator;
 
-#define OPENING_PAR 22
-#define CLOSING_PAR 23
+#define OPENING_PAR ((operator)22)
+#define CLOSING_PAR ((operator)23)
 
 /* The logically highest value of the "operator" type. */
 #define __OPERATOR_MAX__ ((operator)-1)

@@ -6,20 +6,39 @@
 #define TYPES_H
 
 #include<common.h>
+#include<intermediate/struct.h>
 
-#define IS_TYPE_INT(x) (x.kind >= BOOL_TYPE && x.kind <= U64_TYPE)
-#define IS_KIND_INT(x) (x >= BOOL_TYPE && x <= U64_TYPE)
-#define IS_TYPE_NEG(x) (IS_TYPE_INT(x) && !(x.kind & 1))
+/* This returns true if the inputted type kind is an int. */
+#define IS_KIND_INT(x) ((x & 0xF) >= BOOL_TYPE && (x & 0xF) <= U64_TYPE)
+
+/* This returns true if the inputted type is an int. */
+#define IS_TYPE_INT(x) (IS_KIND_INT((x).kind))
+
+/* This returns true if the inputted type is negative. */
+#define IS_TYPE_NEG(x) (IS_TYPE_INT(x) && !((x).kind & 1))
+
+/* This retursn true if the inputted type kind is negative. */
 #define IS_KIND_NEG(x) (IS_KIND_INT(x) && !(x & 1))
-#define IS_TYPE_STRUCT(x) (!(x.kind << 16 >> 16 ^ STRUCT_TYPE))
-#define IS_KIND_STRUCT(x) (!((x << 16 >> 16) ^ STRUCT_TYPE))
 
-#define IS_TYPE_FLOAT_OR_DOUBLE(x) (x.kind == FLOAT_TYPE||x.kind == DOUBLE_TYPE)
+/* This returns true if the inputted type is a float or double type. */
+#define IS_TYPE_FLOAT_OR_DOUBLE(x) \
+    ((x).kind == FLOAT_TYPE || (x).kind == DOUBLE_TYPE)
+
+/* This returns true if the inputted type kind is a float or double. */
 #define IS_KIND_FLOAT_OR_DOUBLE(x) (x == FLOAT_TYPE || x == DOUBLE_TYPE)
 
-#define GET_TYPE_PTR_COUNT(x) (IS_TYPE_STRUCT((x))) ? (x.kind >> 16) : ((x).ptr)
+/* This returns true if the inputted type kind is special. */
+#define IS_TYPE_KIND_SPECIAL(x) ((x).kind > STRUCT_TYPE)
 
-typedef enum type_kind {
+/* This returns true if the inputted type kind is special. */
+#define IS_TYPE_SPECIAL(x) (x > STRUCT_TYPE)
+
+/*
+ * These are the kinds of types, use "type_kind" instead of this because it will
+ * always be a u16. Any type kinds greater than that of a struct are considered
+ * special / non native and specific to front ends.
+ */
+typedef enum _type_kind {
     VOID_TYPE,          // 0x0 // 0000
     BOOL_TYPE,          // 0x1 // 1000
 
@@ -34,113 +53,73 @@ typedef enum type_kind {
 
     FLOAT_TYPE,         // 0xa // 0101
     DOUBLE_TYPE,        // 0xb // 1101
-    STRUCT_TYPE,        // 0xc // 0011
+    STRUCT_TYPE,        // 0xc // 1110
+} _type_kind;
 
-    // Modifiers
-    // Variables only
-    COSNT_MODIFIER = 16,
-    VOLATILE_MODIFIER = 32,
-    REGISTER_MODIFIER = 64,
-    // Variables and functions
-    STATIC_MODIFIER = 128,
-    // Functions only
-    INLINE_MODIFIER = 256,
-    EXTERN_MODIFIER = 512,
-    // If this is a "STRUCT_TYPE" the next half of the u32 is the ptr count.
-    /* This attempts to force this into being a u32. */
-    TYPE_KIND_MAX = 2147483647
-} type_kind;
+/* This is the byte size of each non special type. */
+extern u8 type_sizes[STRUCT_TYPE];
 
-/* struct type - This holds information about types
- * @ptr - The number of pointers / hash of the struct if "STRUCT_TYPE"
- * @kind - The type
+/* This ensure "type_kind" will always be a u16. */
+typedef u16 type_kind;
+
+/* struct type - This represents a type
+ * @extra_data: This is an extra data attached to this type, this is a hash
+ * table key when compiling for 64 bit archs and a ptr when compiling for 32 bit
+ * archs.
+ * @ptr_count: This is the number of ptrs attached to this type.
+ * @kind: This is the kind of this type.
  */
 typedef struct type {
-    u32 ptr;
+    #if PTRS_ARE_32BIT
+    u32 extra_data;
+    #else
+    void* extra_data;
+    #endif
+    u16 ptr_count;
     type_kind kind;
 } type;
 
-/*
- * This returns the lowest possible type a value can be.
- */
+/* This returns the lowest possible integer type the inputted value can be. */
 type_kind get_lowest_type(i64 value);
 
-typedef struct intermediate_struct intermediate_struct;
-
 /*
- * This takes in a type and a function that generates the contents of a struct
- * and returns the size of a type. If no "struct_generator" is provided this
- * not generate the size of a struct and will return "__UINT32_MAX__".
- * "struct_generator" is expected to generate both the padding of the struct and
- * put the full size of the struct into "byte_size" from a ptr to the struct.
+ * This returns the byte size of the inputted type either by using the
+ * type_sizes array or for special types this will return the result of calling
+ * the intermediate pass' type size handler function. If the type kind is
+ * special or the intermediate pass is a NULLPTR or the intermediate pass' type
+ * size handler function is a NULLPTR this will return __UINT32_MAX__.
  */
-u32 get_size_of_type(type _type, void* struct_generator(intermediate_struct*));
+u32 type_get_size(intermediate_pass* _pass, type _type);
 
 /*
  * This checks if type "_from" can be casted into type "_to" implicitly.
- * Returns true if "_from" can implicitly cast to "_to". Otherwise prints an
- * error.
+ * Returns true if "_from" can implicitly cast to "_to". Otherwise returns
+ * false. For special types this will call the inputted intermediate pass'
+ * type conversion function handler if the inputted intermediate pass is not a
+ * NULLPTR and its type conversion function is not a NULLPTR.
  */
 bool type_can_implicitly_cast_to(type _from, type _to);
 
 /*
- * This prints the type name.
+ * This prints the type name. If the type is a special type this will call the
+ * inputted intermediate pass' type printer function if the inputted
+ * intermediate pass is not a NULLPTR and its type printer isn't either.
  */
-void print_type(type _type, bool graphical);
+void print_type(intermediate_pass* _pass, type _type, bool graphical);
 
 /*
- * This prints the kind of type. "type" for native types, "struct" for structs,
- * and "enum" for enums.
+ * This prints the kind of type. If the type is a special type this will call
+ * the inputted intermediate pass' type kind printer function if it the
+ * intermediate pass is not a NULLPTR and it's type kind printer isn't either.
  */
 void print_type_kind(type _type, bool graphical);
 
-// TODO: This correctness of this comment needs to be verified
+// TODO: The correctness of this comment needs to be verified
 /*
  * This scales the inputted value to the inputted type. This only works for
- * values no greater magnitude than the minimum value of the type to the power
+ * values no greater magnitude than the maximum value of the type to the power
  * of two minus one. EX. maximum of u8: 256^2-1 = 65535.
  */
 i64 scale_value_to_type(i64 value, type _type);
-
-/*
- * This allows different frontends to set custom type names. The 0xe and 0xf
- * index of "TYPE_NAMES" should be the characters before and after variable
- * names to show pointers 0x0 mean no character.
- */
-void set_type_names(char** _TYPE_NAMES);
-
-/*
- * This allows different frontends to set custom type modifier names. The first
- * modifier name is the unsigned identifier and the second is the unsigned
- * identifier. The rest of the type modifiers are the same as those in the
- * "type_kind" enum.
- */
-void set_type_modifier_names(char** _MODIFIER_NAMES);
-
-/*
- * This allows different frontends / backends to set custom type sizes. The
- * sizes should correspond with the "type_kind" enum rather than "TYPE_NAMES".
- */
-void set_type_sizes(u32* _TYPE_SIZES);
-
-/*
- * This allows the frontends to get the type modifier's names.
- */
-char** get_type_modifier_names();
-
-/*
- * This allows the frontends to get the names of types.
- */
-char** get_type_names();
-
-/*
- * This allows the frontends / backends to get the sizes of types.
- */
-u32* get_type_sizes();
-
-/*
- * This resets the type names to the default
- */
-void reset_type_names();
 
 #endif

@@ -33,10 +33,12 @@ error_token_range parser_handle_error(parsing_error _error, char** token)
     memset(&_range, 0, sizeof(error_token_range));
 
     vector _vec;
-    invalid_name_type _type;
     bool last_char_was_error;
     char* _token;
     char _char;
+    #if DESCRIPTIVE_ERRORS
+    invalid_name_type _type;
+    #endif
 
     switch (_error)
     {
@@ -183,15 +185,14 @@ type_kind get_type_modifier(char*** token)
     }
 }
 
-// TODO: 255 should be replace with "__UINT8_MAX__".
 /*
  * This parses and returns the type of the same name as the inputted string.
  * This will also read and set the ptr count of the returned type. This assumes
  * that the string is in a array and that there are no NULL pointers in the
  * array. This also assumes that the pointer char is a special char. If there's
- * no type a type the returned type's kind will be equal to 255. This sets errno
- * on errors. This also sets errno_value to the "inital_token" appon returning
- * 255 and if type ptrs are unequal.
+ * no type a type the returned type's kind will be __UINT8_MAX)). This sets
+ * errno on errors. This also sets errno_value to the "inital_token" appon
+ * returning __UINT8_MAX__ and if type ptrs are unequal.
  */
 type get_type(char** token)
 {
@@ -220,7 +221,7 @@ type get_type(char** token)
     char* type_name = *token;
 
     /* Setting the type_kind. */
-    _type.kind = 255;
+    _type.kind = __UINT8_MAX__;
     for (u32 i=0; (char)type_names[i][0] != '\0'; i++) {
         if (!strcmp(type_name, type_names[i])) {
             _type.kind = i;
@@ -229,23 +230,24 @@ type get_type(char** token)
     }
 
     /* If the type isn't found, check if we're reading a struct. */
-    if (_type.kind == 255) {
+    if (_type.kind == __UINT8_MAX__) {
         HASH_STRING(type_name);
         intermediate_struct* _struct = get_struct(result_hash);
         if (_struct != NULLPTR) {
             _type.kind = STRUCT_TYPE;
             _type.ptr = _struct->hash;
         } else {
+            // TODO: Reimplement this somehow.
             /* If it isn't a struct check if it's a typedef. */
-            intermediate_typedef* _typedef = get_typedef(result_hash);
-            if (_typedef == NULLPTR) {
-                #if DESCRIPTIVE_ERRORS
-                if (_type.kind == 255)
-                    stack_push(&error_value, inital_token);
-                #endif
-                return _type;
-            }
-            _type = _typedef->type;
+            // intermediate_typedef* _typedef = get_typedef(result_hash);
+            // if (_typedef == NULLPTR) {
+            //     #if DESCRIPTIVE_ERRORS
+            //     if (_type.kind == __UINT8_MAX__)
+            //         stack_push(&error_value, inital_token);
+            //     #endif
+            //     return _type;
+            // }
+            // _type = _typedef->type;
         }
     }
 
@@ -270,7 +272,7 @@ type get_type(char** token)
         _type.ptr = after_ptrs;
 
     #if DESCRIPTIVE_ERRORS
-    if (_type.kind == 255)
+    if (_type.kind == __UINT8_MAX__)
         stack_push(&error_value, inital_token);
     #endif
 
@@ -460,8 +462,14 @@ bool is_invalid_name(char* name)
  */
 u32 get_end_of_line(vector* file, u32 i)
 {
-    for (; i < VECTOR_SIZE((*file)); i++)
-        if (**(char**)vector_at(file, i, 0) == '\n')
+    char _char;
+    for (; i < VECTOR_SIZE(*file)-1; i++)
+        if (*(char**)vector_at(file, i, false) == NULLPTR)
+            return i;
+
+        _char = **(char**)vector_at(file, i, false);
+
+        if (_char == '\n' || _char == ';')
             return i;
 
     return i;

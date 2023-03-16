@@ -136,7 +136,7 @@ bin ARMv7_intermediates_into_binary(vector* intermediates)
 {
     ARMv7_clear_registers();
     output_bin.contents.type_size = sizeof(u32);
-    for (u32 i=0; i < VECTOR_SIZE((*intermediates)); i++) {
+    for (u32 i=0; i < VECTOR_SIZE(*intermediates); i++) {
         ARMv7_process_intermediate(*(intermediate*) \
             vector_at(intermediates,i,0));
     }
@@ -161,7 +161,8 @@ static inline void ARMv7_save_register(u8 reg_index)
     if (regs[reg_index].content.type != VAR_ACCESS)
         return;
 
-    variable_symbol* _var = get_variable_symbol("",regs[reg_index].content.ptr);
+    variable_symbol* _var = get_variable_symbol("", \
+        (u32)(size_t)regs[reg_index].content.ptr);
 
     ARMv7_add_asm(ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(14, true, \
     0, true, reg_index, true, false));
@@ -292,7 +293,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
 
         _var->value_type = _intermediate.type == VAR_DECLARATION ? \
         ((variable_symbol*)_intermediate.ptr)->type : ((variable_symbol*) \
-        get_variable_symbol("",(u32)_intermediate.ptr))->type;
+        get_variable_symbol("",(u32)(size_t)_intermediate.ptr))->type;
 
         _var->type = REG_INDEX;
 
@@ -317,7 +318,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         _first = stack_top(&value_locations);
         if (_first->type == REG_INDEX) {
             /* CLZ rx, rx */
-            ARMv7_add_asm((u32)value_locations.top->value << 12 \
+            ARMv7_add_asm((u32)(size_t)value_locations.top->value << 12 \
             | _first->first | 0xe16f0f10);
             /* LSL rx, #5 */
             ARMv7_add_asm(14 << 28 | 13 << 21 | _first->first << 16 \
@@ -355,7 +356,8 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
          * This is an ugly way of getting the immediate value into a register.
          */
         if (_second->type == IMMEDIATE) {
-            intermediate tmp_intermediate = { CONST, _second->first };
+            intermediate tmp_intermediate = { CONST, \
+                (void*)(size_t)_second->first };
             _second->first = ARMv7_get_register_with_value(tmp_intermediate);
         }
 
@@ -485,7 +487,7 @@ static inline void ARMv7_copy_variable(u32 _var_hash, u8 _reg)
     for (u32 base_reg=0; base_reg < GENERAL_REGISTER_COUNT; base_reg++)
         if ((regs[base_reg].content.type == VAR_ACCESS
         || regs[base_reg].content.type == VAR_ASSIGNMENT)
-        && regs[base_reg].content.ptr == _var_hash)
+        && (size_t)regs[base_reg].content.ptr == (size_t)_var_hash)
             break;
 
     // TODO: This currently only works with variables that are inside of
@@ -493,7 +495,7 @@ static inline void ARMv7_copy_variable(u32 _var_hash, u8 _reg)
     #if DEBUG
     if (!(regs[base_reg].content.type == VAR_ACCESS
     || regs[base_reg].content.type == VAR_ASSIGNMENT)
-    && regs[base_reg].content.ptr != _var_hash) {
+    && (size_t)regs[base_reg].content.ptr != (size_t)_var_hash) {
         printf("Variable hash: %08x\n", _var_hash);
         send_error("Variable to copy is not inside of a register");
     }
@@ -562,7 +564,7 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
             continue;
 
         u32 current_priority = \
-            ARMv7_get_variable_priority((u32)regs[i].content.ptr);
+            ARMv7_get_variable_priority((u32)(size_t)regs[i].content.ptr);
 
         if (lowest_priority >= current_priority) {
             lowest_priority_reg = i;
@@ -586,16 +588,17 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
     switch(_intermediate.type)
     {
     case CONST:
-        ARMv7_put_u32_const_into_register((u32)_intermediate.ptr, lowest_priority_reg);
+        ARMv7_put_u32_const_into_register((u32)(size_t)_intermediate.ptr, \
+            lowest_priority_reg);
         return lowest_priority_reg;
         break;
     case VAR_ASSIGNMENT:
-        _var = get_variable_symbol("",(u32)_intermediate.ptr);
+        _var = get_variable_symbol("",(u32)(size_t)_intermediate.ptr);
         ARMv7_add_asm(ASSEMBLE_MEM_PRE_OFFSET_IMMEDIATE(14, true, \
         0, false, lowest_priority_reg, false, false));
         break;
     case VAR_ACCESS:
-        ARMv7_copy_variable((u32)_intermediate.ptr, lowest_priority_reg);
+        ARMv7_copy_variable((u32)(size_t)_intermediate.ptr, lowest_priority_reg);
         break;
     }
 

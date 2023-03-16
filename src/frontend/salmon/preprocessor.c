@@ -17,7 +17,7 @@ vector salmon_preprocess_file(char* file_name)
 {
     set_tokenizer_chars(white_space_salmon, special_salmon);
     vector tokenized_file = tokenize_file(file_name).token_vector;
-    vector new_file = { NULLPTR, 0, 0, sizeof(char*) };
+    vector new_file = { NULLPTR, 0, 0, .type_size = sizeof(char*) };
 
     START_PROFILING("preprocess file", "compile file");
 

@@ -18,8 +18,8 @@ hash_table_bucket* hash_table_insert_hash(hash_table* _hash_table, u32 hash)
     #endif
 
     /* Getting the index of the first bucket. */
-    hash_table_bucket* current_bucket = (u8*)_hash_table->contents \
-        + sizeof(hash_table_bucket) * (hash & ((1 << _hash_table->size) - 1));
+    hash_table_bucket* current_bucket = (hash_table_bucket*)_hash_table \
+        ->contents + (hash & ((1 << _hash_table->size) - 1));
 
     /* Inserting the current value into the bucket. */
     if (current_bucket->hash == 0) {

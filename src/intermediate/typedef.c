@@ -6,37 +6,27 @@
 #include<intermediate/typedef.h>
 #include<frontend/common/parser.h>
 
-static hash_table intermediate_typedefs = { sizeof(intermediate_typedefs), 0 };
-
-/*
- * This initializes the intermediate enum's hashtable with the equation 
- * (1 << "hash_table_size") for the true size.
- */
-void init_typedef_hash_table(u8 size)
-{
-    intermediate_typedefs = hash_table_init(size);
-}
-
 /*
  * This finds and returns the typedef with the same hash. If none are found
  * this will return NULLPTR.
  */
-intermediate_typedef* get_typedef(u32 hash)
+intermediate_typedef* get_typedef(hash_table* _typedefs, u32 hash)
 {
     #if DEBUG
-    if (intermediate_typedefs.contents == NULLPTR)
+    if (_typedefs->contents == NULLPTR)
         send_error("Intermediate typedefs have not been initted yet");
     #endif
 
-    hash_table_bucket*_bucket = hash_table_at_hash(&intermediate_typedefs,hash);
+    hash_table_bucket*_bucket = hash_table_at_hash(_typedefs, hash);
     return _bucket == NULLPTR ? NULLPTR : _bucket -> value;
 }
 
 /* This creates a typedef and returns a pointer to it. */
-intermediate_typedef* add_typedef(char* typedef_name, type typedef_type)
+intermediate_typedef* add_typedef(hash_table* _typedefs, char* typedef_name, \
+type typedef_type)
 {
     #if DEBUG
-    if (intermediate_typedefs.contents == NULLPTR)
+    if (_typedefs->contents == NULLPTR)
         send_error("Intermediate typedefs have not been initted yet");
     #endif
 
@@ -51,14 +41,13 @@ intermediate_typedef* add_typedef(char* typedef_name, type typedef_type)
     }
 
     /* Check if the typedef name has already been used. */
-    if (get_typedef(result_hash) != NULLPTR) {
+    if (get_typedef(_typedefs, result_hash) != NULLPTR) {
         printf("\x1b[091mERROR:\x1b[0m The typedef name: \"%s\" has already been used.\n", typedef_name);
         exit(-1);
     }
 
     // TODO: This is doing the logic twice, once in "get_typedef" and once here.
-    hash_table_bucket* _bucket = hash_table_insert_hash(&intermediate_typedefs,\
-        result_hash);
+    hash_table_bucket* _bucket = hash_table_insert_hash(_typedefs, result_hash);
 
     /* Putting the typedef into a bucket. */
     _bucket->value = malloc(sizeof(intermediate_typedef));
@@ -71,14 +60,14 @@ intermediate_typedef* add_typedef(char* typedef_name, type typedef_type)
 }
 
 /* This clears all of the intermediate typedefs. */
-void clear_intermediate_typedefs()
+void clear_intermediate_typedefs(hash_table* _typedefs)
 {
     // TODO: There should be a common function to do this that does some magic
     // with function ptrs theres should also be one to go through stacks and
     // vectors like in the "free_intermediate_structs" function.
-    hash_table_bucket* current_bucket = intermediate_typedefs.contents;
+    hash_table_bucket* current_bucket = _typedefs->contents;
     hash_table_bucket* linked_bucket = NULLPTR;
-    for (u32 i=0; i < (1 << intermediate_typedefs.size); i++) {
+    for (u32 i=0; i < (1 << _typedefs->size); i++) {
         if (current_bucket->next != NULLPTR) {
             linked_bucket = current_bucket->next;
             do {
@@ -102,8 +91,8 @@ void clear_intermediate_typedefs()
 }
 
 /* This frees all of the intermediate typedefs. */
-void free_intermediate_typedefs()
+void free_intermediate_typedefs(hash_table* _typedefs)
 {
-    clear_intermediate_typedefs();
-    free(intermediate_typedefs.contents);
+    clear_intermediate_typedefs(_typedefs);
+    free(_typedefs->contents);
 }

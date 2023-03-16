@@ -11,6 +11,7 @@
 #include<datastructures/hash_table.h>
 #include<intermediate/struct.h>
 #include<types.h>
+#include<intermediate/pass.h>
 
 /* struct struct_variable - This represents a variable in a struct
  * @type: The type of this variable in the struct
@@ -38,17 +39,15 @@ typedef struct intermediate_struct {
     u16 byte_size;
 } intermediate_struct;
 
-/* This inits the intermediate struct's hashtable with the inputted size. */
-void init_struct_hash_table(u8 hash_table_size);
-
-/* This finds and returns the struct with the same hash as the inputted hash. */
-intermediate_struct* get_struct(u32 struct_hash);
+/* This returns a pointer to the struct with the same hashed name. */
+intermediate_struct* get_struct(intermediate_pass _pass, u32 struct_hash);
 
 /*
  * This function attemps the create a struct with "struct_name". Returns a
- * pointer to the newly created struct. Sends errors if any are encountered.
+ * pointer to the newly created struct.returns a NULLPTR on errors.
  */
-intermediate_struct* create_struct(u8 flags, char* struct_name);
+intermediate_struct* create_struct(intermediate_pass* _pass, \
+char* struct_name, u8 flags);
 
 /*
  * This finds and returns the "struct_variable" variable from the inputted
@@ -58,36 +57,34 @@ struct_variable* get_variable_from_struct_ptr(intermediate_struct* _struct, \
 char* var_name);
 
 /*
- * This finds and returns the "struct_variable" of the inputted variable.
- * This returns NULLPTR if the variable wasn't found.
+ * This finds and returns the "struct_variable" variable from the inputted
+ * struct hash. This returns NULLPTR if the variable wasn't found.
  */
-struct_variable* get_variable_from_struct_hash(u32 struct_hash, char* var_name);
+struct_variable* get_variable_from_struct_hash(intermediate_pass* _pass, \
+u32 struct_hash, char* var_name);
 
 /*
  * This adds the inputted variable to the inputted struct. Returns true if it
  * was successful otherwise false.
  */
-bool add_variable_to_struct(intermediate_struct* _struct, type var_type, \
-char* var_name);
+bool add_variable_to_struct(intermediate_pass* _pass, \
+intermediate_struct* _struct, type var_type, char* var_name);
 
 /*
  * This goes though all the variables in a struct and reverses their order. This
- * is used after adding padding as all members of a struct would be reversed
- * otherwise.
+ * is used after the reconstruction of struct's content's stacks because
+ * otherwise all variables would be reversed.
  */
-void reverse_struct_variables(intermediate_struct* _struct);
-
-/*
- * This returns a pointer to the "intermediate_structs" hashtable.
- */
-hash_table* get_intermediate_structs();
+void reverse_struct_variables(intermediate_pass* _pass, \
+intermediate_struct* _struct);
 
 /*
  * This function goes through all of the defined struct in the hash table and
  * generates their memory layout and anything else using the inputted
  * "struct_generator" function.
  */
-void generate_structs(void struct_generator(intermediate_struct*));
+void generate_structs(intermediate_pass* _pass, \
+void struct_generator(intermediate_struct*));
 
 /*
  * This generates a place holder struct variables in the heap and returns a
@@ -97,10 +94,10 @@ void generate_structs(void struct_generator(intermediate_struct*));
 struct_variable* generate_padding_struct_variable(u32 bytes_of_padding);
 
 /* This clears all of the intermediate structs. */
-void clear_intermediate_structs();
+void clear_intermediate_structs(intermediate_pass* _pass);
 
 /* This frees all of the intermediate structs. */
-void free_intermediate_structs();
+void free_intermediate_structs(intermediate_pass* _pass);
 
 #if DEBUG
 
@@ -108,7 +105,7 @@ void free_intermediate_structs();
  * This function prints all of the variables in the struct. This function is for
  * debugging and is not normally called.
  */
-void print_struct(intermediate_struct* _struct);
+void print_struct(intermediate_pass* _pass, intermediate_struct* _struct);
 
 #endif
 

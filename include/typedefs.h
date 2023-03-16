@@ -7,6 +7,8 @@
 
 #include<inttypes.h>
 
+#define NULLPTR ((void*)0)
+
 typedef uint64_t u64;
 typedef int64_t i64;
 typedef uint32_t u32;

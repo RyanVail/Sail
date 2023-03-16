@@ -22,6 +22,9 @@
 #include<time.h>
 #endif
 #include<frontend/common/parser.h>
+#if UNIT_TESTS
+#include<debug/tests/tester.h>
+#endif
 
 char* salmon_file_extensions[] = {"sal", "sah"};
 char* c_file_extensions[] = {"c", "h"};
@@ -37,7 +40,63 @@ int main(i32 argc, char* args[])
         "Set \"PTRS_ARE_64BIT\" flag in \"main.h\" to false and recompile");
     #endif
 
+    // exit(0);
+
+    // exit(0);
+
+    // #include<std/c/syscall.h>
+    // void* test = syscall(12, NULLPTR);
+    // printf("%p\n", test);
+    // void* new_test = syscall(12, test + 4086);
+    // printf("%p\n", new_test - test);
+    // memset(test, 0, 2);
+    // sleep(3243242);
+
+    // stack _stack = { .top = NULLPTR };
+    // void* value;
+
+    // for (u32 i=0; i < 50; i++) {
+    //     value = malloc(64);
+    //     // printf("%p\n", value);
+    //     stack_push(&_stack, value);
+    // }
+
+    // value = malloc(5);
+
+    // for (u32 i=0; i < 50; i++)
+    //     free(stack_pop(&_stack));
+
+    // free(value);
+    // printf("done.\n");
+
+    // sleep(9999999);
+
+    // exit(0);
+
+    // C_file_into_intermediates("../tests/preprocessor.c");
+
+    // char* file_name = "../tests/fib.c";
+
+    // vector file = C_preprocess_file(file_name);
+    // if (file.contents == NULLPTR) {
+    //     printf("Failed to preprocess C file: %s", file_name);
+    //     exit(-1);
+    // }
+
+    // #if DEBUG
+    // print_intermediates();
+    // #endif
+
+    // exit(0);
+
     process_cli_options(argc, args);
+
+    #if UNIT_TESTS
+    if (global_cli_options.run_tests) {
+        percent _result = tester_run_all_tests();
+        return 0;
+    }
+    #endif
 
     // vector _tmp = tokenize_file("test.sal");
     // for (u32 i=0; i < _tmp.apparent_size; i++) {
@@ -45,15 +104,7 @@ int main(i32 argc, char* args[])
     // }
     // free_tokenized_file_vector(&_tmp);
 
-    // init_symbol_table(8, 8);
-
-    // vector file = C_preprocess_file(file_name);
-    // if (file.contents == NULLPTR) {
-        // printf("Failed to preprocess C file: %s", file_name);
-        // exit(-1);
-    // }
-
-    // C_file_into_intermediates("../tests/fib.c");
+    // intermediate_pass _pass = C_file_into_intermediates("../tests/preprocessor.c");
 
     // print_intermediates();
 
@@ -66,62 +117,53 @@ int main(i32 argc, char* args[])
 	/* Initting the many many hash tables. */
 
     // TODO: There should be function to init these like free_intermediates()
-    init_enum_hash_table(4);
-    init_typedef_hash_table(4);
-    init_struct_hash_table(4);
-    init_symbol_table(8, 8);
 
-    // TODO: This currently doesn't free any of the symbols or files after
-    // compiling.
+    intermediate_pass _pass;
     for (u32 i=0; i < VECTOR_SIZE(global_cli_options.input_files); i++) {
         START_PROFILING("compile file", NULLPTR);
         char** file_name = vector_at(&global_cli_options.input_files, i, false);
         // salmon_file_into_intermediates("../tests/loop.sal");
-        salmon_file_into_intermediates(*file_name);
+        _pass = salmon_file_into_intermediates(*file_name);
 
         START_PROFILING("do all optimization passes", "compile file");
-        optimization_do_register_pass();
-        optimization_do_use_scope_pass();
-        optimization_do_constant_pass();
+        // optimization_do_register_pass();
+        // optimization_do_use_scope_pass();
+        // optimization_do_constant_pass();
         END_PROFILING("do all optimization passes", true);
 
-        generate_structs(&ARMv7_generate_struct);
+        // generate_structs(&ARMv7_generate_struct);
 
         END_PROFILING("compile file", false);
 
         #if DEBUG
         if (global_cli_options.print_intermediates)
-            print_intermediates();
+            print_intermediates(&_pass);
         #endif
 
         // TODO: This needs a shared function
-        clear_intermediate_typedefs();
-        clear_intermediate_structs();
-        clear_intermediate_enums();
-        clear_symbol_table();
-        free_intermediates(true, true, true);
+        clear_intermediate_typedefs(&_pass.typedefs);
+        clear_intermediate_structs(&_pass.structs);
+        clear_intermediate_enums(&_pass.enums);
+        clear_symbol_tables(&_pass.variable_symbols, &_pass.function_symbols);
+        free_intermediates(&_pass, true, true, true);
     }
     // TODO: Free intermediates needs to free all of the new intermediates.
-    free_intermediates(true, true, true);
-    free_intermediate_typedefs();
-    free_intermediate_structs();
-    free_intermediate_enums();
-    free_symbol_table();
+    free_symbol_table(&_pass.variable_symbols, &_pass.function_symbols);
     // free_tokenized_file_vector(&_tmp);
     // exit(0);
 
     // print_intermediates();
 
-    exit(0);
+    // exit(0);
 
-    bin sadfdf = ARMv7_intermediates_into_binary(get_intermediate_vector());
+    // bin sadfdf = ARMv7_intermediates_into_binary(&_pass.intermediates);
 
-    for (u32 i=0; i < VECTOR_SIZE(sadfdf.contents); i++)
-        printf("%08x\n", *(u32*)vector_at(&(sadfdf.contents), i, 0));
+    // for (u32 i=0; i < VECTOR_SIZE(sadfdf.contents); i++)
+    //     printf("%08x\n", *(u32*)vector_at(&(sadfdf.contents), i, 0));
 
-    free(sadfdf.contents.contents);
-    free(sadfdf.labels.contents);
-    ARMv7_free_all();
+    // free(sadfdf.contents.contents);
+    // free(sadfdf.labels.contents);
+    // ARMv7_free_all();
 
     // type _a = { 0, U8_TYPE };
     // type _b = { 0, I8_TYPE };
@@ -160,8 +202,8 @@ int main(i32 argc, char* args[])
 
     // printf("%p\n", get_variable_symbol("", 0));
     // clear_variables_in_scope();
-    free_symbol_table();
-    free_intermediates(true, true, true);
+    free_symbol_table(&_pass.variable_symbols, &_pass.function_symbols);
+    free_intermediates(&_pass, true, true, true);
 }
 
 #if DEBUG

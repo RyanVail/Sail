@@ -28,7 +28,8 @@ static vector new_file = { NULLPTR, 0, 0, sizeof(char*) };
 static stack operand_stack = { NULLPTR };
 
 static inline void C_expand_macro(vector* new_file, u32* i, vector* file);
-static inline macro_status C_read_macro(vector* file, u32* i);
+static inline macro_status C_read_macro(vector* file, u32* i, \
+char** ending_token);
 
 // TODO: tokenized file is static now but it is still being passed into
 // functions.
@@ -67,13 +68,14 @@ void C_preprocess_line(u32* i)
     u32 first_index = *i;
 
     /* Preprocess the tokens in this line. */
-    for (; *i <= end_line_index; find_next_valid_token(&tokenized_file, i))
+    for (; *i < end_line_index; find_next_valid_token(&tokenized_file, i))
         C_preprocess_token(i);
 
     /* Reads the macros in this line from the first index in this line. */
     bool dont_save = false;
     u32 index;
-    switch(C_read_macro(&tokenized_file, &first_index))
+    switch(C_read_macro(&tokenized_file, &first_index, \
+    vector_at(&tokenized_file, *i, false)))
     {
     case DONT_SAVE_LINE:
         dont_save = true;
@@ -108,33 +110,22 @@ void C_preprocess_line(u32* i)
     }
 }
 
-/*
- * This takes in a file. This returns a tokenized and preprocessed version of
- * the file.
- */
+/* This takes in a file name and returns a preprocessed version of it. */
 vector C_preprocess_file(char* file_name)
 {
-    /* 
-     * This is a vector of the defined macros which is a pointer to the file
-     * location the macro came from.
-     */
-
     set_tokenizer_chars(white_space_c, special_c);
 
     tokenized_file = tokenize_file(file_name).token_vector;
 
     START_PROFILING("preprocess file", "compile file");
 
-    for (u32 i=0; i < tokenized_file.apparent_size; i++) {
-        if (*(char**)vector_at(&tokenized_file, i, false) == NULL)
-            continue;
-        C_preprocess_line(&i);
-    }
+    for (u32 i=0; i < tokenized_file.apparent_size; i++)
+        if (*(char**)vector_at(&tokenized_file, i, false) != NULLPTR)
+            C_preprocess_line(&i);
 
-    for (u32 i=0; i < VECTOR_SIZE(new_file); i++) {
+    for (u32 i=0; i < VECTOR_SIZE(new_file); i++)
         if (*(char**)vector_at(&new_file, i, false) != NULLPTR)
             printf("%s\n", *(char**)vector_at(&new_file, i, false));
-    }
 
     free(tokenized_file.contents);
 
@@ -151,21 +142,31 @@ vector C_preprocess_file(char* file_name)
 static inline u32 C_get_macro(vector* file, char* macro_name)
 {
     for (u32 i=0; i < VECTOR_SIZE(defined); i++)
-        if (!strcmp( \
-        *(char**)vector_at(file,*(u32*)vector_at(&defined, i, 0),0),macro_name))
+        if (!strcmp(*(char**)vector_at(file,*(u32*)vector_at(&defined, i, 0),0)\
+        ,macro_name))
             return *(u32*)vector_at(&defined, i, 0) + 1;
 
     return __UINT32_MAX__;
 }
 
 /*
- * This adds the macro at the file location to the "defined" vector.
+ * This adds the macro at the file location to the "defined" vector. This should
+ * be called with the i index of file pointer to the "define" token in the
+ * "#define" macro.
  */
 static inline void C_add_macro(vector* file, u32* i)
 {
-    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) == __UINT32_MAX__)
+    /* Incramenting passed the define. */
+    find_next_valid_token(file, i);
+
+    /* Making sure the macro isn't already defined. */
+    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) != __UINT32_MAX__)
         send_error("Macro has already been defined");
+
+    /* Adding the macro to the defined vector. */
     vector_append(&defined, i);
+
+    /* Getting the line after the macro. */
     *i = get_end_of_line(file, *i);
 }
 
@@ -186,7 +187,7 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
     u32 macro_end_index = get_end_of_line(file, macro_index) - 1;
     find_next_valid_token(file, i);
 
-    if (*i == VECTOR_SIZE((*file)))
+    if (*i == VECTOR_SIZE(*file))
         return;
 
     char* current_token = 0;
@@ -216,14 +217,14 @@ static inline void C_skip_single_line_comment(vector* file, u32* i)
 
 /*
  * This is a helper function of "C_process_if_macro". This adds the numeral
- * value of the inputted ASCII number at the inputted index to the operand_stack.
- * Returns "__INTPTR_MAX__" if nothing was read.
+ * value of the inputted ASCII number at the inputted index to the
+ * operand_stack. Returns "__INTPTR_MAX__" if nothing was read.
  */
 char** C_preprocessor_process_operand(char** token)
 {
     /* Making sure this is a number. */
     if (!is_ascii_number(*token))
-        return __INTPTR_MAX__;
+        return (void*)__INTPTR_MAX__;
 
     /* Allocating space for the number. */
     i64* num = malloc(sizeof(i64));
@@ -243,7 +244,6 @@ void C_preprocessor_process_operator(operator _operator)
     i64 first_operator = *(i64*)stack_pop(&operand_stack);
     i64 second_operator = *(i64*)stack_top(&operand_stack);
 
-    printf("%u\n", _operator);
     *(i64*)operand_stack.top->value = \
         evaluate_expression(second_operator, first_operator, _operator);
 }
@@ -252,7 +252,8 @@ void C_preprocessor_process_operator(operator _operator)
  * This computes the result of an "#if" macro after all other macros inside of
  * return true or false based on the result.
  */
-static inline macro_status C_process_if_macro(vector* file, u32 *i)
+static inline macro_status C_process_if_macro(vector* file, u32 *i, \
+char** ending_token)
 {
     /* Getting the first index of the expression. */
     find_next_valid_token(file, i);
@@ -262,7 +263,7 @@ static inline macro_status C_process_if_macro(vector* file, u32 *i)
 
     /* Processing the expression after the if statement. */
     C_parse_operation(&index, &C_preprocessor_process_operator, \
-    &C_preprocessor_process_operand);
+    &C_preprocessor_process_operand, ending_token);
 
     find_next_valid_token(file, i);
 
@@ -284,7 +285,8 @@ static inline macro_status C_process_if_macro(vector* file, u32 *i)
  * This is run during the C preprocessor pass and it reads macros. This should
  * be pointed to the token right before a new line token.
  */
-static inline macro_status C_read_macro(vector* file, u32* i)
+static inline macro_status C_read_macro(vector* file, u32* i, \
+char** ending_token)
 {
     /*
     #if
@@ -306,10 +308,9 @@ static inline macro_status C_read_macro(vector* file, u32* i)
 
     find_next_valid_token(file, i);
     char* current_token = *(char**)vector_at(file, *i, false);
-    // find_next_valid_token(file, i);
 
     if (!strcmp(current_token, "if")) {
-        return C_process_if_macro(file, i);
+        return C_process_if_macro(file, i, ending_token);
     } else if (!strcmp(current_token, "ifdef")) {
         //
     } else if (!strcmp(current_token, "ifndef")) {

@@ -21,9 +21,7 @@ static u32* TYPE_SIZES = DEFAULT_TYPE_SIZES;
 // TODO: This should be in "intermediate" not here.
 // TODO: The below function should change based on TYPE_SIZES rather than using
 // hard coded values.
-/*
- * This returns the lowest possible type a value can be.
- */
+/* This returns the lowest possible integer type the inputted value can be. */
 type_kind get_lowest_type(i64 value)
 {
     #if USE_PREDEF_TYPE_MAXES
@@ -66,53 +64,65 @@ type_kind get_lowest_type(i64 value)
 }
 
 /*
- * This takes in a type and a function that generates the contents of a struct
- * and returns the size of a type. If no "struct_generator" is provided this
- * not generate the size of a struct and will return "__UINT32_MAX__".
- * "struct_generator" is expected to generate both the padding of the struct and
- * put the full size of the struct into "byte_size" from a ptr to the struct.
+ * This returns the byte size of the inputted type either by using the
+ * type_sizes array or for special types this will return the result of calling
+ * the intermediate pass' type size handler function. If the type kind is
+ * special or the intermediate pass is a NULLPTR or the intermediate pass' type
+ * size handler function is a NULLPTR this will return __UINT32_MAX__.
  */
-u32 get_size_of_type(type _type, void* struct_generator(intermediate_struct*))
+u32 type_get_size(intermediate_pass* _pass, type _type);
 {
-    intermediate_struct* _struct;
-    if (IS_TYPE_STRUCT(_type)) {
-        /* Checking if this is a struct pointer. */
-        if (_type.kind >> 16)
-            return TYPE_SIZES[12];
+    // intermediate_struct* _struct;
+    // if (IS_TYPE_STRUCT(_type)) {
+    //     /* Checking if this is a struct pointer. */
+    //     if (_type.kind >> 16)
+    //         return TYPE_SIZES[12];
 
-        /* Generating the struct's size if it hasn't been initted yet. */
-        _struct = get_struct(_type.ptr);
-        if (_struct->byte_size == __UINT16_MAX__) {
-            if (struct_generator == NULLPTR)
-                return __UINT32_MAX__;
-            struct_generator(_struct);
-        }
-        return _struct->byte_size;
-    } else if (_type.ptr != 0) {
+    //     /* Generating the struct's size if it hasn't been initted yet. */
+    //     _struct = get_struct(_type.ptr);
+    //     if (_struct->byte_size == __UINT16_MAX__) {
+    //         if (struct_generator == NULLPTR)
+    //             return __UINT32_MAX__;
+    //         struct_generator(_struct);
+    //     }
+    //     return _struct->byte_size;
+    if (_type.ptr_count != 0) {
         /* If the type is a ptr this is the size of a ptr. */
-        return TYPE_SIZES[12];
+        return TYPE_SIZES[0];
     } else {
         /* If the type is a normal type. */
         return TYPE_SIZES[_type.kind & 0xF];
     }
+    // TODO: Call intermediate function for this.
 }
 
+/* These are the errors which casting types. */
+typedef enum type_cast_status {
+    CAST_NO_ERROR,
+    CAST_ERROR_VOID,
+} type_cast_status;
+
+// TODO: This should just return an error type
 /*
  * This checks if type "_from" can be casted into type "_to" implicitly.
- * Returns true if "_from" can implicitly cast to "_to". Otherwise prints an
- * error.
+ * Returns a type_cast_status if "_from" can implicitly cast to "_to". Otherwise returns
+ * false. For special types this will call the inputted intermediate pass'
+ * type conversion function handler if the inputted intermediate pass is not a
+ * NULLPTR and its type conversion function is not a NULLPTR.
  */
 bool type_can_implicitly_cast_to(type _from, type _to)
 {
-    if (_from.kind == VOID_TYPE || _to.kind == VOID_TYPE)
-        send_error("Usage of type `void` without cast");
+    /* Voids without pointers cannot be used. */
+    if ((_from.kind == VOID_TYPE && !_from.ptr_count) || \
+    (_to.kind == VOID_TYPE && !_to.ptr_count))
+        return false;
 
     /*
      * If these are normal types this makes sure they both have the same ptr
      * count. If these are structs this make sure they're both the same struct.
      */
-    if (_to.ptr != _from.ptr)
-        goto type_can_implicitly_cast_to_error_label;
+    if (_to.ptr_count != _from.ptr_count)
+        return false;
 
     /* If only one type is a struct then send an error. */
     if (IS_TYPE_STRUCT(_to) ^ IS_TYPE_STRUCT(_from))
@@ -144,22 +154,26 @@ bool type_can_implicitly_cast_to(type _from, type _to)
 
     type_can_implicitly_cast_to_error_label:
 
-    printf("\x1b[091mERROR:\x1b[0m Cannot implicity cast ");
-    print_type_kind(_from, true);
-    printf(": ");
-    print_type(_from, true);
-    printf(" to ");
-    print_type_kind(_to, true);
-    printf(": ");
-    print_type(_to, true);
-    printf("\n");
-    exit(-1);
+    return false;
+
+    // TODO: This error should be reimplemented somewhere, and some how.
+    // print_type_kind(_from, true);
+    // printf(": ");
+    // print_type(_pass, _from, true);
+    // printf(" to ");
+    // print_type_kind(_to, true);
+    // printf(": ");
+    // print_type(_pass, _to, true);
+    // printf("\n");
+    // exit(-1);
 }
 
+// TODO: This graphical input is dumb.
 /*
- * This prints the type name.
+ * This prints the type name. The inputted intermediate pass is used to get data
+ * on custom types likes structs and enums, does nothing if it's a NULLPTR.
  */
-void print_type(type _type, bool graphical)
+void print_type(intermediate_pass* _pass, type _type, bool graphical)
 {
     /* Printing the inital coloring and '`'. */
     if (graphical)
@@ -224,7 +238,7 @@ void print_type_kind(type _type, bool graphical)
 
 /*
  * This scales the inputted value to the inputted type. This only works for
- * values no greater magnitude than the minimum value of the type to the power
+ * values no greater magnitude than the maximum value of the type to the power
  * of two minus one. EX. maximum of u8: 256^2-1 = 65535.
  */
 i64 scale_value_to_type(i64 value, type _type)

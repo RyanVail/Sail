@@ -14,7 +14,7 @@ typedef enum error_range_type {
     ERROR_RANGE_TYPE_NORMAL,
     ERROR_RANGE_TYPE_SUCCESS,
     ERROR_RANGE_TYPE_FAILED,
-    ERORR_RANGE_TYPE_CORRECTION,
+    ERROR_RANGE_TYPE_CORRECTION,
 } error_range_type;
 
 /* struct error_token_range - This is the range of tokens that are printed
@@ -76,9 +76,9 @@ type_kind get_type_modifier(char*** token);
  * This will also read and set the ptr count of the returned type. This assumes
  * that the string is in a array and that there are no NULL pointers in the
  * array. This also assumes that the pointer char is a special char. If there's
- * no type a type the returned type's kind will be equal to 255. This sets errno
- * on errors. This also sets errno_value to the "inital_token" appon returning
- * 255 and if type ptrs are unequal.
+ * no type a type the returned type's kind will be __UINT8_MAX)). This sets
+ * errno on errors. This also sets errno_value to the "inital_token" appon
+ * returning __UINT8_MAX__ and if type ptrs are unequal.
  */
 type get_type(char** token);
 

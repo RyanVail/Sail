@@ -17,6 +17,7 @@ static stack operator_stack = { NULLPTR };
 prio C_get_operator_prio(operator _operator);
 operator C_get_operator(char* token);
 char** C_parse_operand(char** current_token);
+void C_parse_inital_syntax_tree(char*** _token);
 static inline void C_set_operator_associativity(operator *_operator, \
 bool* left_associative, bool* right_associative);
 
@@ -79,21 +80,26 @@ void C_file_into_intermediates(char* file_name)
         }
 
         /* Variable/function definitions. */
-
-        /* Equation parsing. */
-        if (C_parse_operation(&current_token, &process_operation, \
-        &C_parse_operand))
-            return;
+        C_parse_inital_syntax_tree(&current_token);
 
         /* Finds the ';'. */
-        while (*current_token == NULLPTR || **current_token != ';') {
+        while (*current_token == NULLPTR && **current_token != ';')
             current_token += 1;
-        }
     }
 
     END_PROFILING("the initial intermediate pass", true);
 }
 
+/* This function parses the inital syntax tree of C source code. */
+void C_parse_inital_syntax_tree(char*** _token)
+{
+    /* Equation parsing. */
+    if (C_parse_operation(_token, (void (*)(operator))process_operation, \
+    C_parse_operand, NULLPTR))
+        return;
+}
+
+// TODO: Why does these functions use __INTPTR_MAX__ instead of NULLPTR???
 /*
  * This function reads an operand from the file, adds it to the intermediates,
  * and returns the ending token of the operands so the pointer will have to be
@@ -109,18 +115,18 @@ char** C_parse_operand(char** current_token)
     }
 
     /* Variables */
-    if (!is_invalid_name(*current_token)
+    if (!is_invalid_name(*current_token) \
     && get_variable_symbol(*current_token, 0)) {
-        intermediate _tmp_intermediate = \
-        { VAR_ACCESS, (void*)get_variable_symbol(*current_token, 0)->hash };
+        intermediate _tmp_intermediate = { .type = VAR_ACCESS, \
+        .ptr = (void*)(size_t)(get_variable_symbol(*current_token, 0)->hash) };
 
         add_operand(_tmp_intermediate, false);
-
         pop_operand(false, false);
+
         return current_token;
     }
 
-    // FUNC CALLS
+    // TODO: FUNC CALLS
 
     return (char**)__INTPTR_MAX__;
 }
@@ -128,11 +134,20 @@ char** C_parse_operand(char** current_token)
 /*
  * This function takes in the starting index of an operation and passes the
  * "operator" type of every operator into the inputted "operator_func".
- * The parsed operators are passed into the inputted "operand_func".
+ * The parsed operators are passed into the inputted "operand_func". After
+ * reaching "ending_token" this will stop parsing the equation if "ending_token"
+ * is a NULLPTR nothing is done.
  */
-bool C_parse_operation(char*** token, void* operator_func(operator), \
-void* operand_func(char**))
+bool C_parse_operation(char*** token, void (*operator_func)(operator), \
+char** (*operand_func)(char**), char** ending_token)
 {
+    /*
+     * If the ending token isn't set this ensures the current token never gets
+     * to a value over the maximum ptr counter.
+     */
+    if (ending_token == NULLPTR)
+        ending_token = (char**)__INTPTR_MAX__;
+
     /*
     - Parse the equation:
         - If the next operator <= the presendence of the last, add the last
@@ -161,10 +176,14 @@ void* operand_func(char**))
     /* The operator to be evaluated. */
     operator to_operate = __OPERATOR_MAX__;
 
-    for (char** current_token = starting_token ;; current_token += 1) {
+    char** current_token;
+
+    for (current_token = starting_token ;; current_token += 1) {
         if (*current_token == NULLPTR)
             continue;
         if (**current_token == '\n')
+            break;
+        if (current_token >= ending_token)
             break;
 
         left_associative = false;
@@ -174,7 +193,7 @@ void* operand_func(char**))
         /* Adding the operators in between parenthesis. */
         if (**current_token == ')') {
             while (stack_size(&operator_stack)) {
-                operator tmp_operator = (operator)stack_pop(&operator_stack);
+                operator tmp_operator = (size_t)stack_pop(&operator_stack);
                 if (tmp_operator == OPENING_PAR)
                     goto C_parse_operation_continue_label;
                 (*operator_func)(tmp_operator);
@@ -187,7 +206,7 @@ void* operand_func(char**))
 
         /* Checking if this is the inital '('. */
         if (**current_token == '(') {
-            stack_push(&operator_stack, OPENING_PAR);
+            stack_push(&operator_stack, (void*)OPENING_PAR);
             goto C_parse_operation_continue_label;
         }
 
@@ -197,24 +216,31 @@ void* operand_func(char**))
 
         /* Reading the first/left operand. */
         char** left_operand_pos = (*operand_func)(current_token);
-        if (left_operand_pos == __INTPTR_MAX__) {
+        if (left_operand_pos == (void*)__INTPTR_MAX__) {
             right_associative = true;
         } else {
             current_token = left_operand_pos;
-            do {
+            while (true) {
                 current_token += 1;
-                if (**current_token == '\n')
+                if (*current_token == NULLPTR)
+                    continue;
+                if (**current_token == '\n' || current_token >= ending_token)
                     goto C_parse_operation_pop_operations_label;
                 if (**current_token == '(') {
-                    stack_push(&operator_stack, OPENING_PAR);
+                    stack_push(&operator_stack, (void*)OPENING_PAR);
                     goto C_parse_operation_continue_label;
                 }
-            } while (*current_token == NULLPTR);
+                break;
+            }
         }
 
         /* Reading the operator. */
         operator current_operator = C_get_operator(*current_token);
         if (current_operator == __OPERATOR_MAX__) {
+            char _char = **current_token;
+            if (_char == '\n' || _char == ';' || _char == '\0' \
+            || current_token >= ending_token)
+                goto C_parse_operation_pop_operations_label;
             printf("C operation parsing is still being tested. The operation be at the top of the file and after the operation nothing else will be processed.\n");
             printf("Expected to find an operator but found: %s.\n", \
                 *current_token);
@@ -228,31 +254,36 @@ void* operand_func(char**))
         /* Adding the operator to the output or stack. */
         if (!STACK_IS_EMPTY(operator_stack)
         && C_get_operator_prio(current_operator) >= \
-        C_get_operator_prio((operator)stack_top(&operator_stack))) {
+        C_get_operator_prio((operator)(size_t)stack_top(&operator_stack))) {
             to_operate = current_operator;
             C_set_operator_associativity(&to_operate, &left_associative, \
                 &right_associative);
         } else {
-            stack_push(&operator_stack, (void*)current_operator);
+            stack_push(&operator_stack, (void*)(size_t)current_operator);
         }
         have_operated = true;
 
         if (left_associative)
             goto C_parse_operation_no_right_operand_label;
 
-        do {
+        while (true) {
             current_token += 1;
+            if (*current_token == NULLPTR)
+                continue;
+            if (current_token == ending_token)
+                goto C_parse_operation_pop_operations_label;
             if (**current_token == '\n')
                 send_error("Expected another operand before new line");
             if (**current_token == '(') {
-                stack_push(&operator_stack, OPENING_PAR);
+                stack_push(&operator_stack, (void*)OPENING_PAR);
                 goto C_parse_operation_no_right_operand_label;
             }
-        } while (*current_token == NULLPTR);
+            break;
+        }
 
         /* Reading the right operand. */
         char** right_operand_pos = (*operand_func)(current_token);
-        if (right_operand_pos == __INTPTR_MAX__)
+        if ((void*)right_operand_pos == (void*)__INTPTR_MAX__)
             left_associative = true;
         else
             current_token = right_operand_pos;
@@ -273,8 +304,9 @@ void* operand_func(char**))
     C_parse_operation_pop_operations_label: ;
 
     while (stack_size(&operator_stack))
-        (*operator_func)((operator)stack_pop(&operator_stack));
+        (*operator_func)((operator)(size_t)stack_pop(&operator_stack));
 
+    *token = (current_token + 1);
     return have_operated;
 
     #undef CLOSE_OPERAND_SLICE

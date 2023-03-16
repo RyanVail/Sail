@@ -11,7 +11,7 @@ static char* special_chars = NULLPTR;
 void find_next_valid_token(vector *file, u32* current_index)
 {
     *current_index += 1;
-    for (; *current_index < VECTOR_SIZE((*file))-1; *current_index += 1)
+    for (; *current_index < VECTOR_SIZE(*file)-1; *current_index += 1)
         if (*(char**)vector_at(file, *current_index, false) != NULLPTR)
             return;
 }
@@ -54,16 +54,17 @@ tokenize_file_return tokenize_file(char* file_name)
 
     START_PROFILING("tokenize file", "compile file");
 
-    FILE* file_handle = fopen(file_name, "r");
-    if (file_handle == NULLPTR)
+    i32 file_descriptor = fsopen(file_name, "r");
+    if (file_descriptor < 0)
         HANDLE_COMMON_ERROR(2);
 
     #if DESCRIPTIVE_ERRORS
     vector source_vector = vector_init(sizeof(char*), 8);
     char source_line_buffer[TOKENIZER_SOURCE_LINE_BUFFER_SIZE];
     u32 source_line_index = 0;
-    token current_token;
     #endif
+
+    token current_token;
 
     vector file_vector = vector_init(sizeof(token), 8);
 
@@ -77,13 +78,13 @@ tokenize_file_return tokenize_file(char* file_name)
     char special_char = '\0';
 
     while (_read) {
-        _read = fread(file_buffer, sizeof(char), TOKENIZER_FILE_BUFFER_SIZE, \
-        file_handle);
+        _read = read(file_descriptor, file_buffer, TOKENIZER_FILE_BUFFER_SIZE);
 
         u32 buffer_index = 0;
         special_char = '\0';
         u32 i = 0;
         for (; i < _read; i++) {
+            #if DESCRIPTIVE_ERRORS
             if (file_buffer[i] == '\n') {
                 char* new_source = malloc(source_line_index+1);
                 new_source[source_line_index] = '\0';
@@ -91,9 +92,9 @@ tokenize_file_return tokenize_file(char* file_name)
                 vector_append(&source_vector, &new_source);
                 source_line_index = 0;
             }
-
             source_line_buffer[source_line_index] = file_buffer[i];
             source_line_index++;
+            #endif
 
             if (is_special_char(file_buffer[i])) {
                 special_char = file_buffer[i];
@@ -116,10 +117,13 @@ tokenize_file_return tokenize_file(char* file_name)
             memcpy(_tmp, token_buffer, buffer_index);
 
             /* The source line is the current line that hasn't been added. */
+            #if DESCRIPTIVE_ERRORS
             current_token.source = vector_at(&file_vector, \
                 VECTOR_SIZE(file_vector), true);
-            current_token.content = _tmp;
             current_token.line_index = source_line_index;
+            #endif
+
+            current_token.content = _tmp;
 
             vector_append(&file_vector, &_tmp);
 
@@ -131,10 +135,13 @@ tokenize_file_return tokenize_file(char* file_name)
                 _tmp[1] = '\0';
 
                 /* The source line is the current line that hasn't been added. */
+                #if DESCRIPTIVE_ERRORS
                 current_token.source = vector_at(&file_vector, \
                     VECTOR_SIZE(file_vector), true);
-                current_token.content = _tmp;
                 current_token.line_index = source_line_index;
+                #endif
+
+                current_token.content = _tmp;
 
                 vector_append(&file_vector, &_tmp);
                 special_char = '\0';
@@ -143,7 +150,7 @@ tokenize_file_return tokenize_file(char* file_name)
             buffer_index = 0;
         }
     }
-    fclose(file_handle);
+    close(file_descriptor);
 
     END_PROFILING("tokenize file", true);
 
@@ -176,7 +183,7 @@ void free_tokenized_file_vector(vector* _vector)
         return;
 
     // TODO: Benchmark this against a for loop through every item
-    while (VECTOR_SIZE((*_vector))) {
+    while (VECTOR_SIZE(*_vector)) {
         char** token = vector_pop(_vector);
         if (*token != NULLPTR)
             free(*token);

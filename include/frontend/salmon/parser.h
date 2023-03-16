@@ -7,12 +7,13 @@
 
 #include<common.h>
 #include<frontend/common/tokenizer.h>
+#include<intermediate/pass.h>
 
 /*
- * This function turns a single salmon source file into intermediate tokens.
- * The tokens are stored in "frontend/common/tokenizer.c"
+ * This function turns a single salmon source file into intermediate tokens
+ * and returns an "intermediate_pass".
  */
-void salmon_file_into_intermediates(char* file_name);
+intermediate_pass salmon_file_into_intermediates(char* file_name);
 
 /*
  * This function acts as the error handling function while parsing Salmon source

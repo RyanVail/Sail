@@ -44,4 +44,8 @@
 #define __INT64_MAX__ ((i64)(__UINT64_MAX__ >> 1))
 #endif
 
+#ifndef __INTPTR_MAX__
+#define __INTPTR_MAX__ ((void*)-1)
+#endif
+
 #endif

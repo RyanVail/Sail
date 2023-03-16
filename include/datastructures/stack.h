@@ -3,7 +3,7 @@
 
 #include<common.h>
 
-#define STACK_IS_EMPTY(_stack) (_stack.top == NULLPTR)
+#define STACK_IS_EMPTY(_stack) ((_stack).top == NULLPTR)
 
 /*
  * This is a wrapper over "stack_push_malloc_with_size" that gets the type size

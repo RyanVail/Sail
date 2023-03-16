@@ -32,7 +32,7 @@ void optimization_do_use_scope_pass()
             if (_current->type == VAR_DECLARATION)
                 _var_id = ((variable_symbol*)_current->ptr)->hash;
             else
-                _var_id = (u32)_current->ptr;
+                _var_id = (u32)(size_t)_current->ptr;
 
             for (u32 x=0; x < VECTOR_SIZE(scope_uses); x++)
                 if (_var_id == *(u32*)vector_at(&scope_uses, x, 0))

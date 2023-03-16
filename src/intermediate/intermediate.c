@@ -8,20 +8,19 @@
 #include<intermediate/intermediate.h>
 #include<frontend/common/parser.h>
 
-static stack operand_stack = { NULLPTR };
-static vector intermediates_vector = { NULLPTR, 0, 0, sizeof(intermediate) };
-
 /*
- * This takes in an operand and adds the intermediates to
- * "intermediate_vector".
+ * This takes in an operand and adds the inputted intermediate to the inputted
+ * pass' intermediate vector if it's not a temp intermediate "return" type
+ * indicated by "_RETURN" at the end of the name of the intermediate type.
  */
-void add_operand_to_intermediates(intermediate _intermediate)
+void add_operand_to_intermediates(intermediate_pass* _pass, intermediate \
+_intermediate)
 {
     /* These intermediates are just placeholders and don't need to be added. */
-    if (_intermediate.type == FUNC_RETURN || _intermediate.type == MEM_RETURN)
+    if (intermediate_type_is_temp_return(_intermediate.type))
         return;
 
-    vector_append(&intermediates_vector, &_intermediate);
+    vector_append(&_pass->intermediates, &_intermediate);
 }
 
 /*
@@ -29,20 +28,22 @@ void add_operand_to_intermediates(intermediate _intermediate)
  * then checks if the operand types are valid for an operation. If comparison
  * both values get taken off.
  */
-void pop_operand(bool dual, bool comparison)
+void pop_operand(intermediate_pass* _pass, bool dual, bool comparison)
 {
-    if (stack_size(&operand_stack) < (u32)dual+1)
+    if (stack_size(&_pass->operand_stack) < (u32)dual+1)
         send_error("Not enough operands to perform operation");
 
-    operand* _first_operand = dual || comparison ? stack_pop(&operand_stack) : \
-    stack_top(&operand_stack);
+    operand* _first_operand = dual || comparison \
+    ? stack_pop(&_pass->operand_stack) : stack_top(&_pass->operand_stack);
 
+    /* Init the first operand if it isn't already.  */
     if (!_first_operand->initted)
-        add_operand_to_intermediates(_first_operand->intermediate);
-
+        add_operand_to_intermediates(_pass, _first_operand->intermediate);
     _first_operand->initted = true;
 
+    /* If this is not a dual operation make sure the operand isn't a void. */
     if (!dual) {
+        // TODO: Why is the void checking only done if !dual???
         if (_first_operand->type.kind == VOID_TYPE) {
             printf("Cannot preform operation on a ");
             print_type(_first_operand->type, true);
@@ -52,27 +53,28 @@ void pop_operand(bool dual, bool comparison)
         return;
     }
 
-    operand* _second_operand = \
-    (comparison) ? (stack_pop(&operand_stack)) : (stack_top(&operand_stack));
+    /* Getting the second operand. */
+    operand* _second_operand = (comparison) \
+    ? (stack_pop(&_pass->operand_stack)) : (stack_top(&_pass->operand_stack));
 
-    if (_second_operand->intermediate.type == VAR_RETURN)
-        goto pop_operand_second_operand_is_place_holder_label;
+    /* Init the second operand if it isn't a place holder. */
+    if (_second_operand->intermediate.type != VAR_RETURN) {
+        if (!_second_operand->initted)
+            add_operand_to_intermediates(_pass, _second_operand->intermediate);
 
-    if (!_second_operand->initted)
-        add_operand_to_intermediates(_second_operand->intermediate);
+        _second_operand->initted = true;
+    }
 
-    _second_operand->initted = true;
-
-    pop_operand_second_operand_is_place_holder_label:
-
+    /* Making sure the types of the two operands can be casted to each other. */
     type_can_implicitly_cast_to(_first_operand->type, _second_operand->type);
 
+    /* Freeing the uneeded intermediates. */
     if (dual)
         free(_first_operand);
     if (comparison) {
         free(_second_operand);
         intermediate _to_add_intermediate = { COMPARISON_RETURN, NULLPTR };
-        add_operand(_to_add_intermediate, true);
+        add_operand(_pass, _to_add_intermediate, true);
     }
 }
 
@@ -80,16 +82,13 @@ void pop_operand(bool dual, bool comparison)
  * This processes an operation by taking the needed variables off the operand
  * stack.
  */
-void process_operation(intermediate_type _operation)
+void process_operation(intermediate_pass* _pass, intermediate_type _operation)
 {
     operand* top_operand;
     switch (_operation)
     {
-    case EQUAL:
-        pop_operand(true, false);
-        break;
     case CLEAR_STACK:
-        clear_operand_stack();
+        clear_operand_stack(_pass);
         break;
     case ADD:
     case SUB:
@@ -101,7 +100,8 @@ void process_operation(intermediate_type _operation)
     case LSL:
     case LSR:
     case MOD:
-        pop_operand(true, false);
+    case EQUAL:
+        pop_operand(_pass, true, false);
         break;
     case IS_EQUAL:
     case NOT_EQUAL:
@@ -109,31 +109,31 @@ void process_operation(intermediate_type _operation)
     case GREATER_THAN_EQUAL:
     case LESS_THAN:
     case LESS_THAN_EQUAL:
-        pop_operand(true, true);
+        pop_operand(_pass, true, true);
         break;
     case INC:
     case DEC:
     case NOT:
     case COMPLEMENT:
     case NEG:
-        pop_operand(false, false);
+        pop_operand(_pass, false, false);
         break;
     // TODO: More operators need to be added.
     case MEM_DEREF:
-        top_operand = stack_top(&operand_stack);
+        top_operand = stack_top(&_pass->operand_stack);
         if (IS_TYPE_STRUCT(top_operand->type))
             top_operand->type.kind += (1 << 16);
         else
             top_operand->type.ptr++;
-        pop_operand(false, false);
+        pop_operand(_pass, false, false);
         break;
     case MEM_LOCATION:
-        top_operand = stack_top(&operand_stack);
+        top_operand = stack_top(&_pass->operand_stack);
         if (IS_TYPE_STRUCT(top_operand->type))
             top_operand->type.kind -= (1 << 16);
         else
             top_operand->type.ptr--;
-        pop_operand(false, false);
+        pop_operand(_pass, false, false);
         break;
     default:
         #if DEBUG
@@ -143,43 +143,57 @@ void process_operation(intermediate_type _operation)
     }
 
     intermediate _intermediate = { _operation, NULLPTR };
-    add_intermediate(_intermediate);
+    add_intermediate(_pass, _intermediate);
 }
 
 /*
- * This adds an intermediate to the "intermediates_vector".
+ * This both casts the top operand on the operand stack to the inputted type and
+ * adds a type intermediate.
  */
-void add_intermediate(intermediate _intermediate)
+void add_cast_intermediate(intermediate_pass* _pass, type _type)
 {
-    vector_append(&intermediates_vector, &_intermediate);
+    /* Casting the top operand. */
+    cast_top_operand(_pass, _type);
+
+    // TODO: There should be a function to extract and add the types from
+    // and to intermediates.
+
+    /* Creating and adding the cast operand. */
+    #if PTRS_ARE_64BIT
+    intermediate _tmp_intermediate = { CAST, *((void**)&_type) };
+    add_intermediate(_pass, _tmp_intermediate);
+    #else
+    type* _tmp_type = malloc(sizeof(type));
+    CHECK_MALLOC(_tmp_type);
+    *_tmp_type = *(type*)&_type;
+    intermediate _tmp_intermediate = { CAST, (void*)_tmp_type };
+    add_intermediate(_pass, _tmp_intermediate);
+    #endif
 }
 
 /*
- * This casts the operand on top of "operand_stack" to the desired type.
+ * This casts the operand on top of "operand_stack" to the desired type. This
+ * doesn't add a cast inermediate use "add_cast_intermediate" for that.
  */
-void cast_top_operand(type _type)
+void cast_top_operand(intermediate_pass* _pass, type _type)
 {
     #if DEBUG
-    if (STACK_IS_EMPTY(operand_stack))
-        send_error(\
-            "Attempted to cast the top operand when there are no operands.");
+    if (STACK_IS_EMPTY(_pass->operand_stack))
+        send_error( \
+        "Attempted to cast the top operand when there are no operands.");
     #endif
-    ((operand*)stack_top(&operand_stack))->type = _type;
-    pop_operand(false, false);
+
+    /* Casting the top operand. */
+    ((operand*)stack_top(&_pass->operand_stack))->type = _type;
+    pop_operand(_pass, false, false);
 }
 
 /*
  * This takes in an "operand" and sets its "type" to the type of the
- * intermediate it contains. This should only be called on an operand once.
+ * intermediate it contains.
  */
-void set_type_of_operand(operand* _operand)
+void set_type_of_operand(intermediate_pass* _pass, operand* _operand)
 {
-    #if DEBUG
-    if (_operand->intermediate.type >= INC
-    && _operand->intermediate.type <= LESS_THAN_EQUAL)
-        send_error("Cannot get the type of invalid intermediate");
-    #endif
-
     type _type = { 0, VOID_TYPE };
     switch (_operand->intermediate.type)
     {
@@ -206,12 +220,12 @@ void set_type_of_operand(operand* _operand)
     case VAR_RETURN:
     case VAR_ACCESS:
     case VAR_MEM:
-        _operand->type = get_variable_symbol("", \
-            *(u32*)(&_operand->intermediate.ptr))->type;
+        _operand->type = get_variable_symbol(&_pass->variable_symbols, \
+        (u32)(size_t)_operand->intermediate.ptr)->type;
         break;
     case FUNC_RETURN:
-        _operand->type = get_function_symbol("", \
-            *(u32*)(&_operand->intermediate.ptr))->return_type;
+        _operand->type = get_function_symbol(&_pass->function_symbols, \
+        (u32)(size_t)_operand->intermediate.ptr)->return_type;
         break;
     case MEM_RETURN:
     case MEM_LOCATION:
@@ -224,36 +238,36 @@ void set_type_of_operand(operand* _operand)
 }
 
 /*
- * This adds an operand onto the "operand_stack" from an intermediate.
+ * This adds an operand onto the inputted intermediate pass' "operand_stack"
+ * from the inputted intermediate intermediate.
  */
-void add_operand(intermediate _intermediate, bool initted)
+void add_operand(intermediate_pass* _pass, intermediate _intermediate, \
+bool initted)
 {
     operand* _operand = malloc(sizeof(operand));
     CHECK_MALLOC(_operand);
     _operand->intermediate = _intermediate;
     _operand->initted = initted;
-    set_type_of_operand(_operand);
-    stack_push(&operand_stack, _operand);
+    set_type_of_operand(_pass, _operand);
+    stack_push(&_pass->operand_stack, _operand);
+}
+
+/* This clears the operand stack from the inputted intermediate pass. */
+void clear_operand_stack(intermediate_pass* _pass)
+{
+    while (!STACK_IS_EMPTY(_pass->operand_stack))
+        free((char*)stack_pop(&_pass->operand_stack));
 }
 
 /*
- * This clears the operand stack.
+ * This frees the intermediates of the inputted intermediate pass. The symbol
+ * table should be in a clean scope before this function is called.
  */
-void clear_operand_stack()
+void free_intermediates(intermediate_pass* _pass, bool free_variable_symbols, \
+bool free_var_vectors, bool free_constants)
 {
-    while (!(STACK_IS_EMPTY(operand_stack)))
-        free((char*)stack_pop(&operand_stack));
-}
-
-/*
- * This frees "intermediates_vector". The symbol table should be in a clean
- * scope before this function is called.
- */
-void free_intermediates(bool free_variable_symbols, bool free_var_vectors, \
-bool free_constants)
-{
-    while (intermediates_vector.apparent_size != 0) {
-        intermediate* _intermediate = vector_pop(&intermediates_vector);
+    while (VECTOR_SIZE(_pass->intermediates) != 0) {
+        intermediate* _intermediate = vector_pop(&_pass->intermediates);
 
         #if !PTRS_ARE_64BIT
         if (free_constants && _intermediate->ptr != NULLPTR
@@ -271,20 +285,12 @@ bool free_constants)
         }
         free(_intermediate);
     }
-    free(intermediates_vector.contents);
-    intermediates_vector.contents = NULLPTR;
+    free(_pass->intermediates.contents);
+    _pass->intermediates.contents = NULLPTR;
 }
 
-/*
- * This returns a pointer to the intermediate vector.
- */
-vector* get_intermediate_vector()
-{
-    return &intermediates_vector;
-}
-
-/* This adds the inputted f32 onto the operand stack. */
-void add_float(f32 value)
+/* This adds the inputted f32 to the inputted pass' operand stack. */
+void add_float_intermediate(intermediate_pass* _pass, f32 value)
 {
     #if DEBUG && FLOATS_IN_PTRS
     if (sizeof(u32) != sizeof(f32))
@@ -299,11 +305,11 @@ void add_float(f32 value)
     *new_float = value;
     intermediate _intermediate = { FLOAT, new_float };
     #endif
-    add_operand(_intermediate, false);
+    add_operand(_pass, _intermediate, false);
 }
 
-/* This adds the inputted f64 onto the operand stack. */
-void add_double(f64 value)
+/* This adds the inputted f64 to the inputted pass' operand stack. */
+void add_double_intermediate(intermediate_pass* _pass, f64 value)
 {
     #if PTRS_ARE_64BIT && FLOATS_IN_PTRS
     intermediate _intermediate = { DOUBLE, F64_TO_VOIDPTR(value) };
@@ -313,12 +319,13 @@ void add_double(f64 value)
     *new_double = value;
     intermediate _intermediate = { DOUBLE, new_double };
     #endif
-    add_operand(_intermediate, false);
+    add_operand(_pass, _intermediate, false);
 }
 
 /*
  * This puts the const num into the inputted "_intermediate" be that as a
- * "CONST" intermediate or a "CONST_PTR" based on the "const_num".
+ * "CONST" intermediate or a "CONST_PTR" based on the "const_num" and the ptr
+ * size of the computer the compiler is running on.
  */
 void set_intermediate_to_const(intermediate* _intermediate, i64 const_num)
 {
@@ -343,26 +350,27 @@ void set_intermediate_to_const(intermediate* _intermediate, i64 const_num)
 }
 
 /*
- * This adds the inputted constant number to the operand stack. This will convert
- * it into a "CONST_PTR" if it can't fit into a pointer but it's a "CONST" by
- * default.
+ * This adds the inputted constant number to the operand stack of the inputted
+ * intermediate pass. This will convert the constant numebr into a "CONST_PTR"
+ * if it can't fit into a pointer otherwise it will be a "CONST".
  */
-void add_const_num(i64 const_num)
+void add_const_num(intermediate_pass* _pass, i64 const_num)
 {
     intermediate _operand = { NIL, NULLPTR };
     set_intermediate_to_const(&_operand, const_num);
-    add_operand(_operand, false);
+    add_operand(_pass, _operand, false);
 }
 
 /*
  * If the ASCII number at the inputted token is valid it adds it to the
- * intermediates. Returns true if a number was added, otherwise false.
+ * intermediates of the inputted intermediate pass. Returns true if a number
+ * was added, otherwise false.
  */
-bool add_if_ascii_num(char* token)
+bool add_if_ascii_num(intermediate_pass* _pass, char* token)
 {
     if (is_ascii_number(token)) {
         i64 _const_num = get_ascii_number(token);
-        add_const_num(_const_num);
+        add_const_num(_pass, _const_num);
         return true;
     }
     return false;
@@ -370,10 +378,10 @@ bool add_if_ascii_num(char* token)
 
 /*
  * If the inputted token is a valid float or double it adds it to the
- * intermediates. Returns the ending index of the float if something was added,
- * otherwise 0.
+ * intermediates of the inputted intermediate pass. Returns the ending index of
+ * the float if something was added, otherwise 0.
  */
-u32 add_if_ascii_float(char** starting_token)
+u32 add_if_ascii_float(intermediate_pass* _pass, char** starting_token)
 {
     is_ascii_float_return float_info = is_ascii_float(starting_token);
     f64 float_value;
@@ -384,20 +392,28 @@ u32 add_if_ascii_float(char** starting_token)
         break;
     case 1:
         float_value = get_ascii_float(starting_token, float_info.end_ptr);
-        add_float(float_value);
+        add_float_intermediate(_pass, float_value);
         break;
     case 2:
         float_value = get_ascii_float(starting_token, float_info.end_ptr);
-        add_double(float_value);
+        add_double_intermediate(_pass, float_value);
         break;
     }
     return float_info.token_length;
 }
 
-/* This returns a pointer to the operand stack. */
-stack* get_operand_stack()
+/* This returns true if the inputted intermediate type is temp. */
+bool intermediate_type_is_temp_return(intermediate_type _type)
 {
-    return &operand_stack;
+    switch (_type)
+    {
+    case FUNC_RETURN:
+    case VAR_RETURN:
+    case MEM_RETURN:
+    case COMPARISON_RETURN:
+        return true;
+    }
+    return false;
 }
 
 /*
@@ -415,10 +431,11 @@ const char* INTERMEDIATES_TEXT[] = { "Increment", "Decrement", "Not", \
 "Func return", "Mem return", "Comparison return", "Var return", "Cast", \
 "Register", "Ignore", "Var use", "Clear stack", "NIL" };
 
-void print_intermediates()
+/* This prints the intermediates. */
+void print_intermediates(intermediate_pass* _pass)
 {
-    for (u32 i=0; i < VECTOR_SIZE(intermediates_vector); i++) {
-        intermediate* _intermediate = vector_at(&intermediates_vector, i, 0);
+    for (u32 i=0; i < VECTOR_SIZE(_pass->intermediates); i++) {
+        intermediate* _intermediate = vector_at(&_pass->intermediates, i, 0);
 
         printf("INTER: %s\n", INTERMEDIATES_TEXT[_intermediate->type]);
 
@@ -431,7 +448,7 @@ void print_intermediates()
             _tmp_vec = _intermediate->ptr;
             if (_tmp_vec == NULLPTR)
                 continue;
-            for (u32 y=0; y < VECTOR_SIZE((*_tmp_vec)); y++)
+            for (u32 y=0; y < VECTOR_SIZE(*_tmp_vec); y++)
                 printf("%08x\n",*(u32*)vector_at(_intermediate->ptr,y,0));
             break;
         case FLOAT:
@@ -442,7 +459,7 @@ void print_intermediates()
             #endif
             break;
         case CONST:
-            printf("%li\n", _intermediate->ptr);
+            printf("%li\n", (size_t)_intermediate->ptr);
             break;
         case DOUBLE:
             #if PTRS_ARE_64BIT && FLOATS_IN_PTRS

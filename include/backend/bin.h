@@ -12,6 +12,7 @@
 #include<common.h>
 #include<intermediate/intermediate.h>
 
+// TODO: This should be removed and replaced with rtl.
 /* struct reg - This holds the status of a single register
  * @size: The size of this register in bytes, only present if the target cpu has
  * registers with different sizes

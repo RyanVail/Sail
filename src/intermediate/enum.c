@@ -9,22 +9,11 @@
 #include<frontend/common/parser.h>
 #include<datastructures/hash_table.h>
 
-static hash_table enum_entries = { sizeof(enum_entry), NULLPTR };
-
-/*
- * This initializes the intermediate enum's hashtable with the equation 
- * (1 << "hash_table_size") for the true size.
- */
-void init_enum_hash_table(u8 entry_size)
-{
-    enum_entries = hash_table_init(entry_size);
-}
-
 /* This frees all of the intermediate enums. */
-void free_enum_entries()
+void free_enum_entries(hash_table* _enums)
 {
     #if DEBUG
-    if (enum_entries.contents == NULLPTR)
+    if (_enums->contents == NULLPTR)
         send_error("Intermediate enums have not been initted yet");
     #endif
 }
@@ -33,26 +22,26 @@ void free_enum_entries()
  * This finds and returns the enum entry with the same hash. If no entry is
  * found this returns NULLPTR.
  */
-enum_entry* get_enum_entry(u32 hash)
+enum_entry* get_enum_entry(hash_table* _enums, u32 hash)
 {
     #if DEBUG
-    if (enum_entries.contents == NULLPTR)
+    if (_enums->contents == NULLPTR)
         send_error("Intermediate enums have not been initted yet");
     #endif
 
-    hash_table_bucket* _bucket = hash_table_at_hash(&enum_entries, hash);
+    hash_table_bucket* _bucket = hash_table_at_hash(_enums, hash);
     return _bucket == NULLPTR ? NULLPTR : _bucket->value;
 }
 
 /*
  * This adds the enum entry to the hash table of entries and returns a pointer
- * to the entry. This exits on errors and prints the errors.
+ * to the entry. This returns NULLPTR on errors.
  */
-enum_entry* add_enum_entry(intermediate_typedef* parent_enum, i64 value, \
-char* entry_name)
+enum_entry* add_enum_entry(hash_table* _enums, intermediate_typedef* \
+parent_enum, i64 value, char* entry_name)
 {
     #if DEBUG
-    if (enum_entries.contents == NULLPTR)
+    if (_enums->contents == NULLPTR)
         send_error("Intermediate enums have not been initted yet");
     #endif
 
@@ -61,20 +50,19 @@ char* entry_name)
 
     /* Check if the enum name is valid. */
     if (is_invalid_name(entry_name)) {
+        // TODO: Errors in files that aren't the front ends and linker are not
+        // a good idea.
         printf("\x1b[091mERROR:\x1b[0m The enum entry name: \"%s\" is invalid.\n",\
             entry_name);
         exit(-1);
     }
 
     /* Check if the enum entry name has already been used. */
-    if (get_enum_entry(result_hash) != NULLPTR) {
-        printf("\x1b[091mERROR:\x1b[0m The enum entry name: \"%s\" has already been used.\n", entry_name);
-        exit(-1);
-    }
+    if (get_enum_entry(_enums, result_hash) != NULLPTR)
+        return NULLPTR;
 
     // TODO: This is doing this logic twice, once in "get_enum_entry" and here.
-    hash_table_bucket* _bucket = hash_table_insert_hash(&enum_entries, \
-        result_hash);
+    hash_table_bucket* _bucket = hash_table_insert_hash(_enums, result_hash);
 
     /* Putting the enum entry into a bucket. */
     _bucket->value = malloc(sizeof(enum_entry));
@@ -87,11 +75,11 @@ char* entry_name)
 }
 
 /* This clears all of the enums. */
-void clear_intermediate_enums()
+void clear_intermediate_enums(hash_table* _enums)
 {
-    hash_table_bucket* current_bucket = enum_entries.contents;
+    hash_table_bucket* current_bucket = _enums->contents;
     hash_table_bucket* linked_bucket = NULLPTR;
-    for (u32 i=0; i < (1 << enum_entries.size); i++) {
+    for (u32 i=0; i < (1 << _enums->size); i++) {
         if (current_bucket->next != NULLPTR) {
             linked_bucket = current_bucket->next;
             do {
@@ -111,8 +99,8 @@ void clear_intermediate_enums()
  * This frees all of the intermediate enums freeing the typedef parents needs
  * to be done seperatly.
  */
-void free_intermediate_enums()
+void free_intermediate_enums(hash_table* _enums)
 {
-    clear_intermediate_enums();
-    free(enum_entries.contents);
+    clear_intermediate_enums(_enums);
+    free(_enums->contents);
 }

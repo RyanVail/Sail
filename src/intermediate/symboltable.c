@@ -10,125 +10,131 @@
 #include<intermediate/symboltable.h>
 #include<types.h>
 
-#if DEBUG
-#define CHECK_HASH_TABLES_HAVE_BEEN_INITTED() \
-    if (function_symbols.contents == NULLPTR) \
-        send_error("Function's symbol hash table hasn't been initted"); \
-    if (variable_symbols.contents == NULLPTR) \
-        send_error("Variable's symbol hash table hasn't been initted");
-#else
-#define CHECK_HASH_TABLES_HAVE_BEEN_INITTED()
-#endif
-
-hash_table function_symbols = { 0, NULLPTR };
-hash_table variable_symbols = { 0, NULLPTR };
-
 /*
- * This returns a pointer to the function symbol if found or a null pointer
+ * This adds a function symbol with the inputted values to the inputted function
+ * symbol table and returns a ptr to. In case of an problem this will return a
+ * NULLPTR.
  */
-function_symbol* get_function_symbol(char* name, u32 hash)
+function_symbol* add_function_symbol(hash_table* _functions, char* name, \
+vector inputs, type _return, u8 definition)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
+    /* Making sure the function isn't already in the hash table. */
+    if (get_function_symbol_from_name(_functions, name))
+        return NULLPTR;
 
-    /* Does one get fired for writing code like this? */
-    hash_table_bucket* function_bucket = name[0] == '\0' ? \
-    hash_table_at_hash(&function_symbols, hash) : \
-    hash_table_at_string(&function_symbols, name);
+    /* Allocating the function symbol. */
+    function_symbol* _function = malloc(sizeof(function_symbol));
+    CHECK_MALLOC(_function);
 
-    return function_bucket == NULLPTR ? NULL : function_bucket->value;
+    /* Initing the function symbol. */
+    _function->inputs = inputs;
+    _function->return_type = _return;
+    _function->calls = 0;
+    _function->defintion = definition;
+
+    /* Adding the hash. */
+    hash_table_bucket* function_bucket = hash_table_insert_string(_functions, \
+        name);
+    _function->hash = function_bucket->hash;
+    function_bucket->value = _function;
+
+    return function_bucket->value;
 }
 
 /*
- * This returns a pointer to the variable symbol if found or a null pointer
+ * This returns a pointer to the function symbol from the inputted function hash
+ * or a NULLPTR if the function wasn't found.
  */
-variable_symbol* get_variable_symbol(char* name, u32 hash)
+function_symbol* get_function_symbol(hash_table* _functions, u32 hash)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
-
-    /* Does one get fired for writing code like this? */
-    hash_table_bucket* variable_bucket = name[0] == '\0' ? \
-    hash_table_at_hash(&variable_symbols, hash) : \
-    hash_table_at_string(&variable_symbols, name);
-
-    return variable_bucket == NULLPTR ? NULL : variable_bucket->value;
+    hash_table_bucket* function_bucket = hash_table_at_hash(_functions, hash);
+    return function_bucket == NULLPTR ? NULLPTR : function_bucket->value;
 }
 
 /*
- * This adds a variable symbol to the symbol table. Returns true if adding the
- * variable symbol was a success.
+ * This returns a pointer to the function symbol from the inputted function name
+ * or a NULLPTR if the function wasn't found.
  */
-bool add_variable_symbol(char* name, type type, u8 flags)
+function_symbol* get_function_symbol_from_name(hash_table* _functions, \
+char* name)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
+    hash_table_bucket* function_bucket = hash_table_at_string(_functions, name);
+    return function_bucket == NULLPTR ? NULLPTR : function_bucket->value;
+}
 
-    if (get_variable_symbol(name, 0) != NULLPTR)
-        return false;
+/*
+ * This returns a pointer to the variable symbol from the inputted variable hash
+ * or a NULLPTR if the variable wasn't found.
+ */
+variable_symbol* get_variable_symbol(hash_table* _variables, u32 hash)
+{
+    hash_table_bucket* variable_bucket = hash_table_at_hash(_variables, hash);
+    return variable_bucket == NULLPTR ? NULLPTR : variable_bucket->value;
+}
 
+/*
+ * This returns a pointer to the variable symbol from the inputted variable name
+ * or a NULLPTR if the variable wasn't found.
+ */
+variable_symbol* get_variable_symbol_from_name(hash_table* _variables, \
+char* name)
+{
+    hash_table_bucket* variable_bucket = hash_table_at_string(_variables, name);
+    return variable_bucket == NULLPTR ? NULLPTR : variable_bucket->value;
+}
+
+/*
+ * This adds a variable symbol to the inputted symbol tabel. Returns a ptr to
+ * the variable symbol and in cases of errors returns a NULLPTR.
+ */
+variable_symbol* add_variable_symbol(hash_table* _variables, char* name, \
+type type, u8 flags)
+{
+    /* Making sure the variable symbol isn't already present. */
+    if (get_variable_symbol_from_name(_variables, name) != NULLPTR)
+        return NULLPTR;
+
+    /* Allocating the variable symbol. */
     variable_symbol* _variable = malloc(sizeof(variable_symbol));
     CHECK_MALLOC(_variable);
 
+    /* Initing the variable symbol. */
     _variable->flags = flags;
     _variable->uses = 0;
     _variable->type = type;
 
-    hash_table_bucket* variable_bucket = \
-        hash_table_insert_string(&variable_symbols, name);
-
+    /* Adding the hash. */
+    hash_table_bucket* variable_bucket = hash_table_insert_string(_variables, \
+        name);
     _variable->hash = variable_bucket->hash;
     variable_bucket->value = _variable;
 
-    return true;
+    return variable_bucket->value;
 }
 
 /*
- * This adds a variable symbol pointer to the symbol table.
+ * This adds the inputted variable symbol to the inputted symbol table this
+ * doesn't copy the variable symbol from the ptr it just inserts the ptr into
+ * the hash table.
  */
-void add_variable_symbol_ptr(variable_symbol* _variable_symbol)
+void add_variable_symbol_ptr(hash_table* _variables, variable_symbol* _variable)
 {
-    hash_table_bucket* variable_bucket = \
-        hash_table_insert_hash(&variable_symbols, _variable_symbol->hash);
+    hash_table_bucket* variable_bucket = hash_table_insert_hash(_variables, \
+    _variable->hash);
 
-    variable_bucket->value = _variable_symbol;
+    variable_bucket->value = _variable;
 }
 
 /*
- * This adds a function symbol to the symbol table. Inputs has to be on the
- * heap. Returns true if adding the function symbol was a success.
+ * This clears all variables from the inputted symbol table that are in scope
+ * without freeing their variable symbol structs since they should be pointed
+ * to by the "VAR_DECLARATION" intermediates.
  */
-bool add_function_symbol(char* name, vector inputs, type _return, u8 defintion)
+void clear_variables_in_scope(hash_table* _variables)
 {
-    CHECK_HASH_TABLES_HAVE_BEEN_INITTED();
-
-    if (get_function_symbol(name, 0))
-        return false;
-
-    function_symbol* _function = malloc(sizeof(function_symbol));
-    CHECK_MALLOC(_function);
-
-    _function->inputs = inputs;
-    _function->return_type = _return;
-    _function->calls = 0;
-    _function->defintion = defintion;
-
-    hash_table_bucket* function_bucket = \
-        hash_table_insert_string(&function_symbols, name);
-
-    _function->hash = function_bucket->hash;
-    function_bucket->value = _function;
-
-    return true;
-}
-
-/*
- * This clears all variables from the symbol table that are in scope without
- * freeing their variable symbol structs since they should be pointed to by the
- * "VAR_DECLARATION" intermediates.
- */
-void clear_variables_in_scope()
-{
-    hash_table_bucket* current_bucket = variable_symbols.contents;
+    hash_table_bucket* current_bucket = _variables->contents;
     hash_table_bucket* linked_bucket = NULLPTR;
-    for (u32 i=0; i < (1 << variable_symbols.size); i++) {
+    for (u32 i=0; i < (1 << _variables->size); i++) {
         if (current_bucket->next != NULLPTR) {
             linked_bucket = current_bucket->next;
             do {
@@ -144,27 +150,18 @@ void clear_variables_in_scope()
     }
 }
 
-/*
- * This inits the symbol table.
- */
-void init_symbol_table(u8 function_init_size, u8 variable_init_size)
+/* This clears all entries from the inputted symbol tables. */
+void clear_symbol_tables(hash_table* _variables, hash_table* _functions)
 {
-    function_symbols = hash_table_init(function_init_size);
-    variable_symbols = hash_table_init(variable_init_size);
-}
-
-/* This clears all entries in the symbol table. */
-void clear_symbol_table()
-{
-    hash_table_bucket* current_bucket = variable_symbols.contents;
+    hash_table_bucket* current_bucket = _variables->contents;
     hash_table_bucket* linked_bucket = NULLPTR;
 
-    current_bucket = function_symbols.contents;
+    current_bucket = _functions->contents;
 
     // TODO: All of these dumb * sizeof(hash_table_bucket) should not exist
     // anymore but a lot of code relieses on it.
-    for (; (u8*)current_bucket < (u8*)function_symbols.contents + \
-    sizeof(hash_table_bucket) * (1 << function_symbols.size); current_bucket++)
+    for (; (u8*)current_bucket < (u8*)_functions->contents + \
+    sizeof(hash_table_bucket) * (1 << _functions->size); current_bucket++)
     {
         if (current_bucket->next != NULLPTR) {
             linked_bucket = current_bucket->next;
@@ -189,13 +186,4 @@ void clear_symbol_table()
             current_bucket->value = NULLPTR;
         }
     }
-}
-
-/* This frees all the memory that is token up by the symbol table. */
-void free_symbol_table()
-{
-    clear_symbol_table();
-
-    free(function_symbols.contents);
-    free(variable_symbols.contents);
 }

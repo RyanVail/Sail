@@ -35,7 +35,7 @@ extern stack error_value;
         } \
     }
 
-/* This expands to "HANDLE_ERORR" and setting errno to the inputted code. */
+/* This expands to "HANDLE_ERROR" and setting errno to the inputted code. */
 #define HANDLE_ERROR_WITH_CODE(_code) \
     errno = _code; \
     HANDLE_ERROR()
@@ -75,7 +75,7 @@ void send_error(char* error_message);
  * in error_ptr is show in the comment next to the enum entry.
  */
 typedef enum parsing_error {
-    PARSING_ERORR_SUCCESS,              /* No values. */
+    PARSING_ERROR_SUCCESS,              /* No values. */
     PARSING_ERROR_TYPE_PTRS_UNEQUAL,    /* The only ptr on the stack is the
                                         first token of the type. */
     PARSING_ERROR_EXPECTED_TYPE,        /* The only on the stack is the expected
