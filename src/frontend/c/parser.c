@@ -115,10 +115,12 @@ char** C_parse_operand(char** current_token)
     }
 
     /* Variables */
-    if (!is_invalid_name(*current_token) \
-    && get_variable_symbol(*current_token, 0)) {
-        intermediate _tmp_intermediate = { .type = VAR_ACCESS, \
-        .ptr = (void*)(size_t)(get_variable_symbol(*current_token, 0)->hash) };
+    variable_symbol* var = get_variable_symbol(*current_token, 0);
+    if (!is_invalid_name(*current_token) && var != NULLPTR) {
+        intermediate _tmp_intermediate = {
+            .type = VAR_ACCESS,
+            .ptr = get_variable_symbol(*current_token, var),
+        };
 
         add_operand(_tmp_intermediate, false);
         pop_operand(false, false);
@@ -436,5 +438,43 @@ prio C_get_operator_prio(operator _operator)
         return __PRIO_MAX__;
     }
 }
+
+// TODO: This code comes from "parser.c" and it parses type modifiers which are
+// not by default in intermediate passes anymore so this file has to reimplement
+// this and type reading on its own.
+/*
+ * This parses and returns the given type modifiers. This will increment token
+ * till it reaches the end of the modifiers. unsigned and signed modifiers will
+ * change the first bit of the returning kind. This will skip tokens that are
+ * equal to NULLPTR and returns when it doesn't hit a modifier.
+ */
+// type_kind get_type_modifier(char*** token)
+// {
+//     char** modifier_names = get_type_modifier_names();
+//     type_kind _type;
+//     while (true) {
+//         if (**token == NULLPTR)
+//             continue;
+//         for (u32 i=0; modifier_names[i][0] != '\0'; i++) {
+//             if (!strcmp(modifier_names[i],**token)) {
+//                 switch (i)
+//                 {
+//                 case 0: // Unsigned
+//                     _type |= 1;
+//                     goto get_type_modifier_next_token_label;
+//                 case 1: // Signed
+//                     _type &= 0b1111111111111111;
+//                     goto get_type_modifier_next_token_label;
+//                 default: // Other flags
+//                     _type &= 1 << i + 4;
+//                     goto get_type_modifier_next_token_label;
+//                 }
+//             }
+//             return _type;
+//         }
+//         get_type_modifier_next_token_label:
+//         **token += 1;
+//     }
+// }
 
 #undef __PRIO_MAX__

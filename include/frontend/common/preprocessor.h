@@ -10,17 +10,20 @@
 
 /*
  * This function is meant to be run during the preprocessor loop and it skips
- * C style comments. This can leave the "current_index" pointing to the end of
+ * C style comments. This returns true if it skipped a comment and in which case
+ * needs to be run again. This can leave the "current_index" pointing to the end of
  * the file, that has to be accounted for.
  */
-void skip_C_comments(vector* file, u32* current_index);
+void skip_C_comments(vector* file, u32* current_index, \
+const char* special_chars, const char* white_space_chars);
 
 /*
  * This function is meant to be run during the preprocessor loop and it replaces
  * constant char strings with their constant values. This replaces other tokens
  * inside of the string with NULL pointers.
  */
-void replace_C_const_chars(vector* file, u32 current_index);
+void replace_C_const_chars(vector* file, u32 current_index, \
+const char* special_chars);
 
 /*
  * This function is meant to be run during the preprocessor loop and it replaces
@@ -28,6 +31,7 @@ void replace_C_const_chars(vector* file, u32 current_index);
  * inside of the backslash with null pointers. This doesn't check for NULL
  * pointers so it must be done before this is called.
  */
-void replace_C_escape_codes(vector* file, u32* current_index);
+void replace_C_escape_codes(vector* file, u32* current_index, \
+const char* special_chars);
 
 #endif

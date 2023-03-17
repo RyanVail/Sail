@@ -78,7 +78,7 @@ typedef enum intermediate_type {
                             // "MEM_DEREF".
     COMPARISON_RETURN,      // This is used as a place holder for the result of
                             // a comparison.
-    VAR_RETURN,             // This is used as a place holder for variable
+    VAR_RETURN,             // This is used as a place holder for a variable
                             // declarations.
     CAST,                   // This is used to cast the top operand into another
                             // type. The type is in "ptr".

@@ -15,6 +15,8 @@ typedef enum error_range_type {
     ERROR_RANGE_TYPE_SUCCESS,
     ERROR_RANGE_TYPE_FAILED,
     ERROR_RANGE_TYPE_CORRECTION,
+    // TODO: Fully implement this.
+    ERROR_RANGE_TYPE_ADDITION,
 } error_range_type;
 
 /* struct error_token_range - This is the range of tokens that are printed
@@ -42,7 +44,8 @@ typedef struct error_token_range {
  * This handles common errors that come up and shouldn't be set to the main
  * error handler, rather be called on specific error types.
  */
-error_token_range parser_handle_error(parsing_error _error, char** token);
+error_token_range parser_handle_error(intermediate_pass* _pass, \
+parsing_error _error, char** token);
 
 #if DESCRIPTIVE_ERRORS
 /*
@@ -54,33 +57,24 @@ typedef enum invalid_name_type {
     INVALID_NAME_TYPE_STARTS_WITH_NUMBER = 2,
     INVALID_NAME_TYPE_IS_IN_INVALID_NAMES = 4,
     INVALID_NAME_TYPE_IS_A_TYPE = 8,
-    INVALID_NAME_TYPE_IS_MODIFIER = 16,
 } invalid_name_type;
 /*
  * This function and enum is used by "parser_handle_error" to give descriptive
  * errors on invalid names.
  */
-invalid_name_type get_why_invalid_name(char* name);
+invalid_name_type get_why_invalid_name(intermediate_pass* _pass, char* name);
 #endif
-
-/*
- * This parses and returns the given type modifiers. This will increment token
- * till it reaches the end of the modifiers. unsigned and signed modifiers will
- * change the first bit of the returning kind. This will skip tokens that are
- * equal to NULLPTR and returns when it doesn't hit a modifier.
- */
-type_kind get_type_modifier(char*** token);
 
 /*
  * This parses and returns the type of the same name as the inputted string.
  * This will also read and set the ptr count of the returned type. This assumes
  * that the string is in a array and that there are no NULL pointers in the
  * array. This also assumes that the pointer char is a special char. If there's
- * no type a type the returned type's kind will be __UINT8_MAX)). This sets
- * errno on errors. This also sets errno_value to the "inital_token" appon
- * returning __UINT8_MAX__ and if type ptrs are unequal.
+ * no type a type the returned type's kind will be NO_TYPE. This sets errno on
+ * errors. This also sets errno_value to the "inital_token" appon returning
+ * NO_TYPE and if type ptrs are unequal.
  */
-type get_type(char** token);
+type get_type(intermediate_pass* _pass, vector* file, u32 index);
 
 typedef struct is_ascii_float_return is_ascii_float_return;
 /*
@@ -113,11 +107,11 @@ u32 get_end_of_line(vector* file, u32 i);
 
 /*
  * If the inputted name is invalid it will return true. This is cap sensitive.
- * Along with the current INVALID_NAMES being invalid, any special tokens, and
- * types are counted as invalid. If the name starts with a number it is also
- * considered invalid.
+ * Any names found in the inputted intermediate pass' front end's invalid_names
+ * and type_names are considered invalid. If the name starts with a number it is
+ * also considered invalid.
  */
-bool is_invalid_name(char* name);
+bool is_invalid_name(intermediate_pass* _pass, char* name);
 
 /* This represents the possible return types from "is_ascii_float". */
 typedef enum is_ascii_float_return_float_type {

@@ -6,48 +6,59 @@
 #include<frontend/common/tokenizer.h>
 #include<frontend/common/preprocessor.h>
 
-static char white_space_salmon[] = { ' ', '\t', '\n', '\0' };
-static char special_salmon[] = { '*', '/', '{', '}', ';', '^', '!', '&', '|', \
-',', '(', ')', '$', '%', '@', '#', '\\', '.', '\"', '\'', '~', '.', '\0' };
+/* These are the characters considered white space while tokenizing. */
+static const char white_space_chars[] = { ' ', '\t', '\n', '\0' };
+
+/* These are the characters considered special when tokenizing. */
+static const char special_chars[] = { '*', '/', '{', '}', ';', '^', '!', '&',
+'|', ',', '(', ')', '$', '%', '@', '#', '\\', '.', '\"', '\'', '~', '.', '\0' };
 
 /*
- * This takes in a file name and returns the preprocessed version of it.
+ * This takes in a file name and returns the tokenized file and the tokenized
+ * file with '\n's for error handling.
  */
-vector salmon_preprocess_file(char* file_name)
+tokenize_file_return salmon_preprocess_file(char* file_name)
 {
-    set_tokenizer_chars(white_space_salmon, special_salmon);
-    vector tokenized_file = tokenize_file(file_name).token_vector;
-    vector new_file = { NULLPTR, 0, 0, .type_size = sizeof(char*) };
+    tokenize_file_return _return = tokenize_file(file_name, \
+    white_space_chars, special_chars);
+
+    _return.special_chars = special_chars;
+    _return.white_space_chars = white_space_chars;
+
+    /* This is the output file. */
+    vector new_file = vector_init(sizeof(char*), 4);
 
     START_PROFILING("preprocess file", "compile file");
 
-    for (u32 i=0; i < tokenized_file.apparent_size; i++) {
-        if (*(char**)vector_at(&tokenized_file, i, false) == NULLPTR)
+    for (u32 i=0; i < VECTOR_SIZE(_return.token_vector); i++) {
+        if (*(char**)vector_at(&_return.token_vector, i, false) == NULLPTR)
             continue;
 
-        replace_C_const_chars(&tokenized_file, i);
+        replace_C_const_chars(&_return.token_vector, i, special_chars);
 
-        if (IS_VEC_END(tokenized_file, i))
+        if (IS_VEC_END(_return.token_vector, i))
             break;
 
-        replace_C_escape_codes(&tokenized_file, &i);
+        replace_C_escape_codes(&_return.token_vector, &i, special_chars);
 
         // TODO: This /* */ code /* */ compiles the second comment because
         // skipping comments isn't done at the end of comments.
-        skip_C_comments(&tokenized_file, &i);
-        if (IS_VEC_END(tokenized_file, i))
+        skip_C_comments(&_return.token_vector, &i, special_chars, \
+        white_space_chars);
+
+        if (IS_VEC_END(_return.token_vector, i))
             break;
 
-        // printf("%s\n", *(char**)vector_at(&tokenized_file, i, false));
-        vector_append(&new_file, vector_at(&tokenized_file, i, false));
+        vector_append(&new_file, vector_at(&_return.token_vector, i, false));
     }
 
     // for (u32 i=0; i < VECTOR_SIZE(new_file); i++)
         // printf("%s\n", *(char**)vector_at(&new_file, i, false));
 
-    free(tokenized_file.contents);
+    free(_return.token_vector.contents);
+    _return.source_vector = new_file;
 
     END_PROFILING("preprocess file", true);
 
-    return new_file;
+    return _return;
 }

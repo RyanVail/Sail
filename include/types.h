@@ -6,7 +6,6 @@
 #define TYPES_H
 
 #include<common.h>
-#include<intermediate/struct.h>
 
 /* This returns true if the inputted type kind is an int. */
 #define IS_KIND_INT(x) ((x & 0xF) >= BOOL_TYPE && (x & 0xF) <= U64_TYPE)
@@ -28,10 +27,19 @@
 #define IS_KIND_FLOAT_OR_DOUBLE(x) (x == FLOAT_TYPE || x == DOUBLE_TYPE)
 
 /* This returns true if the inputted type kind is special. */
-#define IS_TYPE_KIND_SPECIAL(x) ((x).kind > STRUCT_TYPE)
+#define IS_KIND_SPECIAL(x) (x > STRUCT_TYPE)
 
 /* This returns true if the inputted type kind is special. */
-#define IS_TYPE_SPECIAL(x) (x > STRUCT_TYPE)
+#define IS_TYPE_SPECIAL(x) ((x).kind > STRUCT_TYPE)
+
+/* This is index of the ptr size in type_sizes */
+#define TYPE_PTR_INDEX (STRUCT_TYPE + 1)
+
+/* This is the index of the first ptr char in type name arrays. */
+#define TYPE_NAME_FIRST_PTR_INDEX (STRUCT_TYPE)
+
+/* This is the index of the last ptr char in type name arrays. */
+#define TYPE_NAME_LAST_PTR_INDEX (STRUCT_TYPE + 1)
 
 /*
  * These are the kinds of types, use "type_kind" instead of this because it will
@@ -54,30 +62,34 @@ typedef enum _type_kind {
     FLOAT_TYPE,         // 0xa // 0101
     DOUBLE_TYPE,        // 0xb // 1101
     STRUCT_TYPE,        // 0xc // 1110
+    NO_TYPE = 255,
 } _type_kind;
 
-/* This is the byte size of each non special type. */
-extern u8 type_sizes[STRUCT_TYPE];
+/*
+ * These are the default type sizes. Corrispond with: { VOID, BOOL, I8, U8, I16,
+ * U16, I32, U32, I64, U64, float, double, ptr }
+ */
+extern u8 global_type_sizes[STRUCT_TYPE+1];
 
 /* This ensure "type_kind" will always be a u16. */
 typedef u16 type_kind;
 
+// TODO: Extra data can be a union between "void*" and hash key on 32 bit archs.
 /* struct type - This represents a type
  * @extra_data: This is an extra data attached to this type, this is a hash
- * table key when compiling for 64 bit archs and a ptr when compiling for 32 bit
- * archs.
+ * table key
  * @ptr_count: This is the number of ptrs attached to this type.
  * @kind: This is the kind of this type.
  */
 typedef struct type {
-    #if PTRS_ARE_32BIT
     u32 extra_data;
-    #else
-    void* extra_data;
-    #endif
     u16 ptr_count;
     type_kind kind;
 } type;
+
+// TODO: Fix this header hell!
+#include<intermediate/pass.h>
+typedef struct intermediate_pass intermediate_pass;
 
 /* This returns the lowest possible integer type the inputted value can be. */
 type_kind get_lowest_type(i64 value);
@@ -91,28 +103,38 @@ type_kind get_lowest_type(i64 value);
  */
 u32 type_get_size(intermediate_pass* _pass, type _type);
 
+/* This is the return from type_can_implicitly_cast_to. */
+typedef enum type_cast_status {
+    CAST_NO_ERROR,                  /* Types can be casted. */
+    CAST_ERROR_VOID,                /* One of the types was a non ptr void. */
+    CAST_ERROR_DIF_PTR,             /* The types have different ptr counts. */
+    CAST_ERROR_PRECISION_LOST,      /* Precision can be lost by casting. */
+    CAST_ERROR_STRUCT,              /* Only one of the types is a struct. */
+    CAST_ERROR_DIF_STRUCT           /* Both Structs, with different data. */
+} type_cast_status;
+
 /*
- * This checks if type "_from" can be casted into type "_to" implicitly.
- * Returns true if "_from" can implicitly cast to "_to". Otherwise returns
- * false. For special types this will call the inputted intermediate pass'
- * type conversion function handler if the inputted intermediate pass is not a
+ * This checks if type _from can be casted into type _to implicitly. Returns a
+ * type_cast_status if _from can implicitly cast to _to. Otherwise returns
+ * false. For special types this will call the inputted intermediate pass' type
+ * conversion function handler if the inputted intermediate pass is not a
  * NULLPTR and its type conversion function is not a NULLPTR.
  */
-bool type_can_implicitly_cast_to(type _from, type _to);
+type_cast_status type_can_implicitly_cast_to(type _from, type _to);
 
 /*
  * This prints the type name. If the type is a special type this will call the
  * inputted intermediate pass' type printer function if the inputted
  * intermediate pass is not a NULLPTR and its type printer isn't either.
  */
-void print_type(intermediate_pass* _pass, type _type, bool graphical);
+void print_type(intermediate_pass* _pass, type _type);
 
 /*
  * This prints the kind of type. If the type is a special type this will call
  * the inputted intermediate pass' type kind printer function if it the
  * intermediate pass is not a NULLPTR and it's type kind printer isn't either.
  */
-void print_type_kind(type _type, bool graphical);
+void print_type_kind(intermediate_pass* _pass, type _type);
 
 // TODO: The correctness of this comment needs to be verified
 /*

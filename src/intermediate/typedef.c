@@ -22,9 +22,11 @@ intermediate_typedef* get_typedef(hash_table* _typedefs, u32 hash)
 }
 
 /* This creates a typedef and returns a pointer to it. */
-intermediate_typedef* add_typedef(hash_table* _typedefs, char* typedef_name, \
-type typedef_type)
+intermediate_typedef* add_typedef(intermediate_pass* _pass, \
+char* typedef_name, type typedef_type)
 {
+    hash_table* _typedefs = &_pass->typedefs;
+
     #if DEBUG
     if (_typedefs->contents == NULLPTR)
         send_error("Intermediate typedefs have not been initted yet");
@@ -34,7 +36,7 @@ type typedef_type)
     HASH_STRING(typedef_name);
 
     /* Checking if the typedef name is valid. */
-    if (is_invalid_name(typedef_name)) {
+    if (is_invalid_name(_pass, typedef_name)) {
         printf("\x1b[091mERROR:\x1b[0m The typedef name: \"%s\" is invalid.\n",\
             typedef_name);
         exit(-1);

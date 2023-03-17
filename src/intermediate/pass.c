@@ -90,6 +90,44 @@ default_handler_functions[INTERMEDIATE_TYPE_NORMAL_END] = {
 };
 
 /*
+ * This adds the inputted intermediate to the inputted intermediate pass and
+ * preforms the normal intermediate pass logic based on the inputted
+ * intermediate type. This should be used during front end parsing.
+ */
+void add_intermediate_to_pass(intermediate_pass* _pass, \
+intermediate _intermediate)
+{
+    vector_append(&_pass->intermediates, &_intermediate);
+
+    /* Getting the intermediate handler function. */
+    handler_func _func = _pass->handler_funcs[_intermediate.type];
+    if (_func == NULLPTR)
+        _func = default_handler_functions[_intermediate.type];
+
+    /* Calling the intermediate handler function. */
+    (*_func)(_pass, _intermediate);
+}
+
+/* This preforms the inputted intermediate pass. */
+void do_intermediate_pass(intermediate_pass* _pass)
+{
+    handler_func _func;
+    intermediate* _intermediate;
+    for (u32 i=0; i < VECTOR_SIZE(_pass->intermediates); i++) {
+        /* Getting the current intermediate. */
+        _intermediate = *(intermediate**)vector_at(&_pass->intermediates, i, 0);
+
+        /* Getting the intermediate handler function. */
+        _func = _pass->handler_funcs[_intermediate->type];
+        if (_func == NULLPTR)
+            _func = default_handler_functions[_intermediate->type];
+
+        /* Calling the intermediate handler function. */
+        (*_func)(_pass, *_intermediate);
+    }
+}
+
+/*
  * This function should only be used as a function ptr in an intermediate pass.
  * This function adds the inputted intermediate back into the intermediate
  * vector preforming no logic at all.
@@ -97,7 +135,7 @@ default_handler_functions[INTERMEDIATE_TYPE_NORMAL_END] = {
 void _add_back_intermediate(intermediate_pass* _pass, intermediate \
 _intermediate)
 {
-    add_operand_to_intermediates(_pass, _intermediate);
+    add_back_intermediate(_pass, _intermediate);
 }
 
 /*

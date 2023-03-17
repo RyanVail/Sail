@@ -6,10 +6,12 @@
 #define FRONTEND_SALMON_PREPROCESSOR_H
 
 #include<common.h>
+#include<frontend/common/tokenizer.h>
 
-/* 
- * This takes in a file name and returns the preprocessed version of it.
+/*
+ * This takes in a file name and returns the tokenized file and the tokenized
+ * file with '\n's for error handling.
  */
-vector salmon_preprocess_file(char* file_name);
+tokenize_file_return salmon_preprocess_file(char* file_name);
 
 #endif

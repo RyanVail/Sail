@@ -13,6 +13,9 @@
 #include<types.h>
 #include<intermediate/pass.h>
 
+// TODO: This struct generator thing should be updated to the new intermediate
+// passes.
+
 /* struct struct_variable - This represents a variable in a struct
  * @type: The type of this variable in the struct
  * @hash: The hash of this variables name
@@ -39,8 +42,8 @@ typedef struct intermediate_struct {
     u16 byte_size;
 } intermediate_struct;
 
-/* This returns a pointer to the struct with the same hashed name. */
-intermediate_struct* get_struct(intermediate_pass _pass, u32 struct_hash);
+/* This returns a pointer to the strucgt with the same hashed name. */
+intermediate_struct* get_struct(intermediate_pass* _pass, u32 struct_hash);
 
 /*
  * This function attemps the create a struct with "struct_name". Returns a
@@ -51,10 +54,10 @@ char* struct_name, u8 flags);
 
 /*
  * This finds and returns the "struct_variable" variable from the inputted
- * struct ptr. This returns NULLPTR if the variable wasn't found.
+ * struct hash. This returns NULLPTR if the variable wasn't found.
  */
-struct_variable* get_variable_from_struct_ptr(intermediate_struct* _struct, \
-char* var_name);
+struct_variable* get_variable_from_struct_ptr(intermediate_pass* _pass, \
+intermediate_struct* _struct, char* var_name);
 
 /*
  * This finds and returns the "struct_variable" variable from the inputted
@@ -91,7 +94,8 @@ void struct_generator(intermediate_struct*));
  * pointer to it. Padding "struct_variable"s have a hash equal to 0, random type
  * values and the name is a "u32" that holds the number of bytes of padding.
  */
-struct_variable* generate_padding_struct_variable(u32 bytes_of_padding);
+struct_variable* generate_padding_struct_variable(intermediate_pass* _pass, \
+u32 bytes_of_padding);
 
 /* This clears all of the intermediate structs. */
 void clear_intermediate_structs(intermediate_pass* _pass);

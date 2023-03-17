@@ -9,11 +9,11 @@
 #include<frontend/common/parser.h>
 
 /*
- * This takes in an operand and adds the inputted intermediate to the inputted
- * pass' intermediate vector if it's not a temp intermediate "return" type
- * indicated by "_RETURN" at the end of the name of the intermediate type.
+ * This takes in an intermediate and adds the inputted intermediate to the
+ * inputted pass' intermediate vector if it's not a temp intermediate return
+ * type indicated by _RETURN at the end of the name of the intermediate type.
  */
-void add_operand_to_intermediates(intermediate_pass* _pass, intermediate \
+void add_back_intermediate(intermediate_pass* _pass, intermediate \
 _intermediate)
 {
     /* These intermediates are just placeholders and don't need to be added. */
@@ -38,7 +38,7 @@ void pop_operand(intermediate_pass* _pass, bool dual, bool comparison)
 
     /* Init the first operand if it isn't already.  */
     if (!_first_operand->initted)
-        add_operand_to_intermediates(_pass, _first_operand->intermediate);
+        add_back_intermediate(_pass, _first_operand->intermediate);
     _first_operand->initted = true;
 
     /* If this is not a dual operation make sure the operand isn't a void. */
@@ -46,7 +46,7 @@ void pop_operand(intermediate_pass* _pass, bool dual, bool comparison)
         // TODO: Why is the void checking only done if !dual???
         if (_first_operand->type.kind == VOID_TYPE) {
             printf("Cannot preform operation on a ");
-            print_type(_first_operand->type, true);
+            print_type(_pass, _first_operand->type);
             printf(" type");
             send_error("");
         }
@@ -60,7 +60,7 @@ void pop_operand(intermediate_pass* _pass, bool dual, bool comparison)
     /* Init the second operand if it isn't a place holder. */
     if (_second_operand->intermediate.type != VAR_RETURN) {
         if (!_second_operand->initted)
-            add_operand_to_intermediates(_pass, _second_operand->intermediate);
+            add_back_intermediate(_pass, _second_operand->intermediate);
 
         _second_operand->initted = true;
     }
@@ -121,18 +121,16 @@ void process_operation(intermediate_pass* _pass, intermediate_type _operation)
     // TODO: More operators need to be added.
     case MEM_DEREF:
         top_operand = stack_top(&_pass->operand_stack);
-        if (IS_TYPE_STRUCT(top_operand->type))
-            top_operand->type.kind += (1 << 16);
-        else
-            top_operand->type.ptr++;
+        #if DEBUG
+        if (top_operand->type.ptr_count == 0)
+            send_error("Cannot deref. a non ptr");
+        #endif
+        top_operand->type.ptr_count--;
         pop_operand(_pass, false, false);
         break;
     case MEM_LOCATION:
         top_operand = stack_top(&_pass->operand_stack);
-        if (IS_TYPE_STRUCT(top_operand->type))
-            top_operand->type.kind -= (1 << 16);
-        else
-            top_operand->type.ptr--;
+        top_operand->type.ptr_count++;
         pop_operand(_pass, false, false);
         break;
     default:
@@ -197,10 +195,12 @@ void set_type_of_operand(intermediate_pass* _pass, operand* _operand)
     type _type = { 0, VOID_TYPE };
     switch (_operand->intermediate.type)
     {
+    #if !PTRS_ARE_64BIT
     case CONST_PTR:
         _type.kind = get_lowest_type(*((i64*)_operand->intermediate.ptr));
         _operand->type = _type;
         break;
+    #endif
     case CONST:
         _type.kind = get_lowest_type((i64)_operand->intermediate.ptr);
         _operand->type = _type;
@@ -214,21 +214,19 @@ void set_type_of_operand(intermediate_pass* _pass, operand* _operand)
         _operand->type = _type;
         break;
     case VAR_DECLARATION:
-        _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
-        break;
     case VAR_ASSIGNMENT:
     case VAR_RETURN:
     case VAR_ACCESS:
     case VAR_MEM:
-        _operand->type = get_variable_symbol(&_pass->variable_symbols, \
-        (u32)(size_t)_operand->intermediate.ptr)->type;
+        _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
         break;
     case FUNC_RETURN:
-        _operand->type = get_function_symbol(&_pass->function_symbols, \
+        _operand->type = get_function_symbol(&_pass->functions, \
         (u32)(size_t)_operand->intermediate.ptr)->return_type;
         break;
     case MEM_RETURN:
     case MEM_LOCATION:
+        // TODO: I'm pretty sure this doesn't work for 32 bit.
         _operand->type = *((type*)_operand->intermediate.ptr);
         break;
     default:
@@ -239,7 +237,7 @@ void set_type_of_operand(intermediate_pass* _pass, operand* _operand)
 
 /*
  * This adds an operand onto the inputted intermediate pass' "operand_stack"
- * from the inputted intermediate intermediate.
+ * from the inputted intermediate.
  */
 void add_operand(intermediate_pass* _pass, intermediate _intermediate, \
 bool initted)
@@ -255,8 +253,9 @@ bool initted)
 /* This clears the operand stack from the inputted intermediate pass. */
 void clear_operand_stack(intermediate_pass* _pass)
 {
+    // TODO: This is going to need more logic for extra data attached to types.
     while (!STACK_IS_EMPTY(_pass->operand_stack))
-        free((char*)stack_pop(&_pass->operand_stack));
+        free(stack_pop(&_pass->operand_stack));
 }
 
 /*
@@ -400,20 +399,6 @@ u32 add_if_ascii_float(intermediate_pass* _pass, char** starting_token)
         break;
     }
     return float_info.token_length;
-}
-
-/* This returns true if the inputted intermediate type is temp. */
-bool intermediate_type_is_temp_return(intermediate_type _type)
-{
-    switch (_type)
-    {
-    case FUNC_RETURN:
-    case VAR_RETURN:
-    case MEM_RETURN:
-    case COMPARISON_RETURN:
-        return true;
-    }
-    return false;
 }
 
 /*

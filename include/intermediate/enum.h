@@ -31,8 +31,8 @@ enum_entry* get_enum_entry(hash_table* _enums, u32 hash);
  * This adds the enum entry to the hash table of entries and returns a pointer
  * to the entry. This returns NULLPTR on errors.
  */
-enum_entry* add_enum_entry(hash_table* _enums, intermediate_typedef* \
-parent_enum, i64 value, char* entry_name);
+enum_entry* add_enum_entry(intermediate_pass* _pass, \
+intermediate_typedef* parent_enum, i64 value, char* entry_name);
 
 /* This clears all of the enums. */
 void clear_intermediate_enums(hash_table* _enums);

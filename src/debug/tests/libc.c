@@ -41,6 +41,7 @@ percent tester_run_libc_tests()
  */
 bool tester_run_libc_dangling_test_0()
 {
+    /* This can't be too high or it will go into a loop. */
     #define ALLOCATION_COUNT 256
     #define RANDOM_SEED 0xe031a8ed
 
@@ -65,7 +66,7 @@ bool tester_run_libc_dangling_test_0()
     size_t index = data & 0xFF;
     while (total_allocation_count != ALLOCATION_COUNT) {
         /* 1/4 th of the time data is freed. */
-        if ((data << 16) & 0x3 == 0 && total_allocation_size != 0) {
+        if ((data >> 16) & 0x3 == 0 && total_allocation_size != 0) {
             /* Finding a valid index. */
             while (allocation_buf[index].size == 0 \
             && index <= total_allocation_count) {
@@ -94,7 +95,7 @@ bool tester_run_libc_dangling_test_0()
             }
 
             /* Allocating this "dangling" ptr. */
-            allocation_buf[index].size = (data << 8) & 0xFFF;
+            allocation_buf[index].size = (data >> 8) & 0xFFF;
             allocation_buf[index].value = malloc(allocation_buf[index].size);
             CHECK_MALLOC(allocation_buf[index].value);
             total_allocation_size += allocation_buf[index].size;
@@ -293,7 +294,7 @@ bool tester_run_libc_realloc_test_2()
  */
 bool tester_run_libc_alloc_test_0()
 {
-    #define COUNT 256
+    #define COUNT 1024
     #define RANDOM_SEED 0x60786943
 
     /* Storing all of the allocated to free at the end. */
@@ -305,20 +306,21 @@ bool tester_run_libc_alloc_test_0()
     for (u32 i=0; i < COUNT; i++) {
         /* The first 16 bits are used as the random allocation count. */
         data = malloc(_rand & 0xFFFF);
+        u32 goal = _rand & 0xFFFF;
         CHECK_MALLOC(data);
 
         /* Setting the data. */
         _rand = hash_u32(_rand);
-        for (u32 x=0; x < _rand & 0xFFFF; x++) {
+        for (u32 x=0; x < goal; x++) {
             *(u8*)data = _rand & 0xFF;
 
             /* Generating the next random number. */
             _rand = hash_u32(_rand);
         }
 
-        /* Randomly reallocating the data to the first 24 bits 1/3 the time. */
-        if ((_rand << 24) <= 85) {
-            data = realloc(data, _rand & 0xFFFFFF);
+        /* Randomly reallocating the data to the first 17 bits 1/3 the time. */
+        if ((_rand >> 24) <= 85) {
+            data = realloc(data, _rand & 0x1ffff);
             if (data = NULLPTR)
                 return false;
         }

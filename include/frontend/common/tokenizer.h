@@ -12,6 +12,8 @@
 typedef struct tokenize_file_return {
     vector token_vector;
     vector source_vector;
+    const char* special_chars;
+    const char* white_space_chars;
 } tokenize_file_return;
 
 /* struct token - This represents a single descriptive token
@@ -43,42 +45,35 @@ typedef struct token {
 #endif
 
 /*
- * This function goes through the tokenized file and skips NULL pointers till it
- * finds a valid token.
+ * This function goes through the tokenized file and skips NULLPTRs till it
+ * reaches a valid token.
  */
 void find_next_valid_token(vector *file, u32* current_index);
 
+// TODO: This should take in a bool array or bit array to check if the inputted
+// char is a special char for faster tokenizing and a little less storage usage.
 /*
  * This takes in a file name and returns the tokenized version of the file. If
  * the DESCRIPTIVE_ERRORS flag is set to true this will also return the lines of
  * source code.
  */
-tokenize_file_return tokenize_file(char* file_name);
+tokenize_file_return tokenize_file(const char* file_name, \
+const char* white_space_chars, const char* special_chars);
 
-/*
- * This function is called from the frontend being used and define the static
- * "white_space_chars" and "special_chars" with the given values.
- */
-void set_tokenizer_chars(char* _white_space_chars, char* _special_chars);
-
-/*
- * This takes in the vector of a tokenized file and frees it.
- */
+/* This takes in the vector of a tokenized file and frees it. */
 void free_tokenized_file_vector(vector* _vector);
 
-/*
- * This frees the tokenizer chars.
- */
-void free_tokenizer_chars();
+/* This returns true if the inputted char is a special char. */
+static inline bool is_special_char(char _char, const char* special_chars)
+{
+    return strchr(special_chars, _char) != NULLPTR;
+}
 
-/*
- * This returns true if the inputted char is a white space character.
- */
-bool is_white_space_char(char _char);
-
-/*
- * This returns true if the inputted char is a special char.
- */
-bool is_special_char(char _char);
+/* This returns true if the inputted char is a white space char. */
+static inline bool is_white_space_char(char _char, \
+const char* white_space_chars)
+{
+    return strchr(white_space_chars, _char) != NULLPTR;
+}
 
 #endif

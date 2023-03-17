@@ -1,9 +1,6 @@
 #include<common.h>
 #include<frontend/common/tokenizer.h>
 
-static char* white_space_chars = NULLPTR;
-static char* special_chars = NULLPTR;
-
 /*
  * This function goes through the tokenized file and skips NULLPTRs till it
  * reaches a valid token.
@@ -17,33 +14,12 @@ void find_next_valid_token(vector *file, u32* current_index)
 }
 
 /*
- * This returns true if the inputted char is a white space character.
- */
-bool is_white_space_char(char _char)
-{
-    for (u32 i=0; white_space_chars[i] != '\0'; i++)
-        if (_char == white_space_chars[i])
-            return true;
-    return false;
-}
-
-/*
- * This returns true if the inputted char is a special char.
- */
-bool is_special_char(char _char)
-{
-    for (u32 i=0; special_chars[i] != '\0'; i++)
-        if (_char == special_chars[i])
-            return true;
-    return false;
-}
-
-/*
  * This takes in a file name and returns the tokenized version of the file. If
  * the DESCRIPTIVE_ERRORS flag is set to true this will also return the lines of
  * source code.
  */
-tokenize_file_return tokenize_file(char* file_name)
+tokenize_file_return tokenize_file(const char* file_name, \
+const char* white_space_chars, const char* special_chars)
 {
     #if DEBUG
     if (white_space_chars == NULLPTR || special_chars == NULLPTR) {
@@ -96,9 +72,9 @@ tokenize_file_return tokenize_file(char* file_name)
             source_line_index++;
             #endif
 
-            if (is_special_char(file_buffer[i])) {
+            if (is_special_char(file_buffer[i], special_chars)) {
                 special_char = file_buffer[i];
-            } else if (!is_white_space_char(file_buffer[i])) {
+            } else if (!is_white_space_char(file_buffer[i], white_space_chars)) {
                 token_buffer[buffer_index] = file_buffer[i];
                 buffer_index++;
                 continue;
@@ -164,19 +140,7 @@ tokenize_file_return tokenize_file(char* file_name)
     return returning;
 }
 
-/*
- * This function is called from the frontend being used and define the static
- * "white_space_chars" and "special_chars" with the given values.
- */
-void set_tokenizer_chars(char* _white_space_chars, char* _special_chars)
-{
-    white_space_chars = _white_space_chars;
-    special_chars = _special_chars;
-}
-
-/*
- * This takes in the vector of a tokenized file and frees it.
- */
+/* This takes in the vector of a tokenized file and frees it. */
 void free_tokenized_file_vector(vector* _vector)
 {
     if (_vector->size == 0)

@@ -29,8 +29,8 @@ typedef struct intermediate_typedef {
 intermediate_typedef* get_typedef(hash_table* _typedefs, u32 hash);
 
 /* This creates a typedef and returns a pointer to it. */
-intermediate_typedef* add_typedef(hash_table* _typedefs, char* typedef_name, \
-type typedef_type);
+intermediate_typedef* add_typedef(intermediate_pass* _pass, \
+char* typedef_name, type typedef_type);
 
 /* This clears all of the intermediate typedefs. */
 void clear_intermediate_typedefs(hash_table* _typedefs);

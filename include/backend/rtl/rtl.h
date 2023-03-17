@@ -11,6 +11,10 @@
 #include<intermediate/intermediate.h>
 #include<datastructures/vector.h>
 
+// TODO: There should be a global table that is set before multi threading is
+// started that can inform front ends on the target arch for extra processing
+// during front end passes.
+
 /* struct reg - This holds the status of a single register
  * @content: This is the content of this register in intermediate form
  * @type: The type of the content of this register

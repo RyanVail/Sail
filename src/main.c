@@ -140,15 +140,16 @@ int main(i32 argc, char* args[])
             print_intermediates(&_pass);
         #endif
 
-        // TODO: This needs a shared function
+        // TODO: This needs a shared function.
+        // TODO: These should all use passes.
         clear_intermediate_typedefs(&_pass.typedefs);
-        clear_intermediate_structs(&_pass.structs);
+        clear_intermediate_structs(&_pass);
         clear_intermediate_enums(&_pass.enums);
-        clear_symbol_tables(&_pass.variable_symbols, &_pass.function_symbols);
+        clear_symbol_tables(&_pass.variables, &_pass.functions);
         free_intermediates(&_pass, true, true, true);
     }
     // TODO: Free intermediates needs to free all of the new intermediates.
-    free_symbol_table(&_pass.variable_symbols, &_pass.function_symbols);
+    free_symbol_table(&_pass.variables, &_pass.functions);
     // free_tokenized_file_vector(&_tmp);
     // exit(0);
 
@@ -202,7 +203,7 @@ int main(i32 argc, char* args[])
 
     // printf("%p\n", get_variable_symbol("", 0));
     // clear_variables_in_scope();
-    free_symbol_table(&_pass.variable_symbols, &_pass.function_symbols);
+    free_symbol_table(&_pass.variables, &_pass.functions);
     free_intermediates(&_pass, true, true, true);
 }
 

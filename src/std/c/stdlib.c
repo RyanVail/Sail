@@ -84,7 +84,7 @@ void abort()
 /* This tries to remove the inputted page from the linked list. */
 static inline void __try_to_remove_page__(page* _page, page* last_page)
 {
-    page* _tmp_page;
+    /* If this is the the last page it can be removed. */
     if (_page->next == NULLPTR) {
         /* Getting rid of this page's data. */
         SHRINK_MALLOC_DATA_PTR(_page->size + sizeof(page) + \
@@ -94,16 +94,9 @@ static inline void __try_to_remove_page__(page* _page, page* last_page)
         if (_page == pages) {
             pages = NULLPTR;
         } else {
-            last_page->next = _page->next;
-            // TODO: This should go through the pages backwards.
-            // _tmp_page = last_page->next;
-            // last_page->next = NULLPTR;
-            // while (last_page != NULLPTR && last_page->segments == NULLPTR) {
-            //     _tmp_page = last_page->next;
-            //     SHRINK_MALLOC_DATA_PTR(last_page->size + sizeof(page)
-            //     + sizeof(memory_segment));
-            //     last_page = _tmp_page;
-            // }
+            last_page->next = NULLPTR;
+            // TODO: This should go through the pages backwards and remove
+            // pages with no segments.
         }
     }
 }
@@ -118,27 +111,24 @@ void free(void* ptr)
     page* _page = pages;
     page* last_page = NULLPTR;
 
-    // TODO: A dual linked list would make this O(1).
+    // TODO: A dual linked list would make this faster.
     /* Going through the pages. */
     for (; _page != NULLPTR; last_page = _page, _page = _page->next) {
-        /* Making sure this page has segments. */
         _segment = _page->segments;
-        if (_segment == NULLPTR)
-            continue;
-
-        /* Going through the segments in this page. */
         last_segment = NULLPTR;
+        /* Going through the segments in this page. */
         for (; _segment != NULLPTR; last_segment = _segment, _segment \
         = _segment->next) {
             /* If this is the ptr remove it from the linked list. */
             if (_segment->data == ptr) {
-                /* Trying to remove this page. */
-                if (last_segment == NULLPTR) {
-                    if (_segment->next != NULLPTR) {
-                       _page->segments = _segment->next;
-                    } else {
+                /* If this is the first segment. */
+                if (_segment == _page->segments) {
+                    /* Trying to remove this page. */
+                    if (_segment->next == NULLPTR) {
                         _page->segments = NULLPTR;
                         __try_to_remove_page__(_page, last_page);
+                    } else {
+                       _page->segments = _segment->next;
                     }
                 } else {
                     last_segment->next = _segment->next;
@@ -172,8 +162,6 @@ void* realloc(void* ptr, size_t bytes)
     return new_ptr;
 }
 
-static int file_handle;
-
 /*
  * This allocated bytes bytes of memory on the heap and returns a ptr to the
  * allocated memory. In cases of failure this will return NULLPTR.
@@ -197,8 +185,13 @@ void* malloc(size_t bytes)
     if (bytes < MMAP_THREASHOLD) {
         /* Trying to find room for the data in the pages. */
         for (; _page != NULLPTR; last_page = _page, _page = _page->next) {
-            if (_page->size <= bytes)
+            if (_page->size < bytes + sizeof(memory_segment))
                 continue;
+
+            /* If there's no segments in this page we just use the page size. */
+            if (_page->segments == NULLPTR && (size_t)_page->size >= bytes +
+            sizeof(memory_segment))
+                break;
 
             /* Finding space between segments with enough size. */
             _segment = _page->segments;
@@ -207,7 +200,10 @@ void* malloc(size_t bytes)
                 >= bytes + sizeof(memory_segment)) {
                     /* Adding this segment to the linked list. */
                     memory_segment* tmp_segment = _segment->next;
-                    _segment->next = _segment+(size_t)SEGMENT_END_PTR(_segment);
+                    // TODO: This dumb mistake wasn't caught by the tests make a
+                    // test that does catch it.
+                    // _segment->next = _segment+(size_t)SEGMENT_END_PTR(_segment);
+                    _segment->next = (memory_segment*)SEGMENT_END_PTR(_segment);
                     _segment = _segment->next;
                     _segment->next = tmp_segment;
                     _segment->size = bytes;
@@ -229,8 +225,8 @@ void* malloc(size_t bytes)
             bytes_needed = bytes + sizeof(page) + sizeof(memory_segment);
 
             /* This ensures the page size is divisible by the page size mod. */
-            bytes_needed += ((bytes_needed % PAGE_GROWTH_MOD_BYTE_SIZE) ? \
-            PAGE_GROWTH_MOD_BYTE_SIZE : 0);
+            bytes_needed += PAGE_GROWTH_MOD_BYTE_SIZE - bytes_needed \
+            % PAGE_GROWTH_MOD_BYTE_SIZE;
 
             /* Setting the new page ptr. */
             _page = malloc_data_ptr;
@@ -241,7 +237,6 @@ void* malloc(size_t bytes)
 
             /* Initing the page. */
             _page->next = NULLPTR;
-            _page->segments = NULLPTR;
             _page->size = bytes_needed - sizeof(page) - sizeof(memory_segment);
 
             /* Adding the page to the linked list. */
@@ -255,8 +250,13 @@ void* malloc(size_t bytes)
             _segment = _page->segments;
         } else {
             /* If there was a segment the new one is at the end of the last. */
-            _segment->next = (memory_segment*)SEGMENT_END_PTR(_segment);
-            _segment = _segment->next;
+            if (_page->segments == NULLPTR) {
+                _page->segments = (memory_segment*)_page->data;
+                _segment = _page->segments;
+            } else {
+                _segment->next = (memory_segment*)SEGMENT_END_PTR(_segment);
+                _segment = _segment->next;
+            }
         }
 
         /* Initing the segment. */

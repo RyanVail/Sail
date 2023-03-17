@@ -24,11 +24,11 @@ _intermediate)
 }
 
 /*
- * This takes in an operand and adds the inputted intermediate to the inputted
- * pass' intermediate vector if it's not a temp intermediate "return" type
- * indicated by "_RETURN" at the end of the name of the intermediate type.
+ * This takes in an intermediate and adds the inputted intermediate to the
+ * inputted pass' intermediate vector if it's not a temp intermediate return
+ * type indicated by _RETURN at the end of the name of the intermediate type.
  */
-void add_operand_to_intermediates(intermediate_pass* _pass, intermediate \
+void add_back_intermediate(intermediate_pass* _pass, intermediate \
 _intermediate);
 
 /*
@@ -64,7 +64,7 @@ void set_type_of_operand(intermediate_pass* _pass, operand* _operand);
 
 /*
  * This adds an operand onto the inputted intermediate pass' "operand_stack"
- * from the inputted intermediate intermediate.
+ * from the inputted intermediate.
  */
 void add_operand(intermediate_pass* _pass, intermediate _intermediate, \
 bool initted);
@@ -116,7 +116,18 @@ bool add_if_ascii_num(intermediate_pass* _pass, char* token);
 u32 add_if_ascii_float(intermediate_pass* _pass, char** starting_token);
 
 /* This returns true if the inputted intermediate type is temp. */
-bool intermediate_type_is_temp_return(intermediate_type _type);
+static inline bool intermediate_type_is_temp_return(intermediate_type _type)
+{
+    switch (_type)
+    {
+    case FUNC_RETURN:
+    case VAR_RETURN:
+    case MEM_RETURN:
+    case COMPARISON_RETURN:
+        return true;
+    }
+    return false;
+}
 
 #if DEBUG
 /* This prints the intermediates. */

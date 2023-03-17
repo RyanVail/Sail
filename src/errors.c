@@ -44,6 +44,7 @@ void handle_common_error(u32 error_code)
 void send_error(char* error_message)
 {
     printf("%s %s\n", ERROR_STRING, error_message);
+    fflush(stdout);
     #if DEBUG
     abort();
     #else

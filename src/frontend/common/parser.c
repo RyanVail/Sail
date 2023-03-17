@@ -1,14 +1,7 @@
 /*
- * This contains a lot of commonly used parsing function branching a frontend
+ * This contains a lot of commonly used parsing function connecting a frontend
  * to the intermediate stage.
  */
-// TODO: This should split the lines into their own struct like below to make
-// the whole parsing process a lot easier.
-/*
-struct token_line {
-    char** tokens;
-}
-*/
 
 #include<intermediate/typedef.h>
 #include<intermediate/enum.h>
@@ -18,16 +11,12 @@ struct token_line {
 #include<frontend/common/tokenizer.h>
 #include<types.h>
 
-static char* DEFAULT_INVALID_NAMES[] = { "if", "fn", "let", "break", "return",
-"loop", "\0" };
-
-static char** INVALID_NAMES = DEFAULT_INVALID_NAMES;
-
 /*
  * This handles common errors that come up and shouldn't be set to the main
  * error handler, rather be called on specific error types.
  */
-error_token_range parser_handle_error(parsing_error _error, char** token)
+error_token_range parser_handle_error(intermediate_pass* _pass, \
+parsing_error _error, char** token)
 {
     error_token_range _range;
     memset(&_range, 0, sizeof(error_token_range));
@@ -44,16 +33,13 @@ error_token_range parser_handle_error(parsing_error _error, char** token)
     {
     case PARSING_ERROR_INVALID_VAR_NAME:
         #if DESCRIPTIVE_ERRORS
-        _type = get_why_invalid_name(*token);
+        _type = get_why_invalid_name(_pass, *token);
         /* Printing the full string reasons a name can be invalid. */
         if (_type & INVALID_NAME_TYPE_IS_IN_INVALID_NAMES) {
             printf("%s Name is invalid: %s\n", ERROR_STRING, *token);
         } else if (_type & INVALID_NAME_TYPE_IS_A_TYPE) {
             printf("%s Name is already the name of a type: %s\n", ERROR_STRING, \
             *token);
-        } else if (_type & INVALID_NAME_TYPE_IS_MODIFIER) {
-            printf("%s Name is already the name of a type modifier: %s\n", \
-            ERROR_STRING, *token);
         } else if (_type & INVALID_NAME_TYPE_STARTS_WITH_NUMBER) {
             printf("%s Invalid name, starts with a number\n", ERROR_STRING);
         }
@@ -79,8 +65,8 @@ error_token_range parser_handle_error(parsing_error _error, char** token)
         /* Creating the error token with the highlighting. */
         for (_char = *_token; _char != '\0'; _token++) {
             _char = *_token;
-            if (is_special_char(_char) || (48 <= _char && _char <= 57 && \
-            _char == *_token)) {
+            if (is_special_char(_char, _pass->data.front_end->special_chars) \
+            || (48 <= _char && _char <= 57 && _char == *_token)) {
                 if (!last_char_was_error)
                     ADD_STR_TO_VEC(&_vec, ERROR_COLOR_START);
                 vector_append(&_vec, &_char);
@@ -116,112 +102,98 @@ error_token_range parser_handle_error(parsing_error _error, char** token)
  * This function and enum is used by "parser_handle_error" to give descriptive
  * errors on invalid names.
  */
-invalid_name_type get_why_invalid_name(char* name)
+invalid_name_type get_why_invalid_name(intermediate_pass* _pass, char* name)
 {
     invalid_name_type result = 0;
+
+    #if DEBUG
+    if (_pass->data.front_end == NULLPTR)
+        send_error("Intermediate pass' front end is not set");
+    if (_pass->data.front_end->type_names == NULLPTR)
+        send_error("Front end's type names aren't set");
+    #endif
+
+    /* Getting data from the front ends. */
+    char** invalid_names = _pass->data.front_end->invalid_names;
+    char** types = _pass->data.front_end->type_names;
 
     /* Checks if the first letter is a number. */
     if (48 <= name[0] && name[0] <= 57)
         result |= INVALID_NAME_TYPE_STARTS_WITH_NUMBER;
 
     /* Checks if the "name" matches anything in invalid names. */
-    for (u32 i=0; INVALID_NAMES[i][0] != '\0'; i++)
-        if (!strcmp(name, INVALID_NAMES[i]))
+    for (u32 i=0; invalid_names[i][0] != '\0'; i++)
+        if (!strcmp(name, invalid_names[i]))
             result |= INVALID_NAME_TYPE_IS_IN_INVALID_NAMES;
 
     /* Checks if the "name" matches any type names. */
-    char** _types = get_type_names();
-    for (u32 i=0; (char)_types[i][0] != '\0'; i++)
-        if (!strcmp(name, _types[i]))
+    for (u32 i=0; (char)types[i][0] != '\0'; i++)
+        if (!strcmp(name, types[i]))
             result |= INVALID_NAME_TYPE_IS_A_TYPE;
-
-    /* Checks if the "name" matches any type modifier names. */
-    char** _modifier = get_type_modifier_names();
-    for (u32 i=0; (char)_types[i][0] != '\0'; i++)
-        if (!strcmp(name, _types[i]))
-            result |= INVALID_NAME_TYPE_IS_MODIFIER;
 
     /* Makes sure "name" doesn't have any special character. */
     for (u32 i=0; name[i] != '\0'; i++)
-        if (is_special_char(name[i]))
+        if (is_special_char(name[i], _pass->data.front_end->special_chars))
             result |= INVALID_NAME_TYPE_INVALID_CHAR;
 
     return result;
 }
 #endif
 
-/*
- * This parses and returns the given type modifiers. This will increment token
- * till it reaches the end of the modifiers. unsigned and signed modifiers will
- * change the first bit of the returning kind. This will skip tokens that are
- * equal to NULLPTR and returns when it doesn't hit a modifier.
- */
-type_kind get_type_modifier(char*** token)
-{
-    char** modifier_names = get_type_modifier_names();
-    type_kind _type;
-    while (true) {
-        if (**token == NULLPTR)
-            continue;
-        for (u32 i=0; modifier_names[i][0] != '\0'; i++) {
-            if (!strcmp(modifier_names[i],**token)) {
-                switch (i)
-                {
-                case 0: // Unsigned
-                    _type |= 1;
-                    goto get_type_modifier_next_token_label;
-                case 1: // Signed
-                    _type &= 0b1111111111111111;
-                    goto get_type_modifier_next_token_label;
-                default: // Other flags
-                    _type &= 1 << i + 4;
-                    goto get_type_modifier_next_token_label;
-                }
-            }
-            return _type;
-        }
-        get_type_modifier_next_token_label:
-        **token += 1;
-    }
-}
-
+// TODO: It might be better for this to take in a ptr to the index.
 /*
  * This parses and returns the type of the same name as the inputted string.
  * This will also read and set the ptr count of the returned type. This assumes
  * that the string is in a array and that there are no NULL pointers in the
  * array. This also assumes that the pointer char is a special char. If there's
- * no type a type the returned type's kind will be __UINT8_MAX)). This sets
- * errno on errors. This also sets errno_value to the "inital_token" appon
- * returning __UINT8_MAX__ and if type ptrs are unequal.
+ * no type a type the returned type's kind will be NO_TYPE. This sets errno on
+ * errors. This also sets errno_value to the "inital_token" appon returning
+ * NO_TYPE and if type ptrs are unequal.
  */
-type get_type(char** token)
+type get_type(intermediate_pass* _pass, vector* file, u32 index)
 {
-    /* This is used in case of an error. */
-    char** inital_token = token;
-
-    char** type_names = get_type_names();
+    type _type = { .kind = NO_TYPE, .ptr_count = 0, .extra_data = 0 };
+    if (IS_VEC_END(*file, index))
+        return _type;
 
     #if DEBUG
-    if (!type_names)
-        send_error("Type names weren't set");
-    if (!(type_names[0xc]) && !(type_names[0xd][0]))
-        send_error("Before and after pointer indicators cannot both be null");
+    if (_pass->data.front_end != NULLPTR)
+        if (_pass->data.front_end->type_names == NULLPTR)
+            send_error("Front end's type names is not set");
     #endif
 
-    u16 before_ptrs = 0;
-    u16 after_ptrs = 0;
-    type _type;
+    #if DESCRIPTIVE_ERRORS
+    /* This is used in case of an error. */
+    char** inital_token = vector_at(file, index, false);
+    #endif
+
+    /* This is here for code readability. */
+    char** type_names = _pass->data.front_end->type_names;
+
+    /* The current token. */
+    char* token = *inital_token;
+
+    i32 before_ptrs = 0;
+    i32 after_ptrs = 0;
 
     /* Reading the starter pointer chars. */
-    while (token[before_ptrs][0] == type_names[0xd][0])
+    while (token[0] != 0 && *token == *type_names[TYPE_NAME_FIRST_PTR_INDEX]) {
+        find_next_valid_token(file, &index);
         before_ptrs++;
+        token = *(char**)vector_at(file, index, false);
+    }
 
-    token += before_ptrs;
+    char* type_name = token;
 
-    char* type_name = *token;
+    /* Attempting to read the type from the front end. */
+    if (_pass->data.front_end->type_reader_func != NULLPTR) {
+        _type = (*_pass->data.front_end->type_reader_func)(_pass, index);
+        if (_type.kind != NO_TYPE)
+            return _type;
+    }
 
     /* Setting the type_kind. */
-    _type.kind = __UINT8_MAX__;
+    _type.kind = NO_TYPE;
     for (u32 i=0; (char)type_names[i][0] != '\0'; i++) {
         if (!strcmp(type_name, type_names[i])) {
             _type.kind = i;
@@ -230,49 +202,48 @@ type get_type(char** token)
     }
 
     /* If the type isn't found, check if we're reading a struct. */
-    if (_type.kind == __UINT8_MAX__) {
+    if (_type.kind == NO_TYPE) {
         HASH_STRING(type_name);
-        intermediate_struct* _struct = get_struct(result_hash);
+        intermediate_struct* _struct = get_struct(_pass, result_hash);
         if (_struct != NULLPTR) {
             _type.kind = STRUCT_TYPE;
-            _type.ptr = _struct->hash;
+            _type.extra_data = _struct->hash;
         } else {
-            // TODO: Reimplement this somehow.
             /* If it isn't a struct check if it's a typedef. */
-            // intermediate_typedef* _typedef = get_typedef(result_hash);
-            // if (_typedef == NULLPTR) {
-            //     #if DESCRIPTIVE_ERRORS
-            //     if (_type.kind == __UINT8_MAX__)
-            //         stack_push(&error_value, inital_token);
-            //     #endif
-            //     return _type;
-            // }
-            // _type = _typedef->type;
+            intermediate_typedef* _typedef = get_typedef(&_pass->typedefs, \
+                result_hash);
+            if (_typedef == NULLPTR) {
+                #if DESCRIPTIVE_ERRORS
+                if (_type.kind == NO_TYPE)
+                    stack_push(&error_value, inital_token);
+                #endif
+                return _type;
+            }
+            _type = _typedef->type;
         }
     }
 
-    token += 1;
-
     /* Reading the ending pointer chars. */
-    while (token[after_ptrs][0] == type_names[0xd][0])
+    after_ptrs--;
+    do {
         after_ptrs++;
+        find_next_valid_token(file, &index);
+        token = *(char**)vector_at(file, index, false);
+    } while (token[0] != 0 && *token == *type_names[TYPE_NAME_LAST_PTR_INDEX]);
 
     /* Making sure the pointer chars before and after are equal. */
-    if (after_ptrs != before_ptrs && type_names[0xc][0] && type_names[0xd][0]) {
+    if (after_ptrs != before_ptrs && type_names[TYPE_NAME_FIRST_PTR_INDEX][0] \
+    && type_names[TYPE_NAME_LAST_PTR_INDEX][0]) {
         errno = PARSING_ERROR_TYPE_PTRS_UNEQUAL;
         #if DESCRIPTIVE_ERRORS
         stack_push(&error_value, inital_token);
         #endif
     }
 
-    /* Setting the pointer counters. */
-    if (IS_TYPE_STRUCT(_type))
-        _type.kind = (_type.kind << 16 >> 16) + (after_ptrs << 16);
-    else
-        _type.ptr = after_ptrs;
+    _type.ptr_count = after_ptrs;
 
     #if DESCRIPTIVE_ERRORS
-    if (_type.kind == __UINT8_MAX__)
+    if (_type.kind == NO_TYPE)
         stack_push(&error_value, inital_token);
     #endif
 
@@ -421,36 +392,42 @@ bool is_ascii_number(char* num_string)
 // TODO: This function should test hashes against hashes.
 /*
  * If the inputted name is invalid it will return true. This is cap sensitive.
- * Along with the current INVALID_NAMES being invalid, any special tokens, and
- * types are counted as invalid. If the name starts with a number it is also
- * considered invalid.
+ * Any names found in the inputted intermediate pass' front end's invalid_names
+ * and type_names are considered invalid. If the name starts with a number it is
+ * also considered invalid.
  */
-bool is_invalid_name(char* name)
+bool is_invalid_name(intermediate_pass* _pass, char* name)
 {
+    #if DEBUG
+    if (_pass->data.front_end == NULLPTR)
+        send_error("Intermediate pass' front end is not set");
+    if (_pass->data.front_end->type_names == NULLPTR)
+        send_error("Front end's type names aren't set");
+    if (_pass->data.front_end->invalid_names == NULLPTR)
+        send_error("Front end's invalid names aren't set");
+    #endif
+
+    /* Getting data from the front ends. */
+    char** invalid_names = _pass->data.front_end->invalid_names;
+    char** types = _pass->data.front_end->type_names;
+
     /* Checks if the first letter is a number. */
     if (48 <= name[0] && name[0] <= 57)
         return true;
 
     /* Checks if the "name" matches anything in invalid names. */
-    for (u32 i=0; INVALID_NAMES[i][0] != '\0'; i++)
-        if (!strcmp(name, INVALID_NAMES[i]))
+    for (u32 i=0; invalid_names[i][0] != '\0'; i++)
+        if (!strcmp(name, invalid_names[i]))
             return true;
 
     /* Checks if the "name" matches any type names. */
-    char** _types = get_type_names();
-    for (u32 i=0; (char)_types[i][0] != '\0'; i++)
-        if (!strcmp(name, _types[i]))
-            return true;
-
-    /* Checks if the "name" matches any type modifier names. */
-    char** _modifier = get_type_modifier_names();
-    for (u32 i=0; (char)_types[i][0] != '\0'; i++)
-        if (!strcmp(name, _types[i]))
+    for (u32 i=0; (char)types[i][0] != '\0'; i++)
+        if (!strcmp(name, types[i]))
             return true;
 
     /* Makes sure "name" doesn't have any special character. */
     for (u32 i=0; name[i] != '\0'; i++)
-        if (is_special_char(name[i]))
+        if (is_special_char(name[i], _pass->data.front_end->special_chars))
             return true;
 
     return false;
@@ -473,14 +450,4 @@ u32 get_end_of_line(vector* file, u32 i)
             return i;
 
     return i;
-}
-
-/*
- * This allows frontends to set custom invalid names. Along with the current
- * INVALID_NAMES being invalid, any special tokens, and types are counted as
- * invalid.
- */
-void set_parser_invalid_names(char** _invalid_names)
-{
-    INVALID_NAMES = _invalid_names;
 }

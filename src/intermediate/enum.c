@@ -37,9 +37,11 @@ enum_entry* get_enum_entry(hash_table* _enums, u32 hash)
  * This adds the enum entry to the hash table of entries and returns a pointer
  * to the entry. This returns NULLPTR on errors.
  */
-enum_entry* add_enum_entry(hash_table* _enums, intermediate_typedef* \
-parent_enum, i64 value, char* entry_name)
+enum_entry* add_enum_entry(intermediate_pass* _pass, \
+intermediate_typedef* parent_enum, i64 value, char* entry_name)
 {
+    hash_table* _enums = &_pass->enums;
+
     #if DEBUG
     if (_enums->contents == NULLPTR)
         send_error("Intermediate enums have not been initted yet");
@@ -49,7 +51,7 @@ parent_enum, i64 value, char* entry_name)
     HASH_STRING(entry_name);
 
     /* Check if the enum name is valid. */
-    if (is_invalid_name(entry_name)) {
+    if (is_invalid_name(_pass, entry_name)) {
         // TODO: Errors in files that aren't the front ends and linker are not
         // a good idea.
         printf("\x1b[091mERROR:\x1b[0m The enum entry name: \"%s\" is invalid.\n",\

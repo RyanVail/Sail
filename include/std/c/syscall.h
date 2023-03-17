@@ -1,6 +1,7 @@
 #ifndef STD_C_SYSCALL_H
 #define STD_C_SYSCALL_H
 
+// TODO: Implement this in asm.
 #if linux && (__GNUC__ || __clang__)
     #include<unistd.h>
 #endif

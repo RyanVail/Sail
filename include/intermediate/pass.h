@@ -4,8 +4,6 @@
  * front ends should interact with them is documented in
  * "documentation/intermediate/passes.md"
  */
-// TODO: There should be some way to add more types to this that works in the
-// same function ptr way intermediate handlers work
 
 #ifndef INTERMEDIATE_PASS_H
 #define INTERMEDIATE_PASS_H
@@ -19,6 +17,18 @@ typedef struct intermediate_pass intermediate_pass;
 
 /* This is the types of intermediate handler functions. */
 typedef void (*handler_func)(intermediate_pass*, intermediate);
+
+/* This is the type of the intermediate type size handler functions. */
+typedef u32 (*type_size_handler_func)(intermediate_pass*, type);
+
+/* This is the type of the intermediate type handler functions. */
+typedef void (*type_handler_func)(intermediate_pass*, type);
+
+/* This is the type of the intermediate type kind handler functions. */
+typedef void (*type_kind_handler_func)(intermediate_pass*, type);
+
+/* This is the type of the intermediate type reader handler function. */
+typedef type (*type_reader_handler_func)(intermediate_pass*, u32 index);
 
 /*
  * This maps the inputted intermediate type to the inputted function pointer
@@ -45,6 +55,39 @@ typedef void (*handler_func)(intermediate_pass*, intermediate);
 // TODO: Maybe these should have periods so long blocks of text like this one
 // can use something other than commas.
 
+/*
+ * struct front_end_pass - This is extra data attached to an intermediate pass
+ * for front ends
+ * @type_size_func: This fucntion is used to determine the size of the inputted
+ * special type
+ * @type_printer_func: This function is used to print the value of special types
+ * @type_kind_printer_func: This function is used to print special type kinds
+ * @type_reader_func: This function is used to read types from strings, this
+ * is expected to return a type with NO_TYPE on failures and read the ptr count
+ * of types, see get_type in "frontend/common/parser.c"
+ */
+typedef struct front_end_pass {
+    type_size_handler_func type_size_func;
+    type_handler_func type_printer_func;
+    type_handler_func type_kind_printer_func;
+    type_reader_handler_func type_reader_func;
+    /* Tokenization things */
+    vector source_vector;
+    char* special_chars;
+    char* white_space_chars;
+    /* Arrays of strings */
+    char** type_names;
+    char** invalid_names;
+} front_end_pass;
+
+/*
+ * struct rtl_pass - This is extra data attached to an intermediate pass for
+ * rtl passes.
+ */
+typedef struct rtl_pass {
+    //
+} rtl_pass;
+
 /* struct intermediate_pass - This struct represents all of the specifications
  * of an intermediate pass and values needed during an intermediate pass
  * @intermediates: This is the vector of intermediates
@@ -63,7 +106,7 @@ typedef void (*handler_func)(intermediate_pass*, intermediate);
  * defined in "symboltable.h".
  * @typedefs: This is the typedef hash table see "intermediate/typedef.c".
  * @structs: This is the struct hash table see "intermediate/struct.c".
- * @enums: This is the enums hash table see "intermediate/enum.c".
+ * @enums: This is the enum hash table see "intermediate/enum.c".
  */
 typedef struct intermediate_pass {
     /* Intermediates */
@@ -73,13 +116,29 @@ typedef struct intermediate_pass {
     handler_func handler_funcs[INTERMEDIATE_TYPE_NORMAL_END];
     vector special_handler_funcs;
     /* Symbol table data */
-    hash_table function_symbols;
-    hash_table variable_symbols;
+    hash_table functions;
+    hash_table variables;
     /* Typedefs, structs, and enums */
     hash_table typedefs;
     hash_table structs;
     hash_table enums;
+    /* Extra data */
+    union date {
+        front_end_pass* front_end;
+        rtl_pass* rtl;
+    } data;
 } intermediate_pass;
+
+/* This preforms the inputted intermediate pass. */
+void do_intermediate_pass(intermediate_pass* _pass);
+
+/*
+ * This adds the inputted intermediate to the inputted intermediate pass and
+ * preforms the normal intermediate pass logic based on the inputted
+ * intermediate type. This should be used during front end parsing.
+ */
+void add_intermediate_to_pass(intermediate_pass* _pass, \
+intermediate _intermediate);
 
 /* This creates and returns a new intermediate pass. */
 static inline intermediate_pass init_intermediate_pass()

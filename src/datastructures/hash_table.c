@@ -2,6 +2,7 @@
  * This is a very primitive hashtable implementation using a really simple hash
  * function.
  */
+// TODO: This should be called a hash map already!
 
 #include<datastructures/hash_table.h>
 

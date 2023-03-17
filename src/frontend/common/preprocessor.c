@@ -51,15 +51,17 @@ bool skip_C_comment(vector* file, u32* current_index)
  * needs to be run again. This can leave the "current_index" pointing to the end of
  * the file, that has to be accounted for.
  */
-void skip_C_comments(vector* file, u32* current_index)
+void skip_C_comments(vector* file, u32* current_index, \
+const char* special_chars, const char* white_space_chars)
 {
     #if DEBUG
-    if (!is_special_char('/') && !is_special_char('*'))
+    if (!is_special_char('/', special_chars) \
+    && !is_special_char('*', special_chars))
         send_error( \
         "'/' and '*' should be a special chars for C style comment removal");
-    if (is_white_space_char('/'))
+    if (is_white_space_char('/', white_space_chars))
         send_error("'/' can't be white space for C style comment removal");
-    if (is_white_space_char('*'))
+    if (is_white_space_char('*', white_space_chars))
         send_error("'*' can't be white space for C style comment removal");
     #endif
 
@@ -71,12 +73,13 @@ void skip_C_comments(vector* file, u32* current_index)
  * constant char strings with their constant values. This replaces other tokens
  * inside of the string with NULL pointers.
  */
-void replace_C_const_chars(vector* file, u32 current_index)
+void replace_C_const_chars(vector* file, u32 current_index, \
+const char* special_chars)
 {
     #if DEBUG
-    if (!is_special_char('\''))
+    if (!is_special_char('\'', special_chars))
         send_error("\' has to be a special char for C const char replacement");
-    if (!is_special_char('\\'))
+    if (!is_special_char('\\', special_chars))
         send_error("\\ has to be a special char for C const char replacement");
     #endif
 
@@ -106,8 +109,6 @@ void replace_C_const_chars(vector* file, u32 current_index)
             break;
         }
 
-        printf("%s\n", first_token);
-
         _result += (u64)(*first_token);
 
         free(first_token);
@@ -128,10 +129,11 @@ void replace_C_const_chars(vector* file, u32 current_index)
  * inside of the backslash with null pointers. This doesn't check for NULL
  * pointers so it must be done before this is called.
  */
-void replace_C_escape_codes(vector* file, u32* current_index)
+void replace_C_escape_codes(vector* file, u32* current_index, \
+const char* special_chars)
 {
     #if DEBUG
-    if (!is_special_char('\\'))
+    if (!is_special_char('\\', special_chars))
         send_error("\\ has to be a special char for C backslash replacement");
     #endif
  
