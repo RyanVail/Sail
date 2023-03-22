@@ -30,6 +30,7 @@ enum NUMS u32 {
 }
 
 fn $main$ -> u32 {
+	let tester u32 3 ` =
     let int f32 16.25f = ;
     let acdec u32 32 u32 = ;
     let dec NUMS EIGHT u32 FIVE u32 + =

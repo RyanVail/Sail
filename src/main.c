@@ -11,7 +11,8 @@
 #include<frontend/common/preprocessor.h>
 #include<intermediate/struct.h>
 #include<intermediate/enum.h>
-#include<intermediate/symboltable.h>
+#include<intermediate/variable.h>
+#include<intermediate/function.h>
 #include<intermediate/intermediate.h>
 #include<intermediate/optimization/registerpass.h>
 #include<intermediate/optimization/usescopepass.h>
@@ -82,12 +83,10 @@ int main(i32 argc, char* args[])
     //     printf("Failed to preprocess C file: %s", file_name);
     //     exit(-1);
     // }
-
-    // #if DEBUG
     // print_intermediates();
     // #endif
 
-    // exit(0);
+    // exit(0)
 
     process_cli_options(argc, args);
 
@@ -128,7 +127,7 @@ int main(i32 argc, char* args[])
         START_PROFILING("do all optimization passes", "compile file");
         // optimization_do_register_pass();
         // optimization_do_use_scope_pass();
-        // optimization_do_constant_pass();
+        optimization_do_constant_pass(&_pass);
         END_PROFILING("do all optimization passes", true);
 
         // generate_structs(&ARMv7_generate_struct);
@@ -137,19 +136,21 @@ int main(i32 argc, char* args[])
 
         #if DEBUG
         if (global_cli_options.print_intermediates)
-            print_intermediates(&_pass);
+            print_raw_intermediates(&_pass);
         #endif
 
         // TODO: This needs a shared function.
-        // TODO: These should all use passes.
+        // TODO: These should all take passes as inputs rather than hash tables.
         clear_intermediate_typedefs(&_pass.typedefs);
         clear_intermediate_structs(&_pass);
         clear_intermediate_enums(&_pass.enums);
-        clear_symbol_tables(&_pass.variables, &_pass.functions);
+        clear_function_symbol_table(&_pass);
+        clear_variables_in_scope(&_pass);
         free_intermediates(&_pass, true, true, true);
     }
     // TODO: Free intermediates needs to free all of the new intermediates.
-    free_symbol_table(&_pass.variables, &_pass.functions);
+    free_functions(&_pass);
+    free_functions(&_pass);
     // free_tokenized_file_vector(&_tmp);
     // exit(0);
 
@@ -203,7 +204,8 @@ int main(i32 argc, char* args[])
 
     // printf("%p\n", get_variable_symbol("", 0));
     // clear_variables_in_scope();
-    free_symbol_table(&_pass.variables, &_pass.functions);
+    clear_variables_in_scope(&_pass);
+    clear_function_symbol_table(&_pass);
     free_intermediates(&_pass, true, true, true);
 }
 

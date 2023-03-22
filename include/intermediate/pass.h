@@ -15,8 +15,15 @@
 
 typedef struct intermediate_pass intermediate_pass;
 
+#ifndef BACKEND_RTL_RTL_H
+    typedef struct rtl rtl;
+#endif
+
 /* This is the types of intermediate handler functions. */
 typedef void (*handler_func)(intermediate_pass*, intermediate);
+
+/* This is the types of intermediate handler function for intermediate ptrs. */
+typedef void (*ptr_handler_func)(intermediate_pass*, intermediate*);
 
 /* This is the type of the intermediate type size handler functions. */
 typedef u32 (*type_size_handler_func)(intermediate_pass*, type);
@@ -29,6 +36,9 @@ typedef void (*type_kind_handler_func)(intermediate_pass*, type);
 
 /* This is the type of the intermediate type reader handler function. */
 typedef type (*type_reader_handler_func)(intermediate_pass*, u32 index);
+
+/* This is the type of rtl instruction handler functions. */
+typedef void (*rtl_instruction_func)(intermediate_pass*, intermediate);
 
 /*
  * This maps the inputted intermediate type to the inputted function pointer
@@ -52,9 +62,10 @@ typedef type (*type_reader_handler_func)(intermediate_pass*, u32 index);
     *(handler_func*)vector_at(&_pass->special_handler_funcs, _type, false) \
     = _func_ptr
 
+// TODO: There should be flag to preform another function on top of the default
+// before or after or something like that.
 // TODO: Maybe these should have periods so long blocks of text like this one
 // can use something other than commas.
-
 /*
  * struct front_end_pass - This is extra data attached to an intermediate pass
  * for front ends
@@ -65,6 +76,13 @@ typedef type (*type_reader_handler_func)(intermediate_pass*, u32 index);
  * @type_reader_func: This function is used to read types from strings, this
  * is expected to return a type with NO_TYPE on failures and read the ptr count
  * of types, see get_type in "frontend/common/parser.c"
+ * @source_vector: This is the source file, this is a vector of tokens
+ * @special_chars: This is the array of special chars, null terminating
+ * @white_space_chars: This is the array of white space chars, null terminating
+ * @type_names: This is the array of type names, this is null terminating with
+ * an empty string
+ * @invalid_names: This is the array of invalid names, this is null terminating
+ * with an empty string
  */
 typedef struct front_end_pass {
     type_size_handler_func type_size_func;
@@ -82,16 +100,26 @@ typedef struct front_end_pass {
 
 /*
  * struct rtl_pass - This is extra data attached to an intermediate pass for
- * rtl passes.
+ * rtl passes
+ * @regs: This is the infinite length array of registers
+ * @rtls: This is the output array of rtl instructions
+ * @rtl_instruction_func: This is the array of the rtl instruction handler
+ * functions
  */
 typedef struct rtl_pass {
-    //
+    vector regs;
+    vector rtls;
+    // TODO: This 24 magic number should be mapped to the RTL_NIL some how
+    rtl_instruction_func handler_funcs[24];
 } rtl_pass;
 
 /* struct intermediate_pass - This struct represents all of the specifications
  * of an intermediate pass and values needed during an intermediate pass
  * @intermediates: This is the vector of intermediates
  * @operand_stack: This is the operand stack
+ * @recreate: This flag controls wether this pass will recreate the intermediate
+ * vector or just change already existing intermediates, if this is set to true
+ * handler_funcs should use ptr_handler_func instead
  * @handler_funcs: This is an array of the intermediate handler functions, these
  * functions when an intermediate is read the "intermediate_type" is indexed
  * into this array and the returing function ptr is called, in the case the
@@ -112,8 +140,9 @@ typedef struct intermediate_pass {
     /* Intermediates */
     vector intermediates;
     stack operand_stack;
+    bool recreate;
     /* Handler functions */
-    handler_func handler_funcs[INTERMEDIATE_TYPE_NORMAL_END];
+    handler_func* handler_funcs;
     vector special_handler_funcs;
     /* Symbol table data */
     hash_table functions;
@@ -123,9 +152,10 @@ typedef struct intermediate_pass {
     hash_table structs;
     hash_table enums;
     /* Extra data */
-    union date {
+    union data {
         front_end_pass* front_end;
         rtl_pass* rtl;
+        void* extra;
     } data;
 } intermediate_pass;
 

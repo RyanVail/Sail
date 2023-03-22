@@ -7,6 +7,10 @@
 #include<evaluate.h>
 #include<types.h>
 
+/* This returns the constant pass data of the inputted intermediate pass ptr. */
+#define PASS_DATA(pass_ptr) (((constant_pass_data*)pass_ptr->data.extra))
+
+/* This is the communativity of an operation. */
 typedef enum commutativity {
     NONE,
     NEGATION,
@@ -14,121 +18,16 @@ typedef enum commutativity {
     MUL_DIV,
 } commutativity;
 
-void constant_optimization_process_operation(intermediate* operand0, \
-intermediate* operand1, intermediate* _current, type result_type);
-
 /*
- * This goes through all of the the constants in the intermediates and evaluates
- * them. Constants as in values inside of "CONST" / "CONSTPTR" intermediates.
- * This also removes / simplifies things like double negatives. This pass will
- * leave NILs in the intermediates.
+ * struct constant_pass_data - This is the extra data attached to an
+ * intermediate pass for the constant intermediate pass
+ * @last_communtativity: The commutativity of the last operation
+ * @result_type: This is the resulting type of the operation
  */
-void optimization_do_constant_pass()
-{
-    START_PROFILING("do the constant optimization pass", \
-    "do all optimization passes");
-
-    #if !PTRS_ARE_64BIT
-    i64 operand0_value;
-    i64* operand1_value;
-    intermediate result_intermediate;
-    i64* _result;
-    #endif
-
-    /*
-     * The commutativity type of the last operator. Also will be set to "UKNOWN"
-     * if an operand isn't a constant.
-     */
-    commutativity last_commutativity = NONE;
-
-    /* This is the operand stack. This has ptrs to the intermediate vector. */
-    stack operand_stack = { NULLPTR };
-
-    // TODO: This should be getting the lowest possible type of the constants.
-    // Or type definitions should be bound to a u32 by default rather than the
-    // smallest possible type.
-
-    /* The result type is defaulted to a "u32" unless there's a cast. */
-    type result_type = { 0, U32_TYPE };
-
-    u32 location = 0;
-    intermediate* operand0;
-    intermediate* operand1;
-    vector* intermediates = get_intermediate_vector();
-
-    for (; location < VECTOR_SIZE(*intermediates); location++) {
-        intermediate* _current = vector_at(intermediates, location, false);
-
-        switch(_current->type)
-        {
-        #if !PTRS_ARE_64BIT
-        case CONST_PTR:
-        #endif
-        case VAR_ACCESS:
-        case CONST:
-            stack_push(&operand_stack, _current);
-            break;
-        case ADD:
-        case SUB:
-            operand0 = stack_pop(&operand_stack);
-            operand1 = stack_top(&operand_stack);
-            if (last_commutativity == ADD_SUB || last_commutativity == NONE)
-                constant_optimization_process_operation(operand0, operand1, \
-                _current, result_type);
-            last_commutativity = ADD_SUB;
-            break;
-        case MUL:
-        case DIV:
-            stack_pop(&operand_stack);
-            last_commutativity = MUL_DIV;
-            break;
-        case CAST:
-            #if PTRS_ARE_64BIT
-            result_type = *(type*)(&_current->ptr);
-            #else
-            result_type = *((type*)_current->ptr);
-            #endif
-            break;
-            // TODO: A lot of the below statements need an implementation.
-        case INC:
-        case DEC:
-        case COMPLEMENT:
-        case NEG:
-            break;
-        case AND:
-        case XOR:
-        case OR:
-        case LSL:
-        case LSR:
-        case MOD:
-            stack_pop(&operand_stack);
-            break;
-        case IS_EQUAL:
-        case NOT_EQUAL:
-        case GREATER_THAN:
-        case GREATER_THAN_EQUAL:
-        case LESS_THAN:
-        case LESS_THAN_EQUAL:
-            stack_pop(&operand_stack);
-            break;
-        case VAR_MEM:
-        case MEM_LOCATION:
-        case MEM_DEREF:
-            break;
-        case GET_STRUCT_VARIABLE:
-            break;
-        default:
-            while (!STACK_IS_EMPTY(operand_stack))
-                stack_pop(&operand_stack);
-            result_type.kind = U32_TYPE;
-            result_type.ptr = 0;
-            last_commutativity = NONE;
-            break;
-        }
-    }
-
-    END_PROFILING("do the constant optimization pass", true);
-}
+typedef struct constant_pass_data {
+    commutativity last_communtativity;
+    type result_type;
+} constant_pass_data;
 
 /* This process an int operation for the constant optimization pass. */
 void constant_optimization_process_operation(intermediate* operand0, \
@@ -177,13 +76,176 @@ intermediate* operand1, intermediate* _current, type result_type)
     /* Scaling the result. */
     result = scale_value_to_type(result, result_type);
 
-    // TODO: This logic is copy pasted from "add_const_num". There
-    // should some way to share the logic.
-
     /* Adding the result back to the intermediates. */
     #if !PTRS_ARE_64BIT
     set_intermediate_to_const(operand1, result);
     #else
     operand1->ptr = (void*)result;
     #endif
+}
+
+/*
+ * This is an intermediate handler function that adds the inputted intermediate
+ * to the operand stack.
+ */
+void _add_operand_handler_func(intermediate_pass* _pass, intermediate* \
+_intermediate)
+{
+    stack_push(&_pass->operand_stack, _intermediate);
+}
+
+/*
+ * This is an intermediate handler function that removes an operand from the
+ * operand stack.
+ */
+void _pop_operand_handler_func(intermediate_pass* _pass, intermediate* \
+_intermediate)
+{
+    stack_pop(&_pass->operand_stack);
+}
+
+/*
+ * This is an intermediate handler function that handles multiplying and
+ * dividing operations.
+ */
+void _mul_div_operand_handler_func(intermediate_pass* _pass, intermediate* \
+_intermediate)
+{
+    stack_pop(&_pass->operand_stack);
+    PASS_DATA(_pass)->last_communtativity = MUL_DIV;
+}
+
+/*
+ * This is an intermediate handler function that handles adding and subtracting
+ * operations.
+ */
+void _add_sub_operand_handler_func(intermediate_pass* _pass, intermediate* \
+_intermediate)
+{
+    intermediate* operand0 = stack_pop(&_pass->operand_stack);
+    if (PASS_DATA(_pass)->last_communtativity == ADD_SUB \
+    || PASS_DATA(_pass)->last_communtativity == NONE)
+        constant_optimization_process_operation(operand0, \
+        stack_top(&_pass->operand_stack), _intermediate, \
+        PASS_DATA(_pass)->result_type);
+    PASS_DATA(_pass)->last_communtativity = ADD_SUB;
+}
+
+/* This is an intermediate handler function that handles casting. */
+void _cast_operand_handler_func(intermediate_pass* _pass, intermediate* \
+_intermediate)
+{
+    #if PTRS_ARE_64BIT
+    PASS_DATA(_pass)->result_type = *(type*)(&_intermediate->ptr);
+    #else
+    PASS_DATA(_pass)->result_type = *((type*)_intermediate->ptr);
+    #endif
+}
+
+/*
+ * This is an intermediate handler function that handles poping all operands for
+ * clear stack intermediates.
+ */
+void _clear_stack_handler_func(intermediate_pass* _pass, intermediate* \
+_intermediate)
+{
+    while (!STACK_IS_EMPTY(_pass->operand_stack))
+        stack_pop(&_pass->operand_stack);
+    PASS_DATA(_pass)->result_type.kind = U32_TYPE;
+    PASS_DATA(_pass)->result_type.ptr_count = 0;
+    PASS_DATA(_pass)->last_communtativity = NONE;
+}
+
+// TODO: Sometimes these small comments start with //, sometimes they have
+// periods, and other times they don't make it consistent.
+
+// TODO: This should work with floats, doubles, and other operations not just
+// adding and subtracting.
+
+/* This is an array of the constant pass intermediate handler functions. */
+static const ptr_handler_func \
+const_handler_funcs[INTERMEDIATE_TYPE_NORMAL_END+1] = {
+    /* INC through NEG */
+    NULLPTR, NULLPTR, NULLPTR, NULLPTR, NULLPTR,
+
+    /* ADD and SUB */
+    &_add_sub_operand_handler_func, &_add_sub_operand_handler_func,
+
+    /* MUL and DIV */
+    &_mul_div_operand_handler_func, &_mul_div_operand_handler_func,
+
+    /* AND through MOD */
+    &_pop_operand_handler_func, &_pop_operand_handler_func,
+    &_pop_operand_handler_func, &_pop_operand_handler_func,
+    &_pop_operand_handler_func, &_pop_operand_handler_func,
+
+    /* NOT_EQUAL through LESS_THAN_EQUAL. */
+    &_pop_operand_handler_func, &_pop_operand_handler_func,
+    &_pop_operand_handler_func, &_pop_operand_handler_func,
+    &_pop_operand_handler_func, &_pop_operand_handler_func,
+
+    /* EQUAL intermediates */
+    &_clear_stack_handler_func,
+
+    /* VAR intermediates */
+    &_add_operand_handler_func, &_add_operand_handler_func,
+    &_add_operand_handler_func, &_clear_stack_handler_func,
+
+    /* MEM intermediates */
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+
+    /* Program flow intermediates */
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+
+    /* CONST and CONST_PTR intermediates */
+    &_add_operand_handler_func, &_add_operand_handler_func,
+
+    /* FLOAT and DOUBLE intermediates */
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+
+    /* Struct variables and RETURN temp intermediates */
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+    &_clear_stack_handler_func,
+
+    /* CAST */
+    &_cast_operand_handler_func,
+
+    /* Variable optimization intermediates */
+    &_clear_stack_handler_func, &_clear_stack_handler_func,
+    &_clear_stack_handler_func,
+
+    /* CLEAR_STACK */
+    &_clear_stack_handler_func,
+};
+
+/*
+ * This goes through all of the the constants in the intermediates and evaluates
+ * them. Constants as in values inside of "CONST" / "CONSTPTR" intermediates.
+ * This also removes / simplifies things like double negatives. This pass will
+ * leave NILs in the intermediates.
+ */
+void optimization_do_constant_pass(intermediate_pass* _pass)
+{
+    /* Initing the constant pass' values of the intermediate pass. */
+    _pass->data.extra = malloc(sizeof(constant_pass_data));
+    CHECK_MALLOC(PASS_DATA(_pass));
+    PASS_DATA(_pass)->last_communtativity = NONE;
+    _pass->operand_stack.top = NULLPTR;
+    _pass->recreate = false;
+
+    /* Settings the handler functions. */
+    _pass->handler_funcs = (handler_func*)const_handler_funcs;
+
+    START_PROFILING("do the constant optimization pass", \
+    "do all optimization passes");
+
+    do_intermediate_pass(_pass);
+    free(PASS_DATA(_pass));
+
+    END_PROFILING("do the constant optimization pass", true);
 }

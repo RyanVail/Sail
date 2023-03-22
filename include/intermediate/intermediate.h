@@ -10,7 +10,8 @@
 #include<main.h>
 #include<datastructures/stack.h>
 #include<intermediate/types.h>
-#include<intermediate/symboltable.h>
+#include<intermediate/variable.h>
+#include<intermediate/function.h>
 #include<intermediate/pass.h>
 
 /*
@@ -130,7 +131,16 @@ static inline bool intermediate_type_is_temp_return(intermediate_type _type)
 }
 
 #if DEBUG
-/* This prints the intermediates. */
+/*
+ * This prints the intermediates in the inputted intermedates pass in a non
+ * human readable format for debugging intermediates.
+ */
+void print_raw_intermediates(intermediate_pass* _pass);
+
+/*
+ * This prints the intermediates from the inputted intermediate pass in a human
+ * readable format.
+ */
 void print_intermediates(intermediate_pass* _pass);
 #endif
 

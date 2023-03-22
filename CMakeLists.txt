@@ -74,14 +74,15 @@ add_executable(Sail-debug
 	# src/intermediate/optimization/registerpass.c
 	# src/intermediate/optimization/ignorepass.c
 	# src/intermediate/optimization/usescopepass.c
-	# src/intermediate/optimization/constantpass.c
+	src/intermediate/optimization/constantpass.c
 	# src/intermediate/optimization/inequality.c
 	# src/intermediate/optimization/inequalitypass.c
 	src/intermediate/struct.c
 	src/intermediate/typedef.c
 	src/intermediate/enum.c
 	src/intermediate/intermediate.c
-	src/intermediate/symboltable.c
+	src/intermediate/variable.c
+	src/intermediate/function.c
 	# src/backend/ARMv7.c
 	src/backend/rtl/rtl.c
 	src/std/c/string.c

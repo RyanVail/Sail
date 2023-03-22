@@ -8,7 +8,8 @@
 #include<frontend/salmon/parser.h>
 #include<frontend/common/parser.h>
 #include<frontend/salmon/preprocessor.h>
-#include<intermediate/symboltable.h>
+#include<intermediate/variable.h>
+#include<intermediate/function.h>
 #include<intermediate/intermediate.h>
 #include<intermediate/struct.h>
 #include<intermediate/enum.h>
@@ -45,7 +46,6 @@ _index, false))
 _index, false))
 
 // TODO: "_pass" should probally be named pass.
-
 /* struct parser_state - This is the state of parsing in the Salmon source file
  * @file_names: A stack of string of the files being parsed for includes
  * @source_file: A vector of strings of the source file
@@ -322,11 +322,11 @@ intermediate_pass salmon_file_into_intermediates(char* file_name)
 
         /* Checking if this is a var access. */
         if (!is_invalid_name(&state._pass, current_token) \
-        && get_variable_symbol_from_name(&state._pass.variables, \
-        current_token) != NULLPTR) {
+        && get_variable_symbol_from_name(&state._pass, current_token) \
+        != NULLPTR) {
             intermediate _tmp_intermediate = {
                 .type = VAR_ACCESS,
-                .ptr = get_variable_symbol_from_name(&state._pass.variables, \
+                .ptr = get_variable_symbol_from_name(&state._pass, \
                 current_token),
             };
 
@@ -551,7 +551,7 @@ inline void salmon_parse_else(parser_state* state, u32* location)
 inline void salmon_parse_fn(parser_state* state, u32* location)
 {
     vector inputs = { NULLPTR, 0, 0, sizeof(type) };
-    clear_variables_in_scope(&STATE_VARS(state));
+    clear_variables_in_scope(&state->_pass);
 
     if (**(char**)STATE_AT(state, (*location)+1) == '$')
         goto salmon_parse_fn_read_fn_name_label;
@@ -608,7 +608,7 @@ inline void salmon_parse_fn(parser_state* state, u32* location)
         HANDLE_ERROR();
     }
 
-    if (!add_function_symbol(&STATE_FUNCS(state),fn_name,inputs,return_type,0))
+    if (!add_function_symbol(&state->_pass, fn_name, inputs, return_type, 0))
         send_error("Function name already used");
 
     // for (; *location < VECTOR_SIZE((*file)); *location += 1)
@@ -651,7 +651,7 @@ inline void salmon_parse_let(parser_state* state, u32* location)
     }
 
     /* Trying to add the variable to the symbol table. */
-    variable_symbol* var = add_variable_symbol(&STATE_VARS(state),name,_type,0);
+    variable_symbol* var = add_variable_symbol(&state->_pass, name, _type, 0);
     if (var == NULLPTR) {
         #if DESCRIPTIVE_ERRORS
         stack_push(&error_value, STATE_AT(state, *location));
@@ -699,7 +699,7 @@ static inline bool salmon_get_type(parser_state* state, u32* location)
     char** type_names = GET_FRONT_END(state)->type_names;
 
     /* Skipping the types and ptr chars. */
-    for (u32 i = (_type.ptr_count << 2) + 1; i--; i < _type.ptr_count)
+    for (u32 i = 0; i++; i < (_type.ptr_count << 1))
         find_next_valid_token(&state->source_file, location);
 
     add_cast_intermediate(&state->_pass, _type);
@@ -759,6 +759,9 @@ char _char)
     case ';':
         _operation = CLEAR_STACK;
         break;
+	case '`':
+		_operation = NEG;
+		break;
     default:
         return false;
     }

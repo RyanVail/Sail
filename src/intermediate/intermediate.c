@@ -8,6 +8,7 @@
 #include<intermediate/intermediate.h>
 #include<frontend/common/parser.h>
 
+// TODO: It might be better to inline this.
 /*
  * This takes in an intermediate and adds the inputted intermediate to the
  * inputted pass' intermediate vector if it's not a temp intermediate return
@@ -221,7 +222,7 @@ void set_type_of_operand(intermediate_pass* _pass, operand* _operand)
         _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
         break;
     case FUNC_RETURN:
-        _operand->type = get_function_symbol(&_pass->functions, \
+        _operand->type = get_function_symbol(_pass, \
         (u32)(size_t)_operand->intermediate.ptr)->return_type;
         break;
     case MEM_RETURN:
@@ -402,12 +403,12 @@ u32 add_if_ascii_float(intermediate_pass* _pass, char** starting_token)
 }
 
 /*
- * This prints the intermediates.
+ * This intermediates from the inputted intermediate pass into the inputted
+ * stream.
  */
 #if DEBUG
-
 // TODO: Replace this array with something less temp.
-const char* INTERMEDIATES_TEXT[] = { "Increment", "Decrement", "Not", \
+static const char* INTERMEDIATES_TEXT[] = { "Increment", "Decrement", "Not", \
 "Complement", "Negate", "Add", "Sub", "Mul", "Div", "And", "Xor", "Or", "LSL", \
 "LSR", "Mod", "!=", "==", ">", ">=", "<", "<=", "=", "Var declaration", \
 "Var assignment", "Var access", "Var mem", "Mem location", "Mem access", "If", \
@@ -416,8 +417,11 @@ const char* INTERMEDIATES_TEXT[] = { "Increment", "Decrement", "Not", \
 "Func return", "Mem return", "Comparison return", "Var return", "Cast", \
 "Register", "Ignore", "Var use", "Clear stack", "NIL" };
 
-/* This prints the intermediates. */
-void print_intermediates(intermediate_pass* _pass)
+/*
+ * This prints the intermediates in the inputted intermedates pass in a non
+ * human readable format for debugging intermediates.
+ */
+void print_raw_intermediates(intermediate_pass* _pass)
 {
     for (u32 i=0; i < VECTOR_SIZE(_pass->intermediates); i++) {
         intermediate* _intermediate = vector_at(&_pass->intermediates, i, 0);
@@ -434,7 +438,8 @@ void print_intermediates(intermediate_pass* _pass)
             if (_tmp_vec == NULLPTR)
                 continue;
             for (u32 y=0; y < VECTOR_SIZE(*_tmp_vec); y++)
-                printf("%08x\n",*(u32*)vector_at(_intermediate->ptr,y,0));
+                printf("%08x\n", \
+                *(u32*)vector_at(_intermediate->ptr,y,0));
             break;
         case FLOAT:
             #if FLOATS_IN_PTRS
@@ -442,6 +447,9 @@ void print_intermediates(intermediate_pass* _pass)
             #else
             printf("%f\n", *((f64*)_intermediate->ptr));
             #endif
+            break;
+        case CONST_PTR:
+            printf("%li\n", *(u64*)_intermediate->ptr);
             break;
         case CONST:
             printf("%li\n", (size_t)_intermediate->ptr);
@@ -455,6 +463,101 @@ void print_intermediates(intermediate_pass* _pass)
             break;
         }
     }
+}
+
+// TODO: Implement that '`' negation operator in the Salmon front end.
+const char* INTERMEDIATE_FORMATED_TEXT[] = { "++", "--", "!", "~", "-", "+",
+"`", "+", "-", "*", "/", "&", "|", "<<", ">>", "%%", "!=", "==", ">", ">=", "<",
+"<=", "=", "", "", "", "#", "#", "@", "if {", "else {", "loop {", "}",
+"continue", "return", "break", "fn", "", "goto", "", "", "", "", ".", "", "", ""
+"", "as", "", "", "", "", "" };
+
+// TODO: This needs to be finished.
+/*
+ * This prints the intermediates from the inputted intermediate pass in a human
+ * readable format.
+ */
+void print_intermediates(intermediate_pass* _pass)
+{
+    /* The current # of tabs being printed. */
+    u32 indentation_count = 0;
+
+    for (u32 i=0; i < VECTOR_SIZE(_pass->intermediates); i++) {
+        intermediate* _intermediate = vector_at(&_pass->intermediates, i, 0);
+
+        /* Printing the inital intermediate text. */
+        printf("%s", INTERMEDIATE_FORMATED_TEXT[_intermediate->type]);
+
+        /* Changing the tab size. */
+        switch (_intermediate->type)
+        {
+        case IF:
+        case ELSE:
+        case LOOP:
+        case FUNC_DEF:
+            indentation_count++;
+            break;
+        case END:
+            indentation_count--;
+        }
+
+        /* Printing the conditional intermediate data. */
+        switch (_intermediate->type)
+        {
+        case CONST:
+            printf("%li\n", (size_t)_intermediate->ptr);
+            break;
+        case CONST_PTR:
+            printf("%li\n", *(u64*)_intermediate->ptr);
+            break;
+        case FLOAT:
+            #if FLOATS_IN_PTRS
+            printf("%f\n", VOIDPTR_TO_F32(_intermediate->ptr));
+            #else
+            printf("%f\n", *((f64*)_intermediate->ptr));
+            #endif
+            break;
+        case DOUBLE:
+            #if PTRS_ARE_64BIT && FLOATS_IN_PTRS
+            printf("%lf\n", VOIDPTR_TO_F64(_intermediate->ptr));
+            #else
+            printf("%lf\n", *((f64*)_intermediate->ptr));
+            #endif
+            break;
+        case VAR_ACCESS:
+        case VAR_ASSIGNMENT:
+            // TODO: Print name
+            // TODO: Print name
+            break;
+        case VAR_DECLARATION:
+            // TODO: Print name
+        case CAST:
+            // TODO: Print type
+            break;
+        default:
+            continue;
+        }
+
+        /* Printing the new line, tabs, and space.. */
+        u32 i = 0;
+        switch (_intermediate->type)
+        {
+        case IF:
+        case ELSE:
+        case LOOP:
+        case END:
+        case CONTINUE:
+        case CLEAR_STACK:
+        case FUNC_DEF:
+            printf("\n");
+            for (i=0; i < indentation_count; i++)
+                printf("\t");
+            break;
+        default:
+            printf(" ");
+        }
+    }
+    printf("\n");
 }
 
 #endif

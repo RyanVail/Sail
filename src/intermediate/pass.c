@@ -31,13 +31,15 @@ _intermediate)
     #endif
 }
 
+// TODO: There should be a function to handle the end of an intermediate pass
+// ie. freeing the symbol tables and things.
 /*
  * This is an array of the default intermediate handler functions. These are the
  * functions that get run when the function ptr in the handler function is a
  * NULLPTR.
  */
 static const handler_func \
-default_handler_functions[INTERMEDIATE_TYPE_NORMAL_END] = {
+default_handler_functions[INTERMEDIATE_TYPE_NORMAL_END+1] = {
     /* Operations */
     &_process_operation, &_process_operation, &_process_operation,
     &_process_operation, &_process_operation, &_process_operation,
@@ -86,7 +88,10 @@ default_handler_functions[INTERMEDIATE_TYPE_NORMAL_END] = {
 
     /* Register */
     &_add_back_intermediate, &_add_back_intermediate, &_add_back_intermediate,
-    &_add_back_intermediate, &_skip_intermediate,
+    &_add_back_intermediate,
+
+    /* Clear stack */
+    &_skip_intermediate,
 };
 
 /*
@@ -113,18 +118,46 @@ void do_intermediate_pass(intermediate_pass* _pass)
 {
     handler_func _func;
     intermediate* _intermediate;
-    for (u32 i=0; i < VECTOR_SIZE(_pass->intermediates); i++) {
+    vector* intermediates = &_pass->intermediates;
+
+    // TODO: This "recreate" pass flag needs to be fully implemented with
+    // different default handler functions.
+
+    /* Reseting the pass' intermedaites if needed. */
+    if (_pass->recreate)
+        _pass->intermediates = vector_init(sizeof(intermediate), \
+        intermediates->size);
+
+    for (u32 i=0; i < VECTOR_SIZE(*intermediates); i++) {
         /* Getting the current intermediate. */
-        _intermediate = *(intermediate**)vector_at(&_pass->intermediates, i, 0);
+        _intermediate = vector_at(intermediates, i, 0);
+
+        /* NILs are skipped. */
+        if (_intermediate->type == NIL)
+            continue;
 
         /* Getting the intermediate handler function. */
         _func = _pass->handler_funcs[_intermediate->type];
-        if (_func == NULLPTR)
+        if (_func == NULLPTR) {
+            if (!_pass->recreate)
+                continue;
             _func = default_handler_functions[_intermediate->type];
+        }
+
+        // TODO: This should try and call the special intermediate handler
+        // functions.
+
+        // printf("calling: %p, for: %u\n", _func, _intermediate->type);
+        // fflush(stdout);
 
         /* Calling the intermediate handler function. */
-        (*_func)(_pass, *_intermediate);
+        if (_pass->recreate)
+            (*_func)(_pass, *_intermediate);
+        else
+            (*(ptr_handler_func)_func)(_pass, _intermediate);
     }
+
+    // TODO: Free the old "intermediates" if "recreate".
 }
 
 /*
