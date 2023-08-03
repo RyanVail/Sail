@@ -1,9 +1,27 @@
-#ifndef STD_C_SYSCALL_H
-#define STD_C_SYSCALL_H
+#ifndef _SYSCALL_H
+#define _SYSCALL_H
 
-// TODO: Implement this in asm.
+// TODO: Implement the syscall function in asm.
 #if linux && (__GNUC__ || __clang__)
     #include<unistd.h>
+#endif
+
+// TODO: The rest of these things
+#if linux && __arm__
+    #define RESTART_SYSCALL 0
+    #define SYS_EXIT 1
+    #define SYS_READ 3
+    #define SYS_WRITE 4
+    #define SYS_OPEN 5
+    #define SYS_CLOSE 6
+    #define SYS_UNLINK 10
+    #define SYS_GETPID 20
+    #define SYS_KILL 37
+    #define SYS_RENAME 38
+    #define SYS_BRK 45
+    #define SYS_FSTAT 108
+    #define SYS_GETTID 224
+    #define SYS_TGKILL 268
 #endif
 
 #if linux && __x86_64__
@@ -18,6 +36,8 @@
     #define SYS_BRK 12
     #define SYS_GETPID 39
     #define SYS_EXIT 60
+    #define SYS_RENAME 82
+    #define SYS_UNLINK 87
     #define SYS_GETTID 186
     #define SYS_TGKILL 234
 
@@ -33,6 +53,7 @@
     #define O_NONBLOCK 2048
     #define O_DIRECTORY 65536
 
+    // TODO: Make sure these are correct
     /* Signals */
     #define SIGHUP 1
     #define SIGINT 2

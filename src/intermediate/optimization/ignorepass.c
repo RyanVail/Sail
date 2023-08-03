@@ -35,7 +35,13 @@ vector* intermediates)
         free(ignore_indexes->contents);
     }
 
-    vector _tmp_vector = { NULLPTR, 0, 0, sizeof(u32) };
+    vector _tmp_vector = {
+        .contents = NULLPTR,
+        .size = 0,
+        .apparent_size = 0,
+        .type_size = sizeof(u32),
+    };
+
     vector_append(ignore_indexes, &_tmp_vector);
 }
 
@@ -45,13 +51,13 @@ vector* intermediates)
  * intermediate, another pointer is set to the last "REGISTER" intermediate. If
  * the last use of "var_id" isn't the same as the last "REGISTER" the number of
  * "REGISTER" intermediates passed before the last use of "var_id" is returned.
- * Otherwise __UINT32_MAX__ is returned.
+ * Otherwise UINT32_MAX is returned.
  */
 static inline u32 try_to_ignore_variable(u32 i, u32 var_id, \
 vector* intermediates)
 {
     u32 registers_count = 0;
-    u32 last_use_index = __UINT32_MAX__;
+    u32 last_use_index = UINT32_MAX;
     for (; i < VECTOR_SIZE(*intermediates); i++) {
         intermediate* _intermediate = vector_at(intermediates, i, 0);
         if (_intermediate->type == REGISTER) {
@@ -66,9 +72,9 @@ vector* intermediates)
         // TODO: This should also be done on the second to last index of the
         // intermediates.
         if (_intermediate->type == FUNC_DEF) {
-            if (last_use_index == __UINT32_MAX__
+            if (last_use_index == UINT32_MAX
             || last_use_index == registers_count)
-                return __UINT32_MAX__;
+                return UINT32_MAX;
             return last_use_index;
         }
     }
@@ -84,7 +90,12 @@ void optimization_do_ignore_pass()
     vector output_intermediates = \
         vector_init(sizeof(intermediate), intermediates->size);
 
-    vector ignore_indexes = { NULLPTR, 0, 0, sizeof(vector) };
+    vector ignore_indexes = {
+        .contents = NULLPTR,
+        .size = 0,
+        .apparent_size = 0,
+        .type_size = sizeof(vector),
+    };
 
     for (u32 i=0; i < VECTOR_SIZE(*intermediates); i++) {
         intermediate* _current = vector_at(intermediates, i, 0);

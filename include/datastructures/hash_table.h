@@ -3,8 +3,8 @@
  * function.
  */
 
-#ifndef HASH_TABLE_H
-#define HASH_TABLE_H
+#ifndef DATASTRUCTURES_HASH_TABLE_H
+#define DATASTRUCTURES_HASH_TABLE_H
 
 #include<common.h>
 
@@ -14,7 +14,7 @@
  * newly defined variable "result_hash".
  */
 #define HASH_STRING(_string) \
-    u32 result_hash = __UINT32_MAX__; \
+    u32 result_hash = UINT32_MAX; \
     for (u32 string_index = 0; _string[string_index] != '\0'; string_index++){\
         result_hash ^= _string[string_index]; \
         result_hash = (result_hash << 6) + (result_hash >> 28); \

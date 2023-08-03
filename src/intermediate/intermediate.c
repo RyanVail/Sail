@@ -74,7 +74,11 @@ void pop_operand(intermediate_pass* _pass, bool dual, bool comparison)
         free(_first_operand);
     if (comparison) {
         free(_second_operand);
-        intermediate _to_add_intermediate = { COMPARISON_RETURN, NULLPTR };
+        intermediate _to_add_intermediate = {
+            .type = COMPARISON_RETURN,
+            .ptr = NULLPTR,
+        };
+
         add_operand(_pass, _to_add_intermediate, true);
     }
 }
@@ -141,7 +145,11 @@ void process_operation(intermediate_pass* _pass, intermediate_type _operation)
         break;
     }
 
-    intermediate _intermediate = { _operation, NULLPTR };
+    intermediate _intermediate = {
+        .type = _operation,
+        .ptr = NULLPTR,
+    };
+
     add_intermediate(_pass, _intermediate);
 }
 
@@ -159,15 +167,21 @@ void add_cast_intermediate(intermediate_pass* _pass, type _type)
 
     /* Creating and adding the cast operand. */
     #if PTRS_ARE_64BIT
-    intermediate _tmp_intermediate = { CAST, *((void**)&_type) };
-    add_intermediate(_pass, _tmp_intermediate);
+    intermediate _tmp_intermediate = {
+        .type = CAST,
+        .ptr = *(void**)&_type,
+    };
     #else
     type* _tmp_type = malloc(sizeof(type));
     CHECK_MALLOC(_tmp_type);
-    *_tmp_type = *(type*)&_type;
-    intermediate _tmp_intermediate = { CAST, (void*)_tmp_type };
-    add_intermediate(_pass, _tmp_intermediate);
+    *_tmp_type = _type;
+    intermediate _tmp_intermediate = {
+        .type = CAST,
+        .ptr = (void*)_tmp_type,
+    };
     #endif
+
+    add_intermediate(_pass, _tmp_intermediate);
 }
 
 /*
@@ -178,8 +192,9 @@ void cast_top_operand(intermediate_pass* _pass, type _type)
 {
     #if DEBUG
     if (STACK_IS_EMPTY(_pass->operand_stack))
-        send_error( \
-        "Attempted to cast the top operand when there are no operands.");
+        send_error (
+            "Attempted to cast the top operand when there are no operands."
+        );
     #endif
 
     /* Casting the top operand. */
@@ -193,7 +208,11 @@ void cast_top_operand(intermediate_pass* _pass, type _type)
  */
 void set_type_of_operand(intermediate_pass* _pass, operand* _operand)
 {
-    type _type = { 0, VOID_TYPE };
+    type _type = {
+        .ptr_count = 0,
+        .kind = VOID_TYPE,
+    };
+
     switch (_operand->intermediate.type)
     {
     #if !PTRS_ARE_64BIT
@@ -222,13 +241,19 @@ void set_type_of_operand(intermediate_pass* _pass, operand* _operand)
         _operand->type = ((variable_symbol*)_operand->intermediate.ptr)->type;
         break;
     case FUNC_RETURN:
-        _operand->type = get_function_symbol(_pass, \
-        (u32)(size_t)_operand->intermediate.ptr)->return_type;
+        _operand->type = get_function_symbol (
+            _pass,
+            (u32)(size_t)_operand->intermediate.ptr
+        )->return_type;
         break;
     case MEM_RETURN:
     case MEM_LOCATION:
         // TODO: I'm pretty sure this doesn't work for 32 bit.
-        _operand->type = *((type*)_operand->intermediate.ptr);
+        #if PTRS_ARE_64BIT
+        _operand->type = *(type*)&_operand->intermediate.ptr;
+        #else
+        _operand->type = *(type*)_operand->intermediate.ptr;
+        #endif
         break;
     default:
         _type.kind = VOID_TYPE;
@@ -298,13 +323,20 @@ void add_float_intermediate(intermediate_pass* _pass, f32 value)
     #endif
 
     #if FLOATS_IN_PTRS
-    intermediate _intermediate = { FLOAT, F32_TO_VOIDPTR(value) };
+    intermediate _intermediate = {
+        .type = FLOAT,
+        .ptr = F32_TO_VOIDPTR(value),
+    };
     #else
     f32* new_float = malloc(sizeof(f32));
     CHECK_MALLOC(new_float);
     *new_float = value;
-    intermediate _intermediate = { FLOAT, new_float };
+    intermediate _intermediate = {
+        .type = FLOAT,
+        .ptr = new_float,
+    };
     #endif
+
     add_operand(_pass, _intermediate, false);
 }
 
@@ -312,12 +344,20 @@ void add_float_intermediate(intermediate_pass* _pass, f32 value)
 void add_double_intermediate(intermediate_pass* _pass, f64 value)
 {
     #if PTRS_ARE_64BIT && FLOATS_IN_PTRS
-    intermediate _intermediate = { DOUBLE, F64_TO_VOIDPTR(value) };
+    intermediate _intermediate = {
+        .type = DOUBLE,
+        .ptr = F64_TO_VOIDPTR(value)
+    };
+
     #else
     f64* new_double = malloc(sizeof(f64));
     CHECK_MALLOC(new_double);
     *new_double = value;
-    intermediate _intermediate = { DOUBLE, new_double };
+    intermediate _intermediate = {
+        .type = DOUBLE,
+        .ptr = new_double
+    };
+
     #endif
     add_operand(_pass, _intermediate, false);
 }
@@ -325,28 +365,30 @@ void add_double_intermediate(intermediate_pass* _pass, f64 value)
 /*
  * This puts the const num into the inputted "_intermediate" be that as a
  * "CONST" intermediate or a "CONST_PTR" based on the "const_num" and the ptr
- * size of the computer the compiler is running on.
+ * size of the computer the compiler is running on. If the intermediate passed
+ * into this function has unitied values this function could result in undefined
+ * behaviour if the random value assigned to the type of the intermediate is a
+ * CONST_PTR so the type of the intermediate needs to be set to NIL.
  */
-void set_intermediate_to_const(intermediate* _intermediate, i64 const_num)
+void set_intermediate_to_const(intermediate* _intermediate, num const_num)
 {
-    #if !PTRS_ARE_64BIT
-    if (const_num < ~__UINTPTR_MAX__ || const_num > __UINTPTR_MAX__) {
+    /* if the number cannot fit into a "CONST" intermediate. */
+    if (const_num.magnitude > INTPTR_MAX + const_num.negative) {
         if (_intermediate->type != CONST_PTR) {
-            _intermediate->ptr = malloc(sizeof(i64));
+            _intermediate->ptr = malloc(sizeof(num));
             CHECK_MALLOC(_intermediate->ptr);
         }
-        *(i64*)_intermediate->ptr = const_num;
+        *(num*)_intermediate->ptr = const_num;
         _intermediate->type = CONST_PTR;
     } else {
         if (_intermediate->type == CONST_PTR)
             free(_intermediate->ptr);
-        _intermediate->ptr = (void*)const_num;
+
         _intermediate->type = CONST;
+        _intermediate->ptr = (void*)(size_t)const_num.magnitude;
+        if (const_num.negative)
+            *(ssize_t*)&_intermediate->ptr = -(ssize_t)_intermediate->ptr;
     }
-    #else
-    _intermediate->ptr = (void*)const_num;
-    _intermediate->type = CONST;
-    #endif
 }
 
 /*
@@ -354,9 +396,12 @@ void set_intermediate_to_const(intermediate* _intermediate, i64 const_num)
  * intermediate pass. This will convert the constant numebr into a "CONST_PTR"
  * if it can't fit into a pointer otherwise it will be a "CONST".
  */
-void add_const_num(intermediate_pass* _pass, i64 const_num)
+void add_const_num(intermediate_pass* _pass, num const_num)
 {
-    intermediate _operand = { NIL, NULLPTR };
+    intermediate _operand = {
+        .type = NIL,
+    };
+
     set_intermediate_to_const(&_operand, const_num);
     add_operand(_pass, _operand, false);
 }
@@ -366,13 +411,16 @@ void add_const_num(intermediate_pass* _pass, i64 const_num)
  * intermediates of the inputted intermediate pass. Returns true if a number
  * was added, otherwise false.
  */
-bool add_if_ascii_num(intermediate_pass* _pass, char* token)
+bool add_if_ascii_num(intermediate_pass* _pass, char* token,
+const char* prefixes, const char* suffixes)
 {
-    if (is_ascii_number(token)) {
-        i64 _const_num = get_ascii_number(token);
+    if (is_ascii_number(token, prefixes, suffixes)) {
+        // TODO: This has to support prefixes and suffixes in the number parsing
+        num _const_num = get_ascii_number(token);
         add_const_num(_pass, _const_num);
         return true;
     }
+
     return false;
 }
 
@@ -424,7 +472,11 @@ static const char* INTERMEDIATES_TEXT[] = { "Increment", "Decrement", "Not", \
 void print_raw_intermediates(intermediate_pass* _pass)
 {
     for (u32 i=0; i < VECTOR_SIZE(_pass->intermediates); i++) {
-        intermediate* _intermediate = vector_at(&_pass->intermediates, i, 0);
+        intermediate* _intermediate = &VECTOR_AT (
+            &_pass->intermediates,
+            i,
+            intermediate
+        );
 
         printf("INTER: %s\n", INTERMEDIATES_TEXT[_intermediate->type]);
 
@@ -438,8 +490,7 @@ void print_raw_intermediates(intermediate_pass* _pass)
             if (_tmp_vec == NULLPTR)
                 continue;
             for (u32 y=0; y < VECTOR_SIZE(*_tmp_vec); y++)
-                printf("%08x\n", \
-                *(u32*)vector_at(_intermediate->ptr,y,0));
+                printf("%08x\n", VECTOR_AT(_intermediate->ptr, y, u32));
             break;
         case FLOAT:
             #if FLOATS_IN_PTRS
@@ -466,11 +517,60 @@ void print_raw_intermediates(intermediate_pass* _pass)
 }
 
 // TODO: Implement that '`' negation operator in the Salmon front end.
-const char* INTERMEDIATE_FORMATED_TEXT[] = { "++", "--", "!", "~", "-", "+",
-"`", "+", "-", "*", "/", "&", "|", "<<", ">>", "%%", "!=", "==", ">", ">=", "<",
-"<=", "=", "", "", "", "#", "#", "@", "if {", "else {", "loop {", "}",
-"continue", "return", "break", "fn", "", "goto", "", "", "", "", ".", "", "", ""
-"", "as", "", "", "", "", "" };
+const static char* INTERMEDIATE_FORMATED_TEXT[] = {
+    [INC] = "++",
+    [DEC] = "--",
+    [NOT] = "!",
+    [COMPLEMENT] = "~",
+    [ADD] = "+",
+    [SUB] = "-",
+    [MUL] = "*",
+    [DIV] = "/",
+    [AND] = "&",
+    [XOR] = "^",
+    [OR] = "|",
+    [LSL] = "<<",
+    [LSR] = ">>",
+    [MOD] = "%%",
+    [NOT_EQUAL] = "!=",
+    [IS_EQUAL] = "==",
+    [GREATER_THAN] = ">",
+    [GREATER_THAN_EQUAL] = ">=",
+    [LESS_THAN] = "<",
+    [LESS_THAN_EQUAL] = "<=",
+    [EQUAL] = "=",
+    [VAR_DECLARATION] = "",
+    [VAR_ASSIGNMENT] = "",
+    [VAR_ACCESS] = "",
+    [VAR_MEM] = "#",
+    [MEM_LOCATION] = "#",
+    [MEM_DEREF] = "@",
+    [IF] = "if {",
+    [ELSE] = "else {",
+    [LOOP] = "loop {",
+    [END] = "}",
+    [CONTINUE] = "continue",
+    [RETURN] = "return",
+    [BREAK] = "break",
+    [FUNC_DEF] = "fn",
+    [FUNC_CALL] = "",
+    [GOTO] = "goto",
+    [CONST] = "",
+    [CONST_PTR] = "",
+    [FLOAT] = "",
+    [DOUBLE] = "",
+    [GET_STRUCT_VARIABLE] = ".",
+    [FUNC_RETURN] = "",
+    [MEM_RETURN] = "",
+    [COMPARISON_RETURN] = "",
+    [VAR_RETURN] = "",
+    [CAST] = "as ",
+    [REGISTER] = "",
+    [IGNORE] = "",
+    [VAR_USE] = "",
+    [CLEAR_STACK] = ";",
+    [NIL] = "NIL",
+};
 
 // TODO: This needs to be finished.
 /*
@@ -532,7 +632,12 @@ void print_intermediates(intermediate_pass* _pass)
         case VAR_DECLARATION:
             // TODO: Print name
         case CAST:
-            // TODO: Print type
+            #if PTRS_ARE_64BIT
+            printf("\n\n== %p ==\n\n", _intermediate->ptr);
+            // print_type(_pass, *(type*)&_intermediate->ptr);
+            #else
+            print_type(_pass, *(type*)_intermediate->ptr);
+            #endif
             break;
         default:
             continue;

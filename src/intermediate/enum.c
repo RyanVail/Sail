@@ -8,6 +8,7 @@
 #include<intermediate/enum.h>
 #include<frontend/common/parser.h>
 #include<datastructures/hash_table.h>
+#include<intermediate/pass.h>
 
 /* This frees all of the intermediate enums. */
 void free_enum_entries(hash_table* _enums)
@@ -30,7 +31,7 @@ enum_entry* get_enum_entry(hash_table* _enums, u32 hash)
     #endif
 
     hash_table_bucket* _bucket = hash_table_at_hash(_enums, hash);
-    return _bucket == NULLPTR ? NULLPTR : _bucket->value;
+    return (_bucket == NULLPTR) ? NULLPTR : _bucket->value;
 }
 
 /*
@@ -38,7 +39,7 @@ enum_entry* get_enum_entry(hash_table* _enums, u32 hash)
  * to the entry. This returns NULLPTR on errors.
  */
 enum_entry* add_enum_entry(intermediate_pass* _pass, \
-intermediate_typedef* parent_enum, i64 value, char* entry_name)
+intermediate_typedef* parent_enum, num value, char* entry_name)
 {
     hash_table* _enums = &_pass->enums;
 

@@ -70,6 +70,18 @@ void handle_common_error(u32 error_code);
 /* This handles sending custom error messages. */
 void send_error(char* error_message);
 
+/* This exits as a result for an error. */
+static inline void exit_for_error()
+{
+    fflush(stdout);
+
+    #if DEBUG
+    abort();
+    #else
+    exit(-1);
+    #endif
+}
+
 /*
  * These are the error codes that errno can be set to during parsing. The value
  * in error_ptr is show in the comment next to the enum entry.

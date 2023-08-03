@@ -1,5 +1,5 @@
-#ifndef STD_C_STDLIB_H
-#define STD_C_STDLIB_H
+#ifndef _STDLIB_H
+#define _STDLIB_H
 
 #include<typedefs.h>
 #include<stddef.h>

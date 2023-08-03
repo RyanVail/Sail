@@ -1,0 +1,23 @@
+struct v3 {
+	x f64;
+	y f64;
+	z f64;
+}
+
+let f u32 v3.x v3.x * v3.y v3.y * v3.z v3.z * + + = ;
+
+v3.x v3.x len / = ;
+v3.y v3.y len / = ;
+v3.z v3.z len / = ;
+
+v3.x v3.x 17 * = ;
+v3.y v3.y 17 * = ;
+v3.z v3.z 17 * = ;
+
+/*
+len len 17 / = ;
+
+v3.x v3.x len / = ;
+v3.y v3.y len / = ;
+v3.z v3.z len / = ;
+*/

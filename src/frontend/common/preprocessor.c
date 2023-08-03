@@ -14,8 +14,8 @@ bool skip_C_comment(vector* file, u32* current_index)
     if (IS_VEC_END(*file, *current_index))
         return false;
 
-    if (*(char**)vector_at(file, *current_index, false) == NULLPTR \
-    || **(char**)vector_at(file, *current_index, false) != '/')
+    if (VECTOR_AT(file, *current_index, char*) == NULLPTR
+    || *VECTOR_AT(file, *current_index, char*) != '/')
         return false;
 
     u32 tmp_index = *current_index;
@@ -23,22 +23,22 @@ bool skip_C_comment(vector* file, u32* current_index)
     if (IS_VEC_END(*file, tmp_index))
         return false;
 
-    if (**(char**)vector_at(file, tmp_index, false) != '*' \
+    if (*VECTOR_AT(file, tmp_index, char*) != '*'
     || IS_VEC_END(*file, tmp_index))
         return false;
 
     for (; *current_index <= VECTOR_SIZE(*file)-2;) {
-        char first_token = **(char**)vector_at(file, *current_index, false);
+        char first_token = *VECTOR_AT(file, *current_index, char*);
 
-        free(*(char**)vector_at(file, *current_index, false));
-        *(char**)vector_at(file, *current_index, false) = NULL;
+        free(VECTOR_AT(file, *current_index, char*));
+        VECTOR_AT(file, *current_index, char*) = NULLPTR;
 
         find_next_valid_token(file, current_index);
-        char second_token = **(char**)vector_at(file, *current_index, false);
+        char second_token = *VECTOR_AT(file, *current_index, char*);
 
         if (first_token == '*' && second_token == '/') {
-            free(*(char**)vector_at(file, *current_index, false));
-            *(char**)vector_at(file, *current_index, false) = NULL;
+            free(VECTOR_AT(file, *current_index, char*));
+            VECTOR_AT(file, *current_index, char*) = NULLPTR;
             find_next_valid_token(file, current_index);
             return true;
         }
@@ -51,14 +51,15 @@ bool skip_C_comment(vector* file, u32* current_index)
  * needs to be run again. This can leave the "current_index" pointing to the end of
  * the file, that has to be accounted for.
  */
-void skip_C_comments(vector* file, u32* current_index, \
+void skip_C_comments(vector* file, u32* current_index,
 const char* special_chars, const char* white_space_chars)
 {
     #if DEBUG
-    if (!is_special_char('/', special_chars) \
+    if (!is_special_char('/', special_chars)
     && !is_special_char('*', special_chars))
-        send_error( \
-        "'/' and '*' should be a special chars for C style comment removal");
+        send_error (
+            "'/' and '*' should be a special chars for C style comment removal"
+        );
     if (is_white_space_char('/', white_space_chars))
         send_error("'/' can't be white space for C style comment removal");
     if (is_white_space_char('*', white_space_chars))
@@ -73,7 +74,7 @@ const char* special_chars, const char* white_space_chars)
  * constant char strings with their constant values. This replaces other tokens
  * inside of the string with NULL pointers.
  */
-void replace_C_const_chars(vector* file, u32 current_index, \
+void replace_C_const_chars(vector* file, u32 current_index,
 const char* special_chars)
 {
     #if DEBUG
@@ -83,7 +84,7 @@ const char* special_chars)
         send_error("\\ has to be a special char for C const char replacement");
     #endif
 
-    if (**(char**)vector_at(file, current_index, false) != '\'')
+    if (*VECTOR_AT(file, current_index, char*) != '\'')
         return;
 
     u32 _initial_index = current_index;
@@ -97,30 +98,29 @@ const char* special_chars)
 
         // replace_C_escape_codes(file, &current_index);
 
-        char* first_token = *(char**)vector_at(file, current_index, false);
-
+        char* first_token = VECTOR_AT(file, current_index, char*);
 
         if (first_token == NULLPTR)
             continue;
 
         if (*first_token == '\'') {
             free(first_token);
-            *(char**)vector_at(file, current_index, false) = NULLPTR;
+            VECTOR_AT(file, current_index, char*) = NULLPTR;
             break;
         }
 
         _result += (u64)(*first_token);
 
         free(first_token);
-        *(char**)vector_at(file, current_index, false) = NULLPTR;
+        VECTOR_AT(file, current_index, char*) = NULLPTR;
     }
 
     /* This turns the "_result" into decimal chars. */
-    u32 length = snprintf(NULL, 0, "%llu", (long long unsigned int)_result);
+    u32 length = snprintf(NULL, 0, "%lu", _result);
     char* destination = malloc(length + 1);
     CHECK_MALLOC(destination);
-    snprintf(destination, length + 1, "%llu", (long long unsigned int)_result);
-    *(char**)vector_at(file, _initial_index, false) = destination;
+    snprintf(destination, length + 1, "%lu", _result);
+    VECTOR_AT(file, _initial_index, char*) = destination;
 }
 
 /*
@@ -129,7 +129,7 @@ const char* special_chars)
  * inside of the backslash with null pointers. This doesn't check for NULL
  * pointers so it must be done before this is called.
  */
-void replace_C_escape_codes(vector* file, u32* current_index, \
+void replace_C_escape_codes(vector* file, u32* current_index,
 const char* special_chars)
 {
     #if DEBUG
@@ -144,9 +144,9 @@ const char* special_chars)
      * or hex.
      */
     u8 _next = '\0';
-    if (**(char**)vector_at(file, *current_index, false) == '\\') {  
-        free(*(char**)vector_at(file, *current_index, false));
-        switch (**(char**)vector_at(file, *current_index+1, false))
+    if (*VECTOR_AT(file, *current_index, char*) == '\\') {  
+        free(VECTOR_AT(file, *current_index, char*));
+        switch (*VECTOR_AT(file, *current_index+1, char*))
         {
         case 'n':
             _next = '\n';
@@ -187,35 +187,34 @@ const char* special_chars)
             goto escape_codes_numerical_label;
             break;
         default:
-            printf("%s\n", *(char**)vector_at(file, *current_index+1, false));
+            printf("%s\n", VECTOR_AT(file, *current_index+1, char*));
             send_error("Unknown escape code");
         }
 
         /* This turns the backslash char into the escape code value. */
         // free(*(char**)vector_at(file, *current_index, false));
-        **(char**)vector_at(file, *current_index, false) = _next;
+        *VECTOR_AT(file, *current_index, char*) = _next;
 
         /* This frees the char after the backslash. */
-        free(*(char**)vector_at(file, *current_index+1, false));
-        *(char**)vector_at(file, *current_index+1, false) = NULL;
+        free(VECTOR_AT(file, *current_index+1, char*));
+        VECTOR_AT(file, *current_index+1, char*) = NULLPTR;
         return;
 
         escape_codes_numerical_label: ;
 
         /* This turns the number into an unsigned 64 bit int. */
-        char* _begin = *(char**)vector_at(file, *current_index+1, false) + 1;
-        u64 _result = strtoll(_begin, NULL, _next);
+        char* _begin = VECTOR_AT(file, *current_index+1, char*) + 1;
+        u64 _result = strtoll(_begin, NULLPTR, _next);
 
         /* This turns the "_result" into decimal chars. */
-        u32 length = snprintf(NULL, 0, "%llu", (long long unsigned int)_result);
+        u32 length = snprintf(NULLPTR, 0, "%lu", _result);
         char* destination = malloc(length+1);
         CHECK_MALLOC(destination)
-        snprintf(destination, length + 1, "%llu", (long long unsigned int) \
-            _result);
+        snprintf(destination, length + 1, "%lu", _result);
         destination[length] = '\0';
 
         free(_begin - 1);
-        *(char**)vector_at(file, *current_index+1, false) = NULL;
-        *(char**)vector_at(file, *current_index, false) = destination;
+        VECTOR_AT(file, *current_index+1, char*) = NULLPTR;
+        VECTOR_AT(file, *current_index, char*) = destination;
     }
 }

@@ -20,17 +20,18 @@ intermediate_struct* get_struct(intermediate_pass* _pass, u32 struct_hash)
     hash_table_bucket* bucket = \
         hash_table_at_hash(&_pass->structs, struct_hash);
 
-    return bucket == NULLPTR ? NULLPTR : bucket->value;
+    return (bucket == NULLPTR) ? NULLPTR : bucket->value;
 }
 
 // TODO: Front ends need to handle the errors on this function which they don't
 // right now.
 /*
  * This function attemps the create a struct with "struct_name". Returns a
- * pointer to the newly created struct.returns a NULLPTR on errors.
+ * pointer to the newly created struct. This inits the struct with "extra_size"
+ * bytes onto the end to allow for extra data. a Returns a NULLPTR on errors.
  */
-intermediate_struct* create_struct(intermediate_pass* _pass, \
-char* struct_name, u8 flags)
+intermediate_struct* create_struct(intermediate_pass* _pass,
+char* struct_name, size_t extra_size, u8 flags)
 {
     #if DEBUG
     if (_pass->structs.contents == NULLPTR)
@@ -60,14 +61,15 @@ char* struct_name, u8 flags)
     strcpy(new_struct_name, struct_name);
 
     /* Initting the new struct's contents. */
-    struct_bucket->value = malloc(sizeof(intermediate_struct));
+    struct_bucket->value = malloc(sizeof(intermediate_struct) + extra_size);
     intermediate_struct* _struct = struct_bucket->value;
     CHECK_MALLOC(_struct);
     _struct->flags = flags;
     _struct->contents.top = NULLPTR;
     _struct->hash = result_hash;
     _struct->name = new_struct_name;
-    _struct->byte_size = __UINT16_MAX__;
+    _struct->byte_size = UINT16_MAX;
+
     return _struct;
 }
 
@@ -121,8 +123,8 @@ u32 struct_hash, char* var_name)
  * This adds the inputted variable to the inputted struct. Returns true if it
  * was successful otherwise false.
  */
-bool add_variable_to_struct(intermediate_pass* _pass, \
-intermediate_struct* _struct, type var_type, char* var_name)
+bool add_variable_to_struct(intermediate_pass* _pass,
+intermediate_struct* _struct, type var_type, char* var_name, bool override)
 {
     #if DEBUG
     if (_pass->variables.contents == NULLPTR)
@@ -135,24 +137,41 @@ intermediate_struct* _struct, type var_type, char* var_name)
     #endif
 
     /* Checking if the variable already exists. */
-    if (get_variable_from_struct_ptr(_pass, _struct, var_name) != NULLPTR)
-        send_error("Repeated variable entry into struct");
+    struct_variable* existing_variable = get_variable_from_struct_ptr (
+        _pass,
+        _struct,
+        var_name
+    );
 
-    /* Allocating the variable name. */
-    char* new_var_name = malloc(sizeof(var_name)+1);
+    if (existing_variable == NULLPTR) {
+        if (override)
+            return false;
+    } else {
+        if (!override)
+            return false;
+    }
+
+    /* Allocating a copy of the variable name. */
+    char* new_var_name = malloc(sizeof(var_name) + 1);
     CHECK_MALLOC(new_var_name);
     strcpy(new_var_name, var_name);
 
-    /* Making the variable "struct_variable". */
     HASH_STRING(var_name);
-    struct_variable* struct_var = malloc(sizeof(struct_variable));
-    CHECK_MALLOC(struct_var);
 
-    /* Inserting the variable into the hash table. */
+    struct_variable* struct_var;
+    if (!override) {
+        struct_var = malloc(sizeof(struct_variable));
+        CHECK_MALLOC(struct_var);
+    } else {
+        struct_var = existing_variable;
+    }
+
     struct_var->hash = result_hash;
     struct_var->type = var_type;
     struct_var->name = new_var_name;
-    stack_push(&_struct->contents, struct_var);
+
+    if (!override)
+        stack_push(&_struct->contents, struct_var);
 }
 
 /*

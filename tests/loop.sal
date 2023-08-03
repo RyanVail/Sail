@@ -12,14 +12,17 @@ struct test_struct {
     ccs u16
 }
 
-struct RGBA {
+struct RGBA (test_struct) {
+    gf override %u16%
     R u8
     G u8
     B u8
     A test_struct
 }
 
-enum NUMS u32 {
+/* TODO: Structs in enums would be a cool feature. */
+
+enum NUMS (u32) {
     ZERO,
     ONE,
     TWO,
@@ -30,7 +33,11 @@ enum NUMS u32 {
 }
 
 fn $main$ -> u32 {
-	let tester u32 3 ` =
+    let test_123a RGBA ;
+    test_123a.gf 3 = ;
+
+    let test_a abstract ;
+    let tester u32 3 `  =
     let int f32 16.25f = ;
     let acdec u32 32 u32 = ;
     let dec NUMS EIGHT u32 FIVE u32 + =
@@ -49,6 +56,7 @@ fn $main$ -> u32 {
     a 32 u32 == if {
         a 8 u32 =
     }
+
     let acd NUMS FOUR = ;
 }
 

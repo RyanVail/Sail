@@ -1,13 +1,46 @@
 /*
  * This is the level between the intermediates and the machine code / assembly
- * generation level. RTL instructions are general instructions that are then
- * translated into machine dependent instructions based on the target.
+ * generation level. rtl instructions are general instructions that are then
+ * translated into machine dependent instructions based on the target. During
+ * the rtl stage the "operand_stack" in "intermediate_pass" is a stack of
+ * "operand"s.
  */
 
 #ifndef BACKEND_RTL_RTL_H
 #define BACKEND_RTL_RTL_H
 
-#include<common.h>
+/*
+ * The "USE_RTL_OPERAND" flag will define an rtl version of the operand struct
+ * that includes the rtl register index the operand is located in.
+ */
+#ifdef USE_RTL_OPERAND
+#define OPERAND_DEFINED
+
+#include<intermediate/types.h>
+
+/* struct operand - This represents an operand in an rtl instruction
+ * @immediate_or_reg: If the value of this operand is an immediate or register
+ * index true means immediate, reg means register index
+ * @content: This is the content of the operand goto rtl instructions will
+ * contain the goto intermediate and the ptr in the intermediate will point to
+ * the instruction that should be jumped to
+ * @type: This is the type of this operand+
+ */
+typedef struct operand {
+    bool immediate_or_reg;
+    // TODO: It might be better to have some of these unions be anyanomus.
+    union content {
+        intermediate immediate;
+        u32 reg;
+    } content;
+    type type;
+} operand;
+
+#else
+#include<intermediate/types.h>
+#endif
+
+
 #include<intermediate/intermediate.h>
 #include<intermediate/pass.h>
 #include<datastructures/vector.h>
@@ -31,25 +64,14 @@ typedef struct reg {
 /* This is the value of immediate_or_reg that means reg. */
 #define RTL_OPERAND_REG (false)
 
-/* struct rtl_operand - This represents an operand in an rtl instruction
- * @immediate_or_reg: If the value of this operand is an immediate or register
- * index true means immediate, reg means register index
- * @content: This is the content of the operand goto rtl instructions will
- * contain the goto intermediate and the ptr in the intermediate will point to
- * the instruction that should be jumped to
+// TODO: It might be possible to make this and intermediate type a u8.
+// TODO: If intermediate_type changes this will have to change too.
+/*
+ * These are the types of the rtl instructions. As documented in documented in
+ * "documentation/rtl.md".
  */
-typedef struct rtl_operand {
-    bool immediate_or_reg;
-    union content {
-        intermediate immediate;
-        u32 reg;
-    } content;
-} rtl_operand;
-
-// TODO: It might be possible to make this a u8.
-/* These are the types of the rtl instructions. */
 typedef enum rtl_instruction_type {
-    /* Directly taken from the intermediates. */
+    /* Directly taken from the intermediates */
     RTL_INC,
     RTL_DEC,
     RTL_NOT,
@@ -71,12 +93,13 @@ typedef enum rtl_instruction_type {
     RTL_GREATER_THAN_EQUAL,
     RTL_LESS_THAN,
     RTL_LESS_THAN_EQUAL,
-
-    /* Actual assembly instructions. */
+    /* Actual assembly instructions */
     RTL_MOV,
     RTL_ROR,
     RTL_GOTO,
-    RTL_NIL,                    /* This is just used as a tmp label. */
+    RTL_LOAD,
+    RTL_STORE,
+    RTL_NIL,
     // TODO: For the latter rtl passes it might be better to have stack_inc and
     // stack_dec instructions.
 } rtl_instruction_type;
@@ -88,16 +111,16 @@ typedef enum rtl_instruction_type {
  * @operand1: The second operand of the instruction
  */
 typedef struct rtl_instruction {
-    rtl_operand operand0;
-    rtl_operand operand1;
+    operand operand0;
+    operand operand1;
     u32 destination;
     rtl_instruction_type type;
 } rtl_instruction;
 
-/* This translates and returns the inputted intermediates in RTL form. */
+/* This translates and returns the inputted intermediates in rtl form. */
 intermediate_pass intermediates_into_rtl(vector* intermediates);
 
-/* This clears all of the defined RTL labels and regs. */
-void clear_rtl();
+/* This clears all of the defined rtl labels and regs. */
+void clear_rtl(intermediate_pass* _pass);
 
 #endif

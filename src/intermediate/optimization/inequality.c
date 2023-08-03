@@ -67,9 +67,9 @@ bool inequality_is_in_system(vector* inequalities, inequality* _inequality)
 {
     inequality* current_inequality = inequalities->contents;
     for (u32 i=0; i < VECTOR_SIZE(*inequalities); i++, current_inequality++){
-        if (!inequality_is_in_inequality(_inequality, \
-        *(inequality**)vector_at(inequalities, i, false)))
-            return false; 
+        if (!inequality_is_in_inequality(_inequality, VECTOR_AT(inequalities, i,
+        inequality*)))
+            return false;
     }
 }
 

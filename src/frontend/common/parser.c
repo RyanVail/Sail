@@ -57,16 +57,18 @@ parsing_error _error, char** token)
         _token = *token;
 
         /* This is quick and dirty macro to add a str to a vector of chars. */
-        #define ADD_STR_TO_VEC(_vec, _str) \
-            for (u32 i=0; _str[i] != '\0'; i++) { \
-                vector_append((_vec), &_str[i]); \
-            }
+        #define ADD_STR_TO_VEC(_vec, _str) ( \
+            { \
+                for (u32 i=0; _str[i] != '\0'; i++) \
+                    vector_append((_vec), &_str[i]); \
+            } \
+        )
 
         /* Creating the error token with the highlighting. */
         for (_char = *_token; _char != '\0'; _token++) {
             _char = *_token;
             if (is_special_char(_char, _pass->data.front_end->special_chars) \
-            || (48 <= _char && _char <= 57 && _char == *_token)) {
+            || ('a' <= _char && _char <= '9' && _char == *_token)) {
                 if (!last_char_was_error)
                     ADD_STR_TO_VEC(&_vec, ERROR_COLOR_START);
                 vector_append(&_vec, &_char);
@@ -118,7 +120,7 @@ invalid_name_type get_why_invalid_name(intermediate_pass* _pass, char* name)
     char** types = _pass->data.front_end->type_names;
 
     /* Checks if the first letter is a number. */
-    if (48 <= name[0] && name[0] <= 57)
+    if ('a' <= name[0] && name[0] <= '9')
         result |= INVALID_NAME_TYPE_STARTS_WITH_NUMBER;
 
     /* Checks if the "name" matches anything in invalid names. */
@@ -140,6 +142,7 @@ invalid_name_type get_why_invalid_name(intermediate_pass* _pass, char* name)
 }
 #endif
 
+// TODO: This should be called read_type or something.
 // TODO: It might be better for this to take in a ptr to the index.
 /*
  * This parses and returns the type of the same name as the inputted string.
@@ -152,7 +155,12 @@ invalid_name_type get_why_invalid_name(intermediate_pass* _pass, char* name)
  */
 type get_type(intermediate_pass* _pass, vector* file, u32 index)
 {
-    type _type = { .kind = NO_TYPE, .ptr_count = 0, .extra_data = 0 };
+    type _type = {
+        .kind = NO_TYPE,
+        .ptr_count = 0,
+        .extra_data = 0,
+    };
+
     if (IS_VEC_END(*file, index))
         return _type;
 
@@ -164,7 +172,7 @@ type get_type(intermediate_pass* _pass, vector* file, u32 index)
 
     #if DESCRIPTIVE_ERRORS
     /* This is used in case of an error. */
-    char** inital_token = vector_at(file, index, false);
+    char** inital_token = &VECTOR_AT(file, index, char*);
     #endif
 
     /* This is here for code readability. */
@@ -180,11 +188,14 @@ type get_type(intermediate_pass* _pass, vector* file, u32 index)
     while (token[0] != 0 && *token == *type_names[TYPE_NAME_FIRST_PTR_INDEX]) {
         find_next_valid_token(file, &index);
         before_ptrs++;
-        token = *(char**)vector_at(file, index, false);
+        token = VECTOR_AT(file, index, char*);
     }
 
+    _type.ptr_count = before_ptrs;
     char* type_name = token;
 
+    // TODO: This is in kinda a dumb place because it's after the reading of the
+    // first ptr chars.
     /* Attempting to read the type from the front end. */
     if (_pass->data.front_end->type_reader_func != NULLPTR) {
         _type = (*_pass->data.front_end->type_reader_func)(_pass, index);
@@ -201,6 +212,7 @@ type get_type(intermediate_pass* _pass, vector* file, u32 index)
         }
     }
 
+    // TODO: This is terribly structured.
     /* If the type isn't found, check if we're reading a struct. */
     if (_type.kind == NO_TYPE) {
         HASH_STRING(type_name);
@@ -228,7 +240,7 @@ type get_type(intermediate_pass* _pass, vector* file, u32 index)
     do {
         after_ptrs++;
         find_next_valid_token(file, &index);
-        token = *(char**)vector_at(file, index, false);
+        token = VECTOR_AT(file, index, char*);
     } while (token[0] != 0 && *token == *type_names[TYPE_NAME_LAST_PTR_INDEX]);
 
     /* Making sure the pointer chars before and after are equal. */
@@ -239,8 +251,6 @@ type get_type(intermediate_pass* _pass, vector* file, u32 index)
         stack_push(&error_value, inital_token);
         #endif
     }
-
-    _type.ptr_count = after_ptrs;
 
     #if DESCRIPTIVE_ERRORS
     if (_type.kind == NO_TYPE)
@@ -312,7 +322,7 @@ is_ascii_float_return is_ascii_float(char** float_token)
         }
 
         /* If this character isn't a number, this isn't a float. */
-        if (48 > current_char || current_char > 57) {
+        if ('0' > current_char || current_char > '9') {
             float_type = 0;
             goto is_ascii_float_return_construct_struct_label;
         }
@@ -322,9 +332,13 @@ is_ascii_float_return is_ascii_float(char** float_token)
 
     is_ascii_float_return_construct_struct_label: ;
 
-    is_ascii_float_return returning = { float_token, \
-    float_token - starting_token, float_type };
-    return returning;
+    is_ascii_float_return result = {
+        .end_ptr = float_token,
+        .token_length = (u32)(size_t)(float_token - starting_token),
+        .type = float_type,
+    };
+
+    return result;
 }
 
 /*
@@ -362,31 +376,73 @@ f64 get_ascii_float(char** float_token, char** ending_float_token)
 }
 
 /*
- * This returns the numeral value of an ASCII string.
+ * This returns the numeral value of an ASCII string. This supports negative
+ * signs but doesn't support suffix or prefixes.
  */
-i64 get_ascii_number(char* num_string)
+num get_ascii_number(char* num_string)
 {
-    bool negative = num_string[0] == '-';
-    i64 result = 0;
-    for (u32 i = negative; i < strlen(num_string); i++) {
-        result *= 10;
-        result += (num_string[i] - 48);
+    num result = {
+        .magnitude = 0,
+        .negative = (num_string[0] == '-'),
+    };
+
+    u32 num_len = strlen(num_string);
+    for (u32 i = (u32)result.negative; i < num_len; i++) {
+        result.magnitude *= 10;
+        result.magnitude += (num_string[i] - '0');
     }
 
-    return negative ? -result : result;
+    return result;
 }
 
 /*
- * This goes through a string and returns true if it is an ASCII number.
+ * Returns true if the inputted number string contains all number characters
+ * this supports negative numbers and suffixes, but doesn't support numbers with
+ * decimal points. Prefixes and suffixes both need to be one character and
+ * prefixes are assumed to start with a '0' so that has to be excluded from the
+ * inputted "prefixes" string of chars.
  */
-bool is_ascii_number(char* num_string)
+bool is_ascii_number(char* num_string, const char* prefixes,
+const char* suffixes)
 {
-    bool negative = num_string[0] == '-';
-    for (u32 i=(u32)negative; i < strlen(num_string); i++)
-        if (48 > num_string[i] || num_string[i] > 57)
-            return false;
+    bool read_number = false;
+    bool has_suffix = false;
+    for (u32 i=(u32)(num_string[0] == '-'); i < strlen(num_string); i++) {
+        if (num_string[i] >= '0' && num_string[i] <= '9') {
+            if (has_suffix)
+                return false;
 
-    return true;
+            read_number = true;
+            continue;
+        }
+
+        /* Checking for "0{prefix_char}" prefixes. */
+        if (i == 1 && num_string[0] == '0') {
+            for (const char* _prefix = prefixes; *_prefix != '\0'; _prefix++)
+                if (*_prefix == num_string[i])
+                    goto is_ascii_number_continue_reading_label;
+
+            return false;
+        }
+
+        /* Checking if this number has a suffix. */
+        for (const char* _suffix = suffixes; *_suffix != '\0'; _suffix++) {
+            if (*_suffix == num_string[i]) {
+                has_suffix = true;
+                goto is_ascii_number_continue_reading_label;
+            }
+        }
+
+        return false;
+
+        is_ascii_number_continue_reading_label: ;
+    }
+
+    /*
+     * Read number is used here because if the number is just a prefix and or a
+     * suffix and no number this function would return true which is shouldn't.
+     */
+    return read_number;
 }
 
 // TODO: This function should test hashes against hashes.
@@ -412,7 +468,7 @@ bool is_invalid_name(intermediate_pass* _pass, char* name)
     char** types = _pass->data.front_end->type_names;
 
     /* Checks if the first letter is a number. */
-    if (48 <= name[0] && name[0] <= 57)
+    if ('0' <= name[0] && name[0] <= '9')
         return true;
 
     /* Checks if the "name" matches anything in invalid names. */
@@ -441,10 +497,11 @@ u32 get_end_of_line(vector* file, u32 i)
 {
     char _char;
     for (; i < VECTOR_SIZE(*file)-1; i++)
-        if (*(char**)vector_at(file, i, false) == NULLPTR)
+        // TODO: Is this the desired behaviour?
+        if (VECTOR_AT(file, i, char*) == NULLPTR)
             return i;
 
-        _char = **(char**)vector_at(file, i, false);
+        _char = *VECTOR_AT(file, i, char*);
 
         if (_char == '\n' || _char == ';')
             return i;

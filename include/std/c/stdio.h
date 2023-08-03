@@ -1,7 +1,7 @@
 // TODO: These and other std files need to be fully implemented and these
 // macros should be defined with the real macros.
-#ifndef STD_C_STDIO_H
-#define STD_C_STDIO_H
+#ifndef _STDIO_H
+#define _STDIO_H
 
 #include<typedefs.h>
 
@@ -10,51 +10,38 @@
 typedef long int ssize_t;
 #endif
 
+// TODO: These need to be done with FILE ptrs.
+
+/* Standard input. */
+extern void* stdin;
+#define stdin stdin
+
+/* Standard output. */
+extern void* stdout;
+#define stdout stdout
+
+/* Standard error output. */
+extern void* stderr;
+#define stderr stderr
+
+/*
+ * This is the size of the "printf" buffer. This must be larger than the length
+ * of "(null)".
+ */
+#define PRINTF_BUF_SIZE ((size_t)1024)
+
+// TODO: This shoudl also be called "FILE" I'm pretty sure.
+// TODO: These needs more members.
+typedef struct File {
+    int stream;
+} File;
+
 // TODO: i386
 // TODO: arm
 // TODO: risc-v
 
-// #if linux
-
-// typedef struct FILE FILE;
-// typedef struct file_buffer_index file_buffer_index;
-
-// typedef struct file_buffer_index {
-//   file_buffer_index* next;
-//   FILE* buffer;
-//   i32 index;
-// } file_buffer_index;
-
-// typedef struct file_lock {
-//     i32 lock;
-//     i32 c;
-//     void* parent;
-// } file_lock;
-
-// typedef struct FILE {
-//     i32 flags_0;
-//     char* read_ptr;
-//     char* read_end;
-//     char* read_base;
-//     char* write_base;
-//     char* write_ptr;
-//     char* write_end;
-//     char* buf_base;
-//     char* buf_end;
-//     char* save_base;
-//     char* backup_base;
-//     char* save_end;
-//     file_buffer_index* indexes;
-//     FILE* next;
-//     i32 file_descriptor;
-//     i32 flags_1;
-//     long notused;
-//     u8 column;
-//     i8 vtable_offset;
-//     char buf;
-//     file_lock* lock;
-// } FILE;
-// #endif
+// TODO:
+void fflush(File* stream);
 
 /*
  * This function opens the file at the inputted file path with the inputted
@@ -76,10 +63,49 @@ i32 fsopen(const char* file_path, const char* options);
 ssize_t read(int handle, void* buffer, size_t count);
 
 /*
- * This closes the inputted handle. Returns zero if successfull and -1 on
+ * This writes count bytes from the inputted buffer to the inputted handle.
+ * Returns the number of bytes written.
+ */
+ssize_t write(int handle, const void* buffer, size_t count);
+
+/*
+ * This closes the inputted handle. Returns zero if successful and -1 on
  * errors.
  */
 int close(int handle);
+
+/*
+ * This attempts to remove the file of the inputted name. Returns a non zero
+ * value on failure.
+ */
+int remove(const char* file_name);
+
+/*
+ * This attempts to rename the file of the inputted name to the inputted new
+ * name. Returns a non zero value on failure.
+ */
+int rename(const char* file_name, const char* new_name);
+
+/*
+ * This formats the inputted values according to the inputted format to stdout.
+ * This returns the number bytes written excluding the null terminating '\0'
+ * char.
+ */
+int printf(const char* format, ...);
+
+/*
+ * This formats the inputted values according to the inputted format to the
+ * inputted file. This returns the number bytes written excluding the null
+ * terminating '\0' char.
+ */
+int fprintf(File* stream, const char* format, ...);
+
+/*
+ * This formats the inputted values according to the inputted format to the
+ * inputted file descriptor. This returns the number bytes written excluding
+ * the null terminating '\0' char.
+ */
+int dprintf(int fd, const char* format, ...);
 
 // /*
 //  * This function opens the file at the inputted file path with the inputted

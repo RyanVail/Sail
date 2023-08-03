@@ -3,58 +3,29 @@
  */
 
 #include<types.h>
-#include<common.h>
 #include<intermediate/struct.h>
+#include<cli.h>
+#include<archs.h>
 
-/*
- * These are the default type sizes. Corrispond with: { VOID, BOOL, I8, U8, I16,
- * U16, I32, U32, I64, U64, float, double, ptr }
- */
-u8 global_type_sizes[STRUCT_TYPE+1] = { 0, 1, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 8 };
-
-// TODO: This should be in "intermediate" not here.
-// TODO: The below function should change based on TYPE_SIZES rather than using
-// hard coded values.
 /* This returns the lowest possible integer type the inputted value can be. */
 type_kind get_lowest_type(i64 value)
 {
-    #if USE_PREDEF_TYPE_MAXES
     if (value > 0) {
-        if (value <= __UINT8_MAX__)
+        if (value <= UINT8_MAX)
             return U8_TYPE;
-        if (value <= __UINT16_MAX__)
+        if (value <= UINT16_MAX)
             return U16_TYPE;
-        if (value <= __UINT32_MAX__)
+        if (value <= UINT32_MAX)
             return U32_TYPE;
         return U64_TYPE;
     }
-    if (value <= __INT8_MAX__ && value >= ~__INT8_MAX__)
+    if (value <= INT8_MAX && value >= ~INT8_MAX)
         return I8_TYPE;
-    if (value <= __INT16_MAX__ && value >= ~__INT16_MAX__)
+    if (value <= INT16_MAX && value >= ~INT16_MAX)
         return I16_TYPE;
-    if (value <= __INT32_MAX__ && value >= ~__INT32_MAX__)
+    if (value <= INT32_MAX && value >= ~INT32_MAX)
         return I32_TYPE;
     return I64_TYPE;
-    #else
-    type_kind current_type;
-    i64 current_max;
-    if (value > 0) {
-        for (current_type = U8_TYPE; current_type <= U64_TYPE; current_type+=2){
-            /* This assumes that the byte width of an u64 is eight. */
-            if (TYPE_SIZES[current_type] >= 8)
-                return current_type;
-            if (value <= ((u64)1 << ((u64)TYPE_SIZES[current_type]<<3))-1)
-                return current_type;
-        }
-        return U64_TYPE;
-    }
-    for (current_type = I8_TYPE; current_type <= I64_TYPE; current_type+=2) {
-        i64 current_max = ((u64)1 << ((u64)TYPE_SIZES[current_type])-1)-1;
-        if (value <= current_max && value >= ~current_max)
-            return current_type;
-    }
-    return I64_TYPE;
-    #endif
 }
 
 /*
@@ -62,10 +33,11 @@ type_kind get_lowest_type(i64 value)
  * type_sizes array or for special types this will return the result of calling
  * the intermediate pass' type size handler function. If the type kind is
  * special or the intermediate pass is a NULLPTR or the intermediate pass' type
- * size handler function is a NULLPTR this will return __UINT32_MAX__.
+ * size handler function is a NULLPTR this will return UINT32_MAX.
  */
 u32 type_get_size(intermediate_pass* _pass, type _type)
 {
+    // TODO: Reimplement this or remove it
     // intermediate_struct* _struct;
     // if (IS_TYPE_STRUCT(_type)) {
     //     /* Checking if this is a struct pointer. */
@@ -74,9 +46,9 @@ u32 type_get_size(intermediate_pass* _pass, type _type)
 
     //     /* Generating the struct's size if it hasn't been initted yet. */
     //     _struct = get_struct(_type.ptr);
-    //     if (_struct->byte_size == __UINT16_MAX__) {
+    //     if (_struct->byte_size == UINT16_MAX) {
     //         if (struct_generator == NULLPTR)
-    //             return __UINT32_MAX__;
+    //             return UINT32_MAX;
     //         struct_generator(_struct);
     //     }
     //     return _struct->byte_size;
@@ -84,14 +56,54 @@ u32 type_get_size(intermediate_pass* _pass, type _type)
     /* If this type is special the intermediate pass should handle it. */
     if (IS_TYPE_SPECIAL(_type)) {
         /* Making sure this intermediate pass is valid. */
-        if (_pass == NULLPTR || _pass->data.front_end->type_size_func==NULLPTR)
-            return __UINT32_MAX__;
+        if (_pass == NULLPTR
+        || _pass->data.front_end->type_size_func == NULLPTR)
+            return UINT32_MAX;
         return (*_pass->data.front_end->type_size_func)(_pass, _type);
     }
 
     /* Returning the size of a ptr if this is a ptr. */
-    return _type.ptr_count ? global_type_sizes[TYPE_PTR_INDEX] \
-    : global_type_sizes[_type.kind];
+    if (_type.ptr_count)
+        return arch_ptr_equivalents[global_cli_options.target];
+
+    switch (_type.kind)
+    {
+    case VOID_TYPE:
+        return 0;
+    case BOOL_TYPE:
+    case I8_TYPE:
+    case U8_TYPE:
+        return 1;
+    case I16_TYPE:
+    case U16_TYPE:
+        return 2;
+    case I32_TYPE:
+    case U32_TYPE:
+    case FLOAT_TYPE:
+        return 4;
+    case I64_TYPE:
+    case U64_TYPE:
+    case DOUBLE_TYPE:
+        return 8;
+    default:
+        __builtin_unreachable();
+    }
+}
+
+/*
+ * This returns the numerical type of the inputted "_type" which is the type
+ * used during operations. For example ptrs would return a type kind that has
+ * the same behaviour as the ptr during numerical operations.
+ */
+type_kind get_operational_type(type _type)
+{
+    if (_type.ptr_count)
+        return arch_ptr_equivalents[global_cli_options.target];
+
+    if (IS_TYPE_FLOAT_OR_DOUBLE(_type) || IS_TYPE_INT(_type))
+        return _type.kind;
+
+    return NO_TYPE;
 }
 
 /*
@@ -220,15 +232,4 @@ void print_type_kind(intermediate_pass* _pass, type _type)
 
     /* Printing the ending color and '`'. */
     printf("\x1b[0m");
-}
-
-/*
- * This scales the inputted value to the inputted type. This only works for
- * values no greater magnitude than the maximum value of the type to the power
- * of two minus one. EX. maximum of u8: 256^2-1 = 65535.
- */
-i64 scale_value_to_type(i64 value, type _type)
-{
-    i64 tmp_value = value >> (global_type_sizes[_type.kind] << 3);
-    return (tmp_value == 0) ? (value) : (~tmp_value);
 }

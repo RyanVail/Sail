@@ -1,5 +1,5 @@
-#ifndef STACK_H
-#define STACK_H
+#ifndef DATASTRUCTURES_STACK_H
+#define DATASTRUCTURES_STACK_H
 
 #include<common.h>
 
@@ -38,9 +38,19 @@ void stack_push(stack* _stack, void* value);
 void stack_push_malloc_with_size(stack* _stack, void* value, u32 type_size);
 
 /*
- * This returns a pointer to the value on top of the stack.
+ * This returns a pointer to the value on the top of the stack.
  */
-void* stack_top(stack* _stack);
+static inline void* stack_top(stack* _stack)
+{
+    #if DEBUG
+    if (_stack->top == NULLPTR) {
+        printf("Cannot take the top of a stack with a size of zero.\n");
+        abort();
+    }
+    #endif
+
+    return _stack->top->value;
+}
 
 /* This returns the last link on the stack. */
 link* stack_last_link(stack* _stack);
@@ -52,7 +62,7 @@ void* stack_last(stack* _stack);
 void stack_push_last(stack* _stack, void* value);
 
 /*
- * This takes the top value off the stack.
+ * This takes the top value off the stack and returns its value.
  */
 void* stack_pop(stack* _stack);
 

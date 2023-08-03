@@ -18,7 +18,9 @@ typedef int16_t i16;
 typedef uint8_t u8;
 typedef int8_t i8;
 
+#if !DONT_DEFINE_FLOAT_TYPES
 typedef float f32;
 typedef double f64;
+#endif
 
 #endif

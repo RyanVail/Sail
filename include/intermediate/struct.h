@@ -32,7 +32,7 @@ typedef struct struct_variable {
  * @name: The name of this struct
  * @contents: The variables this struct contains. A stack of "struct_variable"
  * @flags: 1 -> Padding can be optimized, 2 -> Memory layout has been generated
- * @byte_size: The size of this struct in bytes __UINT16_MAX__ if not set
+ * @byte_size: The size of this struct in bytes UINT16_MAX if not set
  */
 typedef struct intermediate_struct {
     u32 hash;
@@ -47,10 +47,11 @@ intermediate_struct* get_struct(intermediate_pass* _pass, u32 struct_hash);
 
 /*
  * This function attemps the create a struct with "struct_name". Returns a
- * pointer to the newly created struct.returns a NULLPTR on errors.
+ * pointer to the newly created struct. This inits the struct with "extra_size"
+ * bytes onto the end to allow for extra data. a Returns a NULLPTR on errors.
  */
-intermediate_struct* create_struct(intermediate_pass* _pass, \
-char* struct_name, u8 flags);
+intermediate_struct* create_struct(intermediate_pass* _pass,
+char* struct_name, size_t extra_size, u8 flags);
 
 /*
  * This finds and returns the "struct_variable" variable from the inputted
@@ -70,8 +71,8 @@ u32 struct_hash, char* var_name);
  * This adds the inputted variable to the inputted struct. Returns true if it
  * was successful otherwise false.
  */
-bool add_variable_to_struct(intermediate_pass* _pass, \
-intermediate_struct* _struct, type var_type, char* var_name);
+bool add_variable_to_struct(intermediate_pass* _pass,
+intermediate_struct* _struct, type var_type, char* var_name, bool override);
 
 /*
  * This goes though all the variables in a struct and reverses their order. This

@@ -32,6 +32,14 @@
 #endif
 
 /*
+ * This will make it so unreachable scopes within the compiler are compiled with
+ * calls to "__builtin_unreachabe()" which some compiler might not have.
+ */
+#ifndef COMPILER_HAS_UNREACHABLE
+	#define COMPILER_HAS_UNREACHABLE 1
+#endif
+
+/*
  * This flag controls if this should compile using the internal standard C
  * library or not. This doesn't stop the standard C library from being included
  * that has to be done externally. The C library included with Sail is not meant
@@ -65,7 +73,7 @@
 
 /*
  * This flag changes if the function "get_lowest_type" uses the predefined C
- * macros for type sizes EX. "__UINT8_MAX__" or uses the type sizes to
+ * macros for type sizes EX. UINT8_MAX or uses the type sizes to
  * dynamically generate the maximums and minimums of a given type. If this is
  * set to true it cause problems for platforms in which type sizes are non
  * normal and if the type names are changed.
@@ -116,7 +124,7 @@
 		#define PTRS_ARE_64BIT 0
 	#endif
 #else
-	#define PTRS_ARE_64BIT (__UINTPTR_MAX__ == 0xffffffffffffffff)
+	#define PTRS_ARE_64BIT (UINTPTR_MAX == 0xffffffffffffffff)
 	// #define PTRS_ARE_64BIT 0
 #endif
 

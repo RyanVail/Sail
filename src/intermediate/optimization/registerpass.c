@@ -48,7 +48,11 @@ void optimization_do_register_pass()
     // TODO: The below if statements should be replaced with a switch statement
     // so the compiler can decide how to optimize it.
     for (; location < VECTOR_SIZE(*intermediates);) {
-        intermediate* _current = vector_at(intermediates, location, 0);
+        intermediate* _current = &VECTOR_AT (
+            intermediates,
+            location,
+            intermediate
+        );
 
         if ((_current->type >= IF) && (_current->type <= GOTO)) {
             process_basic_block(&ptrs, &uses, start, location, \
@@ -66,14 +70,14 @@ void optimization_do_register_pass()
             // get_variable_symbol("", *(u32*)&_current->ptr)->uses++;
 
             for (u32 i=0; i < VECTOR_SIZE(ptrs); i++) {
-                if (*(u32*)vector_at(&ptrs, i, 0) == *(u32*)(&_current->ptr)) {
-                    *(u8*)vector_at(&uses, i, 0) += 1;
+                if (VECTOR_AT(&ptrs, i, u32) == (u32)(size_t)_current->ptr) {
+                    VECTOR_AT(&uses, i, u8) += 1;
                     goto optimization_first_pass_next_intermediate_label;
                 }
             }
             u8 _tmp_uses = 0;
             vector_append(&ptrs, (u32*)&_current->ptr);
-            vector_append(&uses, &(_tmp_uses));
+            vector_append(&uses, &_tmp_uses);
         }
 
         optimization_first_pass_next_intermediate_label:
@@ -105,23 +109,27 @@ u32 end, vector* intermediates, vector* output_intermediates)
     // TODO: Replace this with something that isn't O(n^2)!
     for (u8 x=0; x < VECTOR_SIZE(*ptrs); x++) {
         u8 highest_uses = 0;
-        u8 highest_index = __UINT8_MAX__;
+        u8 highest_index = UINT8_MAX;
         for (u8 y=0; y < VECTOR_SIZE(*ptrs); y++) {
-            if (*(u32*)vector_at(ptrs, y, false) != __UINT32_MAX__
-            && *(u8*)vector_at(uses, y, false) >= highest_uses) {
+            if (VECTOR_AT(ptrs, y, u32) != UINT32_MAX
+            && VECTOR_AT(uses, y, u8) >= highest_uses) {
                 highest_index = y;
-                highest_uses = *(u8*)vector_at(uses, y, false);
+                highest_uses = VECTOR_AT(uses, y, u8);
             }
         }
 
-        if (highest_index == __UINT8_MAX__)
+        if (highest_index == UINT8_MAX)
             continue;
 
-        vector_append(new_ptrs, vector_at(ptrs, highest_index, false));
-        *(u32*)vector_at(ptrs, highest_index, false) = __UINT32_MAX__;
+        vector_append(new_ptrs, VECTOR_AT(ptrs, highest_index, u32**));
+        VECTOR_AT(ptrs, highest_index, u32) = UINT32_MAX;
     }
 
-    intermediate _intermediate = { REGISTER, new_ptrs };
+    intermediate _intermediate = {
+        .type = REGISTER,
+        .ptr = new_ptrs,
+    };
+
     vector_append(output_intermediates, &_intermediate);
     ptrs->apparent_size = 0;
     uses->apparent_size = 0;

@@ -10,9 +10,9 @@
 #include<intermediate/intermediate.h>
 
 static char white_space_c[] = { ' ', '\t' };
-static char special_c[] = { '>', '<', '=', '!', '+', '-', '*', '/', '{', '}', \
-';', '^', '!', '&', '|', ',', '(', ')', '$', '%', '#', '\\', '.', '\"', \
-'\'', '~', ':', '[', ']', '?', '\n' };
+static char special_c[] = { '>', '<', '=', '!', '+', '-', '*', '/', '{', '}',
+';', '^', '!', '&', '|', ',', '(', ')', '$', '%', '#', '\\', '.', '\"', '\'',
+'~', ':', '[', ']', '?', '\n' };
 
 /* The status given by macro functions. */
 typedef enum macro_status {
@@ -21,11 +21,31 @@ typedef enum macro_status {
     DONT_SAVE_LINE,     /* Don't add the current line to the output file. */
 } macro_status;
 
-static vector defined = { NULLPTR, 0, 0, sizeof(u32) };
+static vector defined = {
+    .contents = NULLPTR,
+    .apparent_size = 0,
+    .size = 0,
+    .type_size = sizeof(u32),
+};
 // TODO: ^^^ This should be a hash table. ^^^
-static vector tokenized_file = { NULLPTR, 0, 0, sizeof(char*) };
-static vector new_file = { NULLPTR, 0, 0, sizeof(char*) };
-static stack operand_stack = { NULLPTR };
+
+static vector tokenized_file = {
+    .contents = NULLPTR,
+    .apparent_size = 0
+    .size = 0,
+    .type_size = sizeof(char*),
+};
+
+static vector new_file = {
+    .contents = NULLPTR,
+    .apparent_size = 0,
+    .size = 0,
+    .type_size = sizeof(char*),
+};
+
+static stack operand_stack = {
+    .top = NULLPTR
+};
 
 static inline void C_expand_macro(vector* new_file, u32* i, vector* file);
 static inline macro_status C_read_macro(vector* file, u32* i, \
@@ -120,12 +140,12 @@ vector C_preprocess_file(char* file_name)
     START_PROFILING("preprocess file", "compile file");
 
     for (u32 i=0; i < tokenized_file.apparent_size; i++)
-        if (*(char**)vector_at(&tokenized_file, i, false) != NULLPTR)
+        if (VECTOR_AT(&tokenized_file, i, char*) != NULLPTR)
             C_preprocess_line(&i);
 
     for (u32 i=0; i < VECTOR_SIZE(new_file); i++)
-        if (*(char**)vector_at(&new_file, i, false) != NULLPTR)
-            printf("%s\n", *(char**)vector_at(&new_file, i, false));
+        if (VECTOR_AT(&new_file, i, char*) != NULLPTR)
+            printf("%s\n", VECTOR_AT(&new_file, i, char*));
 
     free(tokenized_file.contents);
 
@@ -134,19 +154,20 @@ vector C_preprocess_file(char* file_name)
     return new_file;
 }
 
+// TODO: This really should be done in a better way.
 /*
  * This returns the file index of a macro by the same name as the inputted
- * "char*" or "__UINT32_MAX__". The returned index is one more than where the
+ * "char*" or UINT32_MAX. The returned index is one more than where the
  * name is located.
  */
 static inline u32 C_get_macro(vector* file, char* macro_name)
 {
     for (u32 i=0; i < VECTOR_SIZE(defined); i++)
-        if (!strcmp(*(char**)vector_at(file,*(u32*)vector_at(&defined, i, 0),0)\
-        ,macro_name))
-            return *(u32*)vector_at(&defined, i, 0) + 1;
+        if (!strcmp(VECTOR_AT(file, VECTOR_AT(&defined, i, u32), char*),
+        macro_name))
+            return VECTOR_AT(&defined, i, u32) + 1;
 
-    return __UINT32_MAX__;
+    return UINT32_MAX;
 }
 
 /*
@@ -160,7 +181,7 @@ static inline void C_add_macro(vector* file, u32* i)
     find_next_valid_token(file, i);
 
     /* Making sure the macro isn't already defined. */
-    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) != __UINT32_MAX__)
+    if (C_get_macro(file, *(char**)vector_at(file, *i, 0)) != UINT32_MAX)
         send_error("Macro has already been defined");
 
     /* Adding the macro to the defined vector. */
@@ -181,7 +202,7 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
     char* name = *(char**)vector_at(file, *i, 0);
     u32 macro_index = C_get_macro(file, name);
 
-    if (macro_index == __UINT32_MAX__)
+    if (macro_index == UINT32_MAX)
         return;
 
     u32 macro_end_index = get_end_of_line(file, macro_index) - 1;
@@ -191,9 +212,9 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
         return;
 
     char* current_token = 0;
-    if (**(char**)vector_at(file, *i, 0) != '(') {
+    if (*VECTOR_AT(file, *i, char*) != '(') {
         for (; macro_index <= macro_end_index; macro_index++) {
-            current_token = *(char**)vector_at(file, macro_index, 0);
+            current_token = VECTOR_AT(file, macro_index, char*)
 
             if (current_token == NULLPTR)
                 continue;
@@ -209,7 +230,7 @@ static inline void C_expand_macro(vector* new_file, u32* i, vector* file)
  */
 static inline void C_skip_single_line_comment(vector* file, u32* i)
 {
-    if (**(u16**)vector_at(file, *i, false) == '/' | ('/' << 8)) {
+    if (*VECTOR_AT(file, *i, u16*) == ('/' | ('/' << 8))) {
         *i = get_end_of_line(file, *i);
         find_next_valid_token(file, i);
     }
@@ -218,13 +239,13 @@ static inline void C_skip_single_line_comment(vector* file, u32* i)
 /*
  * This is a helper function of "C_process_if_macro". This adds the numeral
  * value of the inputted ASCII number at the inputted index to the
- * operand_stack. Returns "__INTPTR_MAX__" if nothing was read.
+ * operand_stack. Returns INTPTR_MAX if nothing was read.
  */
 char** C_preprocessor_process_operand(char** token)
 {
     /* Making sure this is a number. */
     if (!is_ascii_number(*token))
-        return (void*)__INTPTR_MAX__;
+        return (void*)INTPTR_MAX;
 
     /* Allocating space for the number. */
     i64* num = malloc(sizeof(i64));
@@ -257,7 +278,7 @@ char** ending_token)
 {
     /* Getting the first index of the expression. */
     find_next_valid_token(file, i);
-    char** index = vector_at(file, *i, false);
+    char** index = &VECTOR_AT(file, *i, char*);
 
     // TODO: This doesn't account for the '?' and ':' operators.
 
@@ -307,7 +328,7 @@ char** ending_token)
         return SAVE_LINE;
 
     find_next_valid_token(file, i);
-    char* current_token = *(char**)vector_at(file, *i, false);
+    char* current_token = VECTOR_AT(file, *i, char*);
 
     if (!strcmp(current_token, "if")) {
         return C_process_if_macro(file, i, ending_token);

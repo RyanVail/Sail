@@ -233,7 +233,7 @@ bool tester_run_libc_realloc_test_1()
     /* Attempting the set the data. */
     memset(_value, 0, BYTE_SIZE);
 
-    /* Freeing the data and returning successfully. */
+    /* Freeing the data and returning successfuly. */
     free(_value);
     return true;
 
@@ -321,7 +321,7 @@ bool tester_run_libc_alloc_test_0()
         /* Randomly reallocating the data to the first 17 bits 1/3 the time. */
         if ((_rand >> 24) <= 85) {
             data = realloc(data, _rand & 0x1ffff);
-            if (data = NULLPTR)
+            if (data == NULLPTR)
                 return false;
         }
 

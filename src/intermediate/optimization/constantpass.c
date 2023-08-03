@@ -30,65 +30,32 @@ typedef struct constant_pass_data {
 } constant_pass_data;
 
 /* This process an int operation for the constant optimization pass. */
-void constant_optimization_process_operation(intermediate* operand0, \
+void constant_optimization_process_operation(intermediate* operand0,
 intermediate* operand1, intermediate* _current, type result_type)
 {
-    i64 result;
-
-    #if PTRS_ARE_64BIT
-    if (!(operand0->type == CONST && operand1->type == CONST))
+    if (!((operand0->type == CONST || operand0->type == CONST_PTR)
+    && (operand1->type == CONST || operand1->type == CONST_PTR)))
         return;
-    #else
-    if (!(((operand0->type == CONST || operand0->type == CONST_PTR)
-    && (operand1->type == CONST || operand1->type == CONST_PTR))))
-        return;
-    #endif
-    /* Evaluating the constant expression. */
-    #if PTRS_ARE_64BIT
-    result = evaluate_expression((i64)operand1->ptr, (i64)operand0->ptr, \
-        _current->type);
-    #else
-    i64* operand0_value;
-    i64* operand1_value;
-    /* Freeing the operands after getting them. */
-    if (operand0->type == CONST_PTR) {
-        operand0_value = *((i64*)operand0->ptr);
-        free(operand0->ptr);
-    } else if (operand0->type == CONST) {
-        operand0_value = &operand0->ptr;
-    }
 
-    if (operand1->type == CONST_PTR) {
-        operand1_value = (i64)operand1->ptr;
-        operand1->ptr = NULLPTR;
-    } else {
-        operand1_value = &operand1->ptr;
-    }
-
-    result = evaluate_expression(*operand1_value, *operand0_value,\
-        _current->type);
-    #endif
+    num result = evaluate_expression (
+        intermediate_get_const(operand1),
+        intermediate_get_const(operand0),
+        get_operational_type(result_type),
+        _current->type
+    );
 
     operand0->type = NIL;
     _current->type = NIL;
 
-    // TODO: For ptrs this needs to do something different.
-    /* Scaling the result. */
-    result = scale_value_to_type(result, result_type);
-
     /* Adding the result back to the intermediates. */
-    #if !PTRS_ARE_64BIT
     set_intermediate_to_const(operand1, result);
-    #else
-    operand1->ptr = (void*)result;
-    #endif
 }
 
 /*
  * This is an intermediate handler function that adds the inputted intermediate
  * to the operand stack.
  */
-void _add_operand_handler_func(intermediate_pass* _pass, intermediate* \
+void _add_operand_handler_func(intermediate_pass* _pass, intermediate*
 _intermediate)
 {
     stack_push(&_pass->operand_stack, _intermediate);
@@ -98,7 +65,7 @@ _intermediate)
  * This is an intermediate handler function that removes an operand from the
  * operand stack.
  */
-void _pop_operand_handler_func(intermediate_pass* _pass, intermediate* \
+void _pop_operand_handler_func(intermediate_pass* _pass, intermediate*
 _intermediate)
 {
     stack_pop(&_pass->operand_stack);
@@ -108,7 +75,7 @@ _intermediate)
  * This is an intermediate handler function that handles multiplying and
  * dividing operations.
  */
-void _mul_div_operand_handler_func(intermediate_pass* _pass, intermediate* \
+void _mul_div_operand_handler_func(intermediate_pass* _pass, intermediate*
 _intermediate)
 {
     stack_pop(&_pass->operand_stack);
@@ -119,15 +86,20 @@ _intermediate)
  * This is an intermediate handler function that handles adding and subtracting
  * operations.
  */
-void _add_sub_operand_handler_func(intermediate_pass* _pass, intermediate* \
+void _add_sub_operand_handler_func(intermediate_pass* _pass, intermediate*
 _intermediate)
 {
     intermediate* operand0 = stack_pop(&_pass->operand_stack);
-    if (PASS_DATA(_pass)->last_communtativity == ADD_SUB \
-    || PASS_DATA(_pass)->last_communtativity == NONE)
-        constant_optimization_process_operation(operand0, \
-        stack_top(&_pass->operand_stack), _intermediate, \
-        PASS_DATA(_pass)->result_type);
+    if (PASS_DATA(_pass)->last_communtativity == ADD_SUB
+    || PASS_DATA(_pass)->last_communtativity == NONE) {
+        constant_optimization_process_operation (
+            operand0,
+            stack_top(&_pass->operand_stack),
+            _intermediate,
+            PASS_DATA(_pass)->result_type
+        );
+    }
+
     PASS_DATA(_pass)->last_communtativity = ADD_SUB;
 }
 
@@ -136,9 +108,9 @@ void _cast_operand_handler_func(intermediate_pass* _pass, intermediate* \
 _intermediate)
 {
     #if PTRS_ARE_64BIT
-    PASS_DATA(_pass)->result_type = *(type*)(&_intermediate->ptr);
+    PASS_DATA(_pass)->result_type = *(type*)&_intermediate->ptr;
     #else
-    PASS_DATA(_pass)->result_type = *((type*)_intermediate->ptr);
+    PASS_DATA(_pass)->result_type = *(type*)_intermediate->ptr;
     #endif
 }
 
@@ -184,30 +156,30 @@ const_handler_funcs[INTERMEDIATE_TYPE_NORMAL_END+1] = {
     &_pop_operand_handler_func, &_pop_operand_handler_func,
     &_pop_operand_handler_func, &_pop_operand_handler_func,
 
-    /* EQUAL intermediates */
+    /* EQUAL */
     &_clear_stack_handler_func,
 
-    /* VAR intermediates */
+    /* VAR */
     &_add_operand_handler_func, &_add_operand_handler_func,
     &_add_operand_handler_func, &_clear_stack_handler_func,
 
-    /* MEM intermediates */
+    /* MEM */
     &_clear_stack_handler_func, &_clear_stack_handler_func,
 
-    /* Program flow intermediates */
+    /* Program flow */
     &_clear_stack_handler_func, &_clear_stack_handler_func,
     &_clear_stack_handler_func, &_clear_stack_handler_func,
     &_clear_stack_handler_func, &_clear_stack_handler_func,
     &_clear_stack_handler_func, &_clear_stack_handler_func,
     &_clear_stack_handler_func, &_clear_stack_handler_func,
 
-    /* CONST and CONST_PTR intermediates */
+    /* CONST and CONST_PTR */
     &_add_operand_handler_func, &_add_operand_handler_func,
 
-    /* FLOAT and DOUBLE intermediates */
+    /* FLOAT and DOUBLE */
     &_clear_stack_handler_func, &_clear_stack_handler_func,
 
-    /* Struct variables and RETURN temp intermediates */
+    /* Struct variables and RETURN temps */
     &_clear_stack_handler_func, &_clear_stack_handler_func,
     &_clear_stack_handler_func, &_clear_stack_handler_func,
     &_clear_stack_handler_func,
@@ -215,7 +187,7 @@ const_handler_funcs[INTERMEDIATE_TYPE_NORMAL_END+1] = {
     /* CAST */
     &_cast_operand_handler_func,
 
-    /* Variable optimization intermediates */
+    /* Variable optimization */
     &_clear_stack_handler_func, &_clear_stack_handler_func,
     &_clear_stack_handler_func,
 

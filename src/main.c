@@ -135,8 +135,10 @@ int main(i32 argc, char* args[])
         END_PROFILING("compile file", false);
 
         #if DEBUG
-        if (global_cli_options.print_intermediates)
+        if (global_cli_options.print_intermediates) {
+            salmon_parser_init_front_end(&_pass);
             print_raw_intermediates(&_pass);
+        }
         #endif
 
         // TODO: This needs a shared function.
@@ -149,7 +151,6 @@ int main(i32 argc, char* args[])
         free_intermediates(&_pass, true, true, true);
     }
     // TODO: Free intermediates needs to free all of the new intermediates.
-    free_functions(&_pass);
     free_functions(&_pass);
     // free_tokenized_file_vector(&_tmp);
     // exit(0);
@@ -204,8 +205,8 @@ int main(i32 argc, char* args[])
 
     // printf("%p\n", get_variable_symbol("", 0));
     // clear_variables_in_scope();
-    clear_variables_in_scope(&_pass);
-    clear_function_symbol_table(&_pass);
+    // clear_variables_in_scope(&_pass);
+    // clear_function_symbol_table(&_pass);
     free_intermediates(&_pass, true, true, true);
 }
 

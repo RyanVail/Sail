@@ -1,4 +1,4 @@
-/* This file does all of the evaluating of equations pre computation. */
+/* This file does all of the evaluating of equations during compile time. */
 
 #ifndef EVALUATE_H
 #define EVALUATE_H
@@ -7,18 +7,24 @@
 #include<common.h>
 
 /*
- * Operators ids are the same as those of "intermediate_type" expect for
- * "OPENING_PAR" and "CLOSING_PAR" which are just temp anyway.
+ * Operators ids are the same as those of "intermediate_type" expect for the
+ * operators defined in the next anonymous union.
  */
 typedef u8 operator;
 
-#define OPENING_PAR ((operator)22)
-#define CLOSING_PAR ((operator)23)
+enum {
+    OPENING_PAR = 22,
+    CLOSING_PAR = 23,
 
-/* The logically highest value of the "operator" type. */
-#define __OPERATOR_MAX__ ((operator)-1)
+    /* The logically highest value of the "operator" type. */
+    OPERATOR_MAX = (operator)-1,
+};
 
-/* This evaluates the inputted expression and returns the result. */
-i64 evaluate_expression(i64 input0, i64 input1, operator _operator);
+/*
+ * This evaluates the inputted operation between the two inputs with the
+ * inputted integer type.
+ */
+num evaluate_expression(num input0, num input1, type_kind _type_kind,
+operator _operator);
 
 #endif

@@ -14,20 +14,21 @@ hash_table_bucket* hash_table_insert_hash(hash_table* _hash_table, u32 hash)
 {
     /* Checking if the hash has already been defined. */
     #if DEBUG
-    if (hash_table_at_hash(_hash_table,  hash) != NULLPTR)
+    if (hash_table_at_hash(_hash_table, hash) != NULLPTR)
         send_error("Hash already found.\n");
     #endif
 
-    /* Getting the index of the first bucket. */
+    /* Getting the first bucket. */
     hash_table_bucket* current_bucket = (hash_table_bucket*)_hash_table \
         ->contents + (hash & ((1 << _hash_table->size) - 1));
 
-    /* Inserting the current value into the bucket. */
+    /* Inserting the current value into the first bucket if it has no hash. */
     if (current_bucket->hash == 0) {
         current_bucket->hash = hash;
         return current_bucket;
     }
 
+    /* Adding a new bucket to the linked bucket list.  */
     hash_table_bucket* new_bucket = malloc(sizeof(hash_table_bucket));
     CHECK_MALLOC(new_bucket);
 
@@ -56,7 +57,7 @@ char* _string)
  */
 hash_table_bucket* hash_table_at_hash(hash_table* _hash_table, u32 hash)
 {
-    /* Getting the index of the bucket. */
+    /* Getting the first bucket. */
     #if WIN32
     hash_table_bucket* current_bucket = (u8*)_hash_table->contents \
         +sizeof(hash_table_bucket)*(hash & ((1 <<_hash_table->size)-1));
@@ -65,7 +66,7 @@ hash_table_bucket* hash_table_at_hash(hash_table* _hash_table, u32 hash)
         + sizeof(hash_table_bucket) * (hash & ((1 <<_hash_table->size) - 1));
     #endif
 
-    /* Getting the value from the bucket. */
+    /* Finding the bucket with the hash and returning its value. */
     while (true)
     {
         if (current_bucket->hash == hash)
@@ -103,6 +104,10 @@ hash_table hash_table_init(u8 size)
         new_hash_table_contents[i].value = NULLPTR;
     }
 
-    hash_table new_hash_table = { size, (void*)new_hash_table_contents };
+    hash_table new_hash_table = {
+        .size = size,
+        .contents = (void*)new_hash_table_contents
+    };
+
     return new_hash_table;
 }

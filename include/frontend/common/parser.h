@@ -90,14 +90,20 @@ is_ascii_float_return is_ascii_float(char** starting_float_token);
 f64 get_ascii_float(char** starting_float_token, char** ending_float_token);
 
 /*
- * This returns the numeral value of an ASCII string.
+ * This returns the numeral value of an ASCII string. This supports negative
+ * signs but doesn't support suffix or prefixes.
  */
-i64 get_ascii_number(char* num_string);
+num get_ascii_number(char* num_string);
 
 /*
- * This goes through a string and returns true if it is an ASCII number.
+ * Returns true if the inputted number string contains all number characters
+ * this supports negative numbers and suffixes, but doesn't support numbers with
+ * decimal points. Prefixes and suffixes both need to be one character and
+ * prefixes are assumed to start with a '0' so that has to be excluded from the
+ * inputted "prefixes" string of chars.
  */
-bool is_ascii_number(char* num_string);
+bool is_ascii_number(char* num_string, const char* prefixes,
+const char* suffixes);
 
 /*
  * This goes from the current position in the file till it reaches a '\n' and
@@ -120,6 +126,8 @@ typedef enum is_ascii_float_return_float_type {
     FLOAT_RETURN_DOUBLE_FLOAT,
 } is_ascii_float_return_float_type;
 
+// TODO: This should be named "float_parsing_data" or something and the main
+// function should be named something like "try_get_float".
 /* struct ascii_float_return - This struct is only used as the return from the
  * function "is_ascii_float"
  * @end_ptr: This is a pointer to the ending token of the ASCII float

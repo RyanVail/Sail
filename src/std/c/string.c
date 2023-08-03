@@ -1,7 +1,7 @@
 #include<std/c/string.h>
 
 /*
- * This copyies len bytes from the inputted source ptr into the inputted
+ * This copies len bytes from the inputted source ptr into the inputted
  * destination ptr. This returns a ptr to the destination.
  */
 void* memcpy(void* destination, const void* source, size_t len)
@@ -147,6 +147,9 @@ void* memchr(const void* source, i32 c, size_t n)
         if (_c == *_source)
             return (void*)_source;
         n--;
+        _source++;
+        // TODO: Unit tests for these need to be written because I don't think
+        // any of these were actually tested.
     }
 
     return NULLPTR;
@@ -166,7 +169,7 @@ char* strchr(const char* source, int c)
         source++;
     }
 
-    return _c == '\0' ? (char*)source : NULLPTR;
+    return (_c == '\0') ? (char*)source : (char*)NULLPTR;
 }
 
 /*

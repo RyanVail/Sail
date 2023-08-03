@@ -7,13 +7,10 @@
 
 #include<common.h>
 #include<string.h>
-
-typedef enum compilation_target {
-	LINUX_ARMv7,
-} compilation_target;
+#include<archs.h>
 
 /* struct cli_options - One static defintion of all command line options.
- * @compilation_target: The arcitecture and OS we are compiling for
+ * @target: The arcitecture and OS we are compiling for
  * @opt: The compilation optimization level
  * @time_compilation: If we are timing the compilation process (debug only)
  * @print_intermediates: If the intermediates get printed (debug only)
@@ -23,7 +20,7 @@ typedef enum compilation_target {
  * @output_file_name: The name of the output file
  */
 typedef struct cli_options {
-	compilation_target target;
+	arch target;
 	u8 opt;
 	#if DEBUG
 	bool time_compilation;

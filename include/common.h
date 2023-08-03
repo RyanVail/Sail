@@ -1,7 +1,8 @@
 /*
  * This file contains a lot of commonly used header files.
  */
-
+// TODO: Replace all __TYPE_MAX__ in the documentation.
+// TODO: Datastructures should be renamed Utils.
 #ifndef COMMON_H
 #define COMMON_H
 
@@ -12,6 +13,15 @@
 
 #define F64_TO_VOIDPTR(x) ((void*)(*((u64*)(&x))))
 #define VOIDPTR_TO_F64(x) (*(f64*)(&x))
+
+#if COMPILER_HAS_UNREACHABLE && !DEBUG
+    #define UNREACHABLE() \
+        __builtin_unreachable()
+#else
+    #define UNREACHABLE() \
+        send_error("Reached unreachable scope"); \
+        __builtin_unreachable()
+#endif
 
 #include<main.h>
 
@@ -35,7 +45,6 @@
 #endif
 // TODO: Implement the rest of these files in the C std
 
-#include<defs.h>
 #include<typedefs.h>
 #include<main.h>
 #include<errors.h>

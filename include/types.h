@@ -26,11 +26,14 @@
 /* This returns true if the inputted type kind is a float or double. */
 #define IS_KIND_FLOAT_OR_DOUBLE(x) (x == FLOAT_TYPE || x == DOUBLE_TYPE)
 
-/* This returns true if the inputted type kind is special. */
-#define IS_KIND_SPECIAL(x) (x > STRUCT_TYPE)
+/* This returns the first logical special type kind. */
+#define TYPE_KIND_FIRST_SPECIAL (STRUCT_TYPE)
 
 /* This returns true if the inputted type kind is special. */
-#define IS_TYPE_SPECIAL(x) ((x).kind > STRUCT_TYPE)
+#define IS_KIND_SPECIAL(x) ((x) > TYPE_KIND_FIRST_SPECIAL)
+
+/* This returns true if the inputted type kind is special. */
+#define IS_TYPE_SPECIAL(x) ((x).kind > TYPE_KIND_FIRST_SPECIAL)
 
 /* This is index of the ptr size in type_sizes */
 #define TYPE_PTR_INDEX (STRUCT_TYPE + 1)
@@ -41,54 +44,61 @@
 /* This is the index of the last ptr char in type name arrays. */
 #define TYPE_NAME_LAST_PTR_INDEX (STRUCT_TYPE + 1)
 
+/* The last logical internal type kind. */
+#define TYPE_KIND_LAST_INTERNAL (STRUCT_TYPE)
+
 /*
  * These are the kinds of types, use "type_kind" instead of this because it will
- * always be a u16. Any type kinds greater than that of a struct are considered
+ * always be a u8. Any type kinds greater than that of a struct are considered
  * special / non native and specific to front ends.
  */
 typedef enum _type_kind {
-    VOID_TYPE,          // 0x0 // 0000
-    BOOL_TYPE,          // 0x1 // 1000
+    VOID_TYPE,
+    BOOL_TYPE,
 
-    I8_TYPE,            // 0x2 // 1100
-    U8_TYPE,            // 0x3 // 0010
-    I16_TYPE,           // 0x4 // 1010
-    U16_TYPE,           // 0x5 // 0110
-    I32_TYPE,           // 0x6 // 1110
-    U32_TYPE,           // 0x7 // 0001
-    I64_TYPE,           // 0x8 // 1001
-    U64_TYPE,           // 0x9 // 0101
+    I8_TYPE,
+    U8_TYPE,
+    I16_TYPE,
+    U16_TYPE,
+    I32_TYPE,
+    U32_TYPE,
+    I64_TYPE,
+    U64_TYPE,
 
-    FLOAT_TYPE,         // 0xa // 0101
-    DOUBLE_TYPE,        // 0xb // 1101
-    STRUCT_TYPE,        // 0xc // 1110
-    NO_TYPE = 255,
+    FLOAT_TYPE,
+    DOUBLE_TYPE,
+    FUNC_TYPE, // TODO: Everything has to support the function type now.
+    STRUCT_TYPE,
+    NO_TYPE = UINT8_MAX,
 } _type_kind;
 
-/*
- * These are the default type sizes. Corrispond with: { VOID, BOOL, I8, U8, I16,
- * U16, I32, U32, I64, U64, float, double, ptr }
- */
-extern u8 global_type_sizes[STRUCT_TYPE+1];
+/* This ensure "type_kind" will always be a u8. */
+typedef u8 type_kind;
 
-/* This ensure "type_kind" will always be a u16. */
-typedef u16 type_kind;
-
-// TODO: Extra data can be a union between "void*" and hash key on 32 bit archs.
+// TODO: Extra data can be a union between "void*" and an u32 on 32 bit archs.
 /* struct type - This represents a type
- * @extra_data: This is an extra data attached to this type, this is a hash
- * table key
+ * @extra_data: This is an extra data attached to this type this changes based
+ * on the frontend and the type kind.
  * @ptr_count: This is the number of ptrs attached to this type.
  * @kind: This is the kind of this type.
  */
 typedef struct type {
     u32 extra_data;
     u16 ptr_count;
+    u8 flags;
     type_kind kind;
 } type;
 
-// TODO: Fix this header hell!
-#include<intermediate/pass.h>
+/* struct num - This can represent each integer value from (2^64-1) to -(2^64-1)
+ * which encompasses the ranges of all supported integer types
+ * @value: The magnitude of this number
+ * @negative: If this number is negative
+ */
+typedef struct num {
+    u64 magnitude;
+    bool negative;
+} num;
+
 typedef struct intermediate_pass intermediate_pass;
 
 /* This returns the lowest possible integer type the inputted value can be. */
@@ -99,9 +109,16 @@ type_kind get_lowest_type(i64 value);
  * type_sizes array or for special types this will return the result of calling
  * the intermediate pass' type size handler function. If the type kind is
  * special or the intermediate pass is a NULLPTR or the intermediate pass' type
- * size handler function is a NULLPTR this will return __UINT32_MAX__.
+ * size handler function is a NULLPTR this will return UINT32_MAX.
  */
 u32 type_get_size(intermediate_pass* _pass, type _type);
+
+/*
+ * This returns the numerical type of the inputted "_type" which is the type
+ * used during operations. For example ptrs would return a type kind that has
+ * the same behaviour as the ptr during numerical operations.
+ */
+type_kind get_operational_type(type _type);
 
 /* This is the return from type_can_implicitly_cast_to. */
 typedef enum type_cast_status {

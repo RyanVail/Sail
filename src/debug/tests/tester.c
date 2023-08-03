@@ -72,7 +72,7 @@ static const u8 hash_table_values[] = {
  */
 u32 hash_u32(u32 _u32)
 {
-    u32 result = __UINT32_MAX__;
+    u32 result = UINT32_MAX;
     for (u32 i=0; i < 4; i++) {
         result ^= hash_table_values[((u8*)&_u32)[i]];
         result = (result << 6) + (result >> 28);

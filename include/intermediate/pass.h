@@ -19,7 +19,7 @@ typedef struct intermediate_pass intermediate_pass;
     typedef struct rtl rtl;
 #endif
 
-/* This is the types of intermediate handler functions. */
+/* This is the types of intermediate haner functions. */
 typedef void (*handler_func)(intermediate_pass*, intermediate);
 
 /* This is the types of intermediate handler function for intermediate ptrs. */
@@ -198,6 +198,7 @@ intermediate_pass* _pass, intermediate_type _type, handler_func _func)
     }
 
     /* If this vector doesn't have enough space append the needed NULLPTRs. */
+    // TODO: This is so dumb.
     void* _nullptr = NULLPTR;
     for (u32 i=0; i < _type - INTERMEDIATE_TYPE_NORMAL_END - special_size; i++)
         vector_append(&_pass->special_handler_funcs, &_nullptr);

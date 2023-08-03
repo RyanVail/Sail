@@ -18,7 +18,7 @@
  * This adds an intermediate to the "intermediates_vector" of the inputted
  * intermediate pass.
  */
-static inline void add_intermediate(intermediate_pass* _pass, intermediate \
+static inline void add_intermediate(intermediate_pass* _pass, intermediate
 _intermediate)
 {
     vector_append(&_pass->intermediates, &_intermediate);
@@ -91,14 +91,36 @@ void add_double_intermediate(intermediate_pass* _pass, f64 value);
  * "CONST" intermediate or a "CONST_PTR" based on the "const_num" and the ptr
  * size of the computer the compiler is running on.
  */
-void set_intermediate_to_const(intermediate* _intermediate, i64 const_num);
+void set_intermediate_to_const(intermediate* _intermediate, num const_num);
 
 /*
  * This adds the inputted constant number to the operand stack of the inputted
  * intermediate pass. This will convert the constant numebr into a "CONST_PTR"
  * if it can't fit into a pointer otherwise it will be a "CONST".
  */
-void add_const_num(intermediate_pass* _pass, i64 const_num);
+void add_const_num(intermediate_pass* _pass, num const_num);
+
+/*
+ * This returns the "num" representation of the inputted intermediate's const
+ * value. The intermediate must have a type of CONST_PTR or CONST.
+ */
+static inline num intermediate_get_const(intermediate* _intermediate)
+{
+    #if DEBUG
+    if (_intermediate->type != CONST_PTR && _intermediate->type != CONST)
+        send_error("Intermediate isn't a CONST_PTR or a CONST");
+    #endif
+
+    num result;
+    if (_intermediate->type == CONST_PTR) {
+        return *(num*)_intermediate->ptr;
+    } else {
+        result.magnitude = *(u64*)&_intermediate->ptr;
+        result.negative = *(i64*)&result.magnitude < 0;
+        if (result.negative)
+            result.magnitude = -(*(i64*)&result.magnitude);
+    }
+}
 
 // TODO: This function should be in a common frontend file I don't know which
 // right now but it really shouldn't be here.
@@ -107,7 +129,8 @@ void add_const_num(intermediate_pass* _pass, i64 const_num);
  * intermediates of the inputted intermediate pass. Returns true if a number
  * was added, otherwise false.
  */
-bool add_if_ascii_num(intermediate_pass* _pass, char* token);
+bool add_if_ascii_num(intermediate_pass* _pass, char* token,
+const char* prefixes, const char* suffixes);
 
 /*
  * If the inputted token is a valid float or double it adds it to the

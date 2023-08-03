@@ -37,7 +37,7 @@ typedef struct page {
     page* next;
     memory_segment* segments;
     u32 size;
-    u8 data[1];
+    u8 data[1]; // TODO: Find a better way of doing this
 } page;
 
 /* struct memory_segment - This represent a single segment of heap allocated
@@ -49,7 +49,7 @@ typedef struct page {
 typedef struct memory_segment {
     memory_segment* next;
     u32 size;
-    u8 data[1];
+    u8 data[1]; // TODO: Find a better way of doing this
 } memory_segment;
 
 /* Pages are stored in a linked list inside of the pages of allocted memory. */
@@ -173,7 +173,7 @@ void* malloc(size_t bytes)
         malloc_data_ptr = (void*)syscall(SYS_BRK, NULLPTR);
 
     /* Size of segments and pages use u32s. */
-    if (bytes > __UINT32_MAX__)
+    if (bytes > UINT32_MAX)
         return NULLPTR;
 
     page* last_page = NULLPTR;
@@ -225,7 +225,7 @@ void* malloc(size_t bytes)
             bytes_needed = bytes + sizeof(page) + sizeof(memory_segment);
 
             /* This ensures the page size is divisible by the page size mod. */
-            bytes_needed += PAGE_GROWTH_MOD_BYTE_SIZE - bytes_needed \
+            bytes_needed += PAGE_GROWTH_MOD_BYTE_SIZE - bytes_needed
             % PAGE_GROWTH_MOD_BYTE_SIZE;
 
             /* Setting the new page ptr. */
@@ -266,7 +266,7 @@ void* malloc(size_t bytes)
         /* Returning the new segment's data. */
         return _segment->data;
     } else {
-        abort();
+        abort(); // TODO:
     }
 
     abort();

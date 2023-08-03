@@ -11,9 +11,21 @@ void optimization_do_use_scope_pass()
     START_PROFILING("do the use scope optimization pass", \
     "do all optimization passes");
 
-    vector intermediates = { NULLPTR, 0, 0, sizeof(intermediate) };
-    vector output_intermediates = { NULLPTR, 0, 0, sizeof(intermediate) };
-    intermediate* start_scope_ptr = 0;
+    vector intermediates = {
+        .contents = NULLPTR,
+        .size = 0,
+        .apparent_size = 0,
+        .type_size = sizeof(intermediate),
+    };
+
+    vector output_intermediates = {
+        .contents = NULLPTR,
+        .size = 0,
+        .type_size = 0,
+        .type_size = sizeof(intermediate),
+    };
+
+    intermediate* start_scope_ptr = NULLPTR;
 
     // TODO: "intermediates" should be a ptr to the vector of intermediates like
     // every other optimization pass.

@@ -8,6 +8,8 @@
 #include<frontend/salmon/parser.h>
 #include<frontend/common/parser.h>
 #include<frontend/salmon/preprocessor.h>
+#include<frontend/salmon/struct.h>
+#include<frontend/salmon/types.h>
 #include<intermediate/variable.h>
 #include<intermediate/function.h>
 #include<intermediate/intermediate.h>
@@ -15,34 +17,37 @@
 #include<intermediate/enum.h>
 
 /* This returns the front end of the inputted state ptr. */
-#define GET_FRONT_END(state_ptr) (state_ptr->_pass.data.front_end)
+#define GET_FRONT_END(state_ptr) (state_ptr->pass.data.front_end)
 
 /* Invalid salmon variable, function, enum, etc. names. */
 static const char* invalid_names[] = { "if", "fn", "let", "break", "return",
 "loop", "" };
 
 /* Salmon type names. */
-static const char* type_names[] = { "void", "bool", "i8", "u8", "i16", "u16",
-"i32", "u32", "i64", "u64", "f32", "f64", "%", "%", "" };
+static const char* type_names[] = { "abstract", "bool", "i8", "u8", "i16",
+"u16", "i32", "u32", "i64", "u64", "f32", "f64", "%", "%", "" };
+
+// TODO: These should be under the intermediate pass.
+/* Salmon number suffixes. */
+static const char number_suffixes[] = { 'u', 'U', 'l', 'L', 'f', 'F', 'd',
+'D', '\0' };
+
+/* Salmon number prefixes. */
+static const char number_prefixes[] = { 'x', 'o', 'b', '\0' };
 
 /* This returns the variable symbol table of the inputted state ptr. */
-#define STATE_VARS(_state_ptr)  ((_state_ptr)->_pass.variables)
+#define STATE_VARS(_state_ptr)  ((_state_ptr)->pass.variables)
 
 /* This returns the function symbol table of the inputted state ptr. */
-#define STATE_FUNCS(_state_ptr) ((_state_ptr)->_pass.functions)
+#define STATE_FUNCS(_state_ptr) ((_state_ptr)->pass.functions)
 
-/*
- * This returns the string at the inputted index in the inputted state ptr's
- * source file.
- */
-#define STATE_AT(_state_ptr, _index) (vector_at(&(_state_ptr)->source_file, \
-_index, false))
-
+// TODO: This should return a derfrenced "char*" that can just be & liked
+// "VECTOR_AT".
 /*
  * This returns the string at the inputted index in the inputted state's source
  * file.
  */
-#define STATE_NON_PTR_AT(_state, _index) (vector_at(&(_state).source_file, \
+#define STATE_AT(_state, _index) ((char**)vector_at(&(_state).source_file, \
 _index, false))
 
 // TODO: "_pass" should probally be named pass.
@@ -56,7 +61,7 @@ typedef struct parser_state {
     stack file_names;
     vector source_file;
     vector error_file;
-    intermediate_pass _pass;
+    intermediate_pass pass;
 } parser_state;
 
 // TODO: This needs to be cleaned.
@@ -83,13 +88,14 @@ const char* error_range_type_colors[] = {"", "\x1b[0935m", "\x1b[091m"};
 
 #if DESCRIPTIVE_ERRORS
 
-/* This returns "__UINT32_MAX__" if it wasn't found. */
+// TODO: This is temperary and very badly done.
+/* This returns UINT32_MAX if it wasn't found. */
 u32 salmon_error_file_get_token_index(vector* _vec, char** token)
 {
     for (u32 i=0; i < VECTOR_SIZE(*_vec); i++)
-        if (vector_at(_vec, i, false) == token)
+        if (&VECTOR_AT(_vec, i, char*) == token)
             return i;
-    return __UINT32_MAX__;
+    return UINT32_MAX;
 }
 
 #endif
@@ -108,7 +114,9 @@ void salmon_parser_handle_error(parser_state* state)
      * The ranges of the tokens the error occured on. The pre and post token
      * printing is done assuming the last link is the first error.
      */
-    stack error_token_ranges = { NULLPTR };
+    stack error_token_ranges = {
+        .top = NULLPTR,
+    };
 
     /* Values taken off of the error stack. */
     void* current_value;
@@ -182,7 +190,7 @@ void salmon_parser_handle_error(parser_state* state)
 
         #if DESCRIPTIVE_ERRORS
         current_token = stack_pop(&error_value);
-        current_range = parser_handle_error(&state->_pass,errno,current_token);
+        current_range = parser_handle_error(&state->pass,errno,current_token);
         current_range.starting_token = current_token;
         current_range.ending_token = current_token + 1;
         STACK_PUSH_MALLOC(&error_token_ranges, &current_range);
@@ -256,12 +264,22 @@ void salmon_parser_handle_error(parser_state* state)
     #endif
 
 
-    fflush(stdout);
-    #if DEBUG
-    abort();
-    #else
-    exit(-1);
-    #endif
+    exit_for_error();
+}
+
+/*
+ * This function is used to init the data in an intermediate pass to the salmon
+ * front end for things like variable names and tokenizer characters. This is
+ * used when initing salmon parsing and when salmon parsing data is needed on an
+ * intermediate pass that doesn't contain it.
+ */
+void salmon_parser_init_front_end(intermediate_pass* _pass)
+{
+    _pass->data.front_end = malloc(sizeof(front_end_pass));
+    CHECK_MALLOC(_pass->data.front_end);
+    memset(_pass->data.front_end, 0, sizeof(front_end_pass));
+    _pass->data.front_end->type_names = (char**)type_names;
+    _pass->data.front_end->invalid_names = (char**)invalid_names;
 }
 
 /*
@@ -277,8 +295,10 @@ intermediate_pass salmon_file_into_intermediates(char* file_name)
 
     /* Initing the parsing state. */
     parser_state state = {
-        ._pass = init_intermediate_pass(),
-        .file_names =  { .top = NULLPTR },
+        .pass = init_intermediate_pass(),
+        .file_names =  {
+            .top = NULLPTR
+        },
         .source_file = tokenized_return.source_vector,
     };
 
@@ -286,24 +306,21 @@ intermediate_pass salmon_file_into_intermediates(char* file_name)
 
     START_PROFILING("process file", "compile file");
 
-    state._pass.variables = hash_table_init(8);
-    state._pass.functions = hash_table_init(8);
-    state._pass.enums = hash_table_init(4);
-    state._pass.typedefs = hash_table_init(4);
-    state._pass.structs = hash_table_init(4);
+    state.pass.variables = hash_table_init(8);
+    state.pass.functions = hash_table_init(8);
+    state.pass.enums = hash_table_init(4);
+    state.pass.typedefs = hash_table_init(4);
+    state.pass.structs = hash_table_init(4);
 
-    state._pass.data.front_end = malloc(sizeof(front_end_pass));
-    CHECK_MALLOC(state._pass.data.front_end);
-    memset(state._pass.data.front_end, 0, sizeof(front_end_pass));
-    state._pass.data.front_end->type_names = (char**)type_names;
-    state._pass.data.front_end->invalid_names = (char**)invalid_names;
-    state._pass.data.front_end->white_space_chars = \
+    salmon_parser_init_front_end(&state.pass);
+
+    state.pass.data.front_end->white_space_chars = \
         (char*)tokenized_return.white_space_chars;
-    state._pass.data.front_end->special_chars = \
+    state.pass.data.front_end->special_chars = \
         (char*)tokenized_return.special_chars;
 
     for (u32 i=0; i < VECTOR_SIZE(state.source_file); i++) {
-        char* current_token = *(char**)STATE_NON_PTR_AT(state, i);
+        char* current_token = *STATE_AT(state, i);
 
         if (salmon_parse_initial_syntax_tree(&state, &i)
         || salmon_get_type(&state, &i)
@@ -315,37 +332,47 @@ intermediate_pass salmon_file_into_intermediates(char* file_name)
 
         /* Checking if this is the end of a scope. */
         if (*current_token == '}') {
-            intermediate _tmp_intermediate = { END, NULLPTR };
-            add_intermediate(&state._pass, _tmp_intermediate);
+            intermediate _tmp_intermediate = {
+                .type = END,
+                .ptr = NULLPTR,
+            };
+
+            add_intermediate(&state.pass, _tmp_intermediate);
             continue;
         }
 
         /* Checking if this is a var access. */
-        if (!is_invalid_name(&state._pass, current_token) \
-        && get_variable_symbol_from_name(&state._pass, current_token) \
+        if (!is_invalid_name(&state.pass, current_token) \
+        && get_variable_symbol_from_name(&state.pass, current_token) \
         != NULLPTR) {
             intermediate _tmp_intermediate = {
                 .type = VAR_ACCESS,
-                .ptr = get_variable_symbol_from_name(&state._pass, \
+                .ptr = get_variable_symbol_from_name(&state.pass,
                 current_token),
             };
 
-            add_operand(&state._pass, _tmp_intermediate, false);
+            add_operand(&state.pass, _tmp_intermediate, false);
         }
 
         /* Reading this as a possible float and incrementing to after it. */
-        i += add_if_ascii_float(&state._pass, STATE_NON_PTR_AT(state, i));
+        i += add_if_ascii_float(&state.pass, STATE_AT(state, i));
 
+        // TODO: What does this comment mean?
         /* "vector_at" is used because "add_if_ascii_float" changes "i". */
-        add_if_ascii_num(&state._pass, *(char**)STATE_NON_PTR_AT(state, i));
+        add_if_ascii_num (
+            &state.pass,
+            *STATE_AT(state, i),
+            number_prefixes,
+            number_suffixes
+        );
     }
     
     END_PROFILING("process file", true);
 
-    clear_operand_stack(&state._pass);
+    clear_operand_stack(&state.pass);
     free_tokenized_file_vector(&state.source_file);
 
-    return state._pass;
+    return state.pass;
 }
 
 // TODO: A lot of these functions don't check for the end of the file so they
@@ -362,7 +389,7 @@ u32* location)
     // functions that it calls should do the same there should be no real
     // strings except for reading constants. This would call for a major
     // redesign but it would lower memory consumption and increase speed.
-    char* _token = *(char**)STATE_AT(state, *location);
+    char* _token = *STATE_AT(*state, *location);
     if (!strcmp(_token, "if"))
         salmon_parse_if(state, location);
     else if (!strcmp(_token, "else"))
@@ -392,36 +419,63 @@ inline void salmon_parse_typedef(parser_state* state, u32* location)
 {
     /* Getting the typedef name. */
     find_next_valid_token(&state->source_file, location);
-    char* typedef_name = *(char**)STATE_AT(state, *location);
+    char* typedef_name = *STATE_AT(*state, *location);
 
     /* Reading the type of the typedef. */
     find_next_valid_token(&state->source_file, location);
-    type _type = get_type(&state->_pass, &state->source_file, *location);
+    type _type = get_type(&state->pass, &state->source_file, *location);
     HANDLE_ERROR();
 
     /* Creating the typedef. */
-    add_typedef(&state->_pass, typedef_name, _type);
+    add_typedef(&state->pass, typedef_name, _type);
+}
+static inline type salmon_parse_enum_derived_type(parser_state* state,
+u32* location)
+{
+    type result_type = {
+        .kind = NO_TYPE,
+    };
+
+    /* Checking if there is a derived type. */
+    find_next_valid_token(&state->source_file, location);
+    if (**STATE_AT(*state, *location) != '(')
+        return result_type;
+
+    find_next_valid_token(&state->source_file, location);
+    result_type = get_type(&state->pass, &state->source_file, *location);
+
+    find_next_valid_token(&state->source_file, location);
+    if (**STATE_AT(*state, *location) != ')')
+        send_error("Expected ')' after derived type in enum");
+
+    return result_type;
 }
 inline void salmon_parse_enum(parser_state* state, u32* location)
 {
     /* Getting the enum name. */
     find_next_valid_token(&state->source_file, location);
-    char* enum_name = *(char**)STATE_AT(state, *location);
+    char* enum_name = *STATE_AT(*state, *location);
 
-    /* Reading the type of the enum, if there is one. */
-    find_next_valid_token(&state->source_file, location);
-    type _type = get_type(&state->_pass, &state->source_file, *location);
+    type _type = salmon_parse_enum_derived_type(state, location);
     HANDLE_ERROR();
 
+    if (_type.kind == UINT8_MAX)
+        send_error("Expected derived type for enum");
+
+    if (!IS_TYPE_FLOAT_OR_DOUBLE(_type) && !IS_TYPE_INT(_type))
+        send_error("Derived types for enums must be numerical");
+
     /* Creating the enum. */
-    intermediate_typedef* _enum = add_typedef(&state->_pass, enum_name, _type);
+    intermediate_typedef* _enum = add_typedef(&state->pass, enum_name, _type);
 
     // TODO: This type should change based on the largest and lowest types used
     // in the enum.
-    /* If there is no type assume it's a U32. */
-    if (_type.kind == __UINT8_MAX__) {
+    /* If there is no type assume it's a u32. */
+    if (_type.kind == UINT8_MAX) {
         _type.kind = U32_TYPE;
         _type.ptr_count = 0;
+        _type.extra_data = 0;
+        _type.flags = 0;
     }
 
     /* Skipping forward based on the type. */
@@ -434,19 +488,25 @@ inline void salmon_parse_enum(parser_state* state, u32* location)
     salmon_parse_enum_no_type_label:
 
     /* Testing for the '{'. */
-    if (**(char**)STATE_AT(state, *location) != '{')
+    if (**STATE_AT(*state, *location) != '{')
         send_error("Expected '{' at the start of a struct definition.");
 
+    // TODO: This doesn't support float or doubles
     char* _name;
-    i64 _value = 0;
-    char ending_char;
+    num _value = {
+        .magnitude = 0,
+    };
+    bool has_entires = false;
     /* Reading the entries. */
     while (true) {
         /* Getting the name of the entry. */
         find_next_valid_token(&state->source_file, location);
-        _name = *(char**)STATE_AT(state, *location);
+        _name = *STATE_AT(*state, *location);
 
         if (*_name == '}') {
+            if (!has_entires)
+                return;
+
             printf("\x1b[091mERROR:\x1b[0m Expected another entry in the enum after ',', but found: \"%s\"\n", _name);
             exit(-1);
         }
@@ -454,73 +514,167 @@ inline void salmon_parse_enum(parser_state* state, u32* location)
         // TODO: This should parse and solve the equation provided
         /* Getting the value if there is one. */
         find_next_valid_token(&state->source_file, location);
-        if (is_ascii_number(*(char**)STATE_AT(state, *location))) {
-            _value = get_ascii_number(*(char**)STATE_AT(state, *location));
+        if (is_ascii_number(*STATE_AT(*state, *location), number_suffixes,
+        number_prefixes)) {
+            _value = get_ascii_number(*STATE_AT(*state, *location));
             find_next_valid_token(&state->source_file, location);
-            if (**(char**)STATE_AT(state, *location) != '=') {
+            if (**STATE_AT(*state, *location) != '=') {
                 printf("\x1b[091mERROR:\x1b[0m Expected '=' after enum entry value but found: \"%s\"\n", \
-                    *(char**)STATE_AT(state, *location));
+                    *STATE_AT(*state, *location));
                 exit(-1);
             }
             find_next_valid_token(&state->source_file, location);
         } else {
-            _value++;
+            _value.magnitude + (_value.negative) ? -1 : 1;
         }
 
         /* Adding the entry. */
-        add_enum_entry(&state->_pass, _enum, _value, _name);
+        add_enum_entry(&state->pass, _enum, _value, _name);
+
+        has_entires = true;
 
         /* Making sure there's a comma and checking if the enum ended. */
-        if (**(char**)STATE_AT(state, *location) == ',') {
+        if (**STATE_AT(*state, *location) == ',') {
             continue;
-        } else if (**(char**)STATE_AT(state, *location) \
-        == '}') {
+        } else if (**STATE_AT(*state, *location) == '}') {
             return;
         } else {
             /* If there was no '}' send an error. */
-            printf("\x1b[091mERROR:\x1b[0m Expected '}' to end struct declaration, but found: %s\n", \
-                *(char**)STATE_AT(state, *location));
+            printf("\x1b[091mERROR:\x1b[0m Expected '}' to end struct declaration, but found: %s\n",
+                *STATE_AT(*state, *location));
             exit(-1);
         }
+    }
+}
+static inline void salmon_copy_derived_members(parser_state* state,
+intermediate_struct* new_struct, u32 derived_hash)
+{
+    // TODO: This should check if the struct is forward defined.
+    /* The data of the struct being created. */
+    salmon_struct_data* new_data = (void*)new_struct
+        + sizeof(intermediate_struct);
+
+    /* The derived struct. */
+    intermediate_struct* _struct = get_struct(&state->pass, derived_hash);
+    salmon_struct_data* _data = (void*)_struct + sizeof(intermediate_struct);
+
+    /* Copying the static members. */
+    link* _link = _data->statics.top;
+    while (_link != NULLPTR) {
+        stack_push(&new_data->statics, _link->value);
+        _link = _link->next;
+    }
+
+    /* Copying the non-static members. */
+    _link = _struct->contents.top;
+    while (_link != NULLPTR) {
+        stack_push(&new_struct->contents, _link->value);
+        _link = _link->next;
+    }
+}
+static inline void salmon_parse_struct_derived(parser_state* state,
+u32* location, intermediate_struct* _struct, salmon_struct_data* data)
+{
+    while (true) {
+        /*
+         * Breaking if the struct's scope started or if this is a forward
+         * definition.
+         */
+        if (**STATE_AT(*state, *location) == '{'
+        || **STATE_AT(*state, *location) == ';')
+            break;
+
+        if (**STATE_AT(*state, *location) != '(')
+            send_error("Expected '(' before struct derived type");
+
+        /* Reading the derived struct. */
+        find_next_valid_token(&state->source_file, location);
+        type _type = get_type(&state->pass, &state->source_file, *location);
+        HANDLE_ERROR();
+
+        if (_type.kind == UINT8_MAX)
+            send_error("Unknown struct derived type");
+
+        if (_type.kind != STRUCT_TYPE) {
+            printf (
+                "%s Structs can only be derived from other structs but found type: ",
+                ERROR_STRING
+            );
+
+            print_type(&state->pass, _type);
+            printf("\n");
+            exit_for_error();
+        }
+
+        /* Adding the members from the derived struct. */
+        salmon_copy_derived_members(state, _struct, _type.extra_data);
+
+        /* Skipping past the type. */
+        char** type_names = GET_FRONT_END(state)->type_names;
+        u32 skip = _type.ptr_count;
+        *location += skip << ((!!type_names[0xc][0])+(!!type_names[0xd][0]-1));
+
+        find_next_valid_token(&state->source_file, location);
+        if (**STATE_AT(*state, *location) != ')')
+            send_error("Expected ')' after struct derived type");
+
+        find_next_valid_token(&state->source_file, location);
     }
 }
 inline void salmon_parse_struct(parser_state* state, u32* location)
 {
     /* Reading the struct name. */
     find_next_valid_token(&state->source_file, location);
-    char** current_token = (char**)STATE_AT(state, *location);
-    intermediate_struct* _struct = create_struct(&state->_pass, \
-    *current_token, 0);
+    char** current_token = STATE_AT(*state, *location);
+    intermediate_struct* _struct = create_struct (
+        &state->pass,
+        *current_token,
+        sizeof(salmon_struct_data),
+        0
+    );
+
+    /* Initing the extra salmon struct data. */
+    salmon_struct_data* data = (void*)_struct + sizeof(intermediate_struct);
+    data->statics.top = NULLPTR;
+
+    find_next_valid_token(&state->source_file, location);
+    salmon_parse_struct_derived(state, location, _struct, data);
 
     // TODO: This should support forward struct definition. Struct should have
     // a flag that says if it is foward defined.
 
-    find_next_valid_token(&state->source_file, location);
-    if (**(char**)STATE_AT(state, *location) != '{')
-        send_error("Expected '}' at the start of a struct definition.");
+    if (**STATE_AT(*state, *location) != '{')
+        send_error("Expected '{' at the start of a struct definition.");
 
 
     /* Reading the variables in the struct. */
     type var_type;
+    bool override;
     while (true) {
-        /* Getting the name of the variable. */
+        /* Reading the name of the variable. */
         find_next_valid_token(&state->source_file, location);
-
-        if (**(char**)STATE_AT(state, *location) == '}')
+        if (**STATE_AT(*state, *location) == '}')
             break;
 
-        char* var_name = *(char**)STATE_AT(state, *location);
+        char* var_name = *STATE_AT(*state, *location);
 
-        /* Getting the type of the variable. */
+        /* Checking if this is an override. */
         find_next_valid_token(&state->source_file, location);
-        var_type = get_type(&state->_pass, &state->source_file, *location);
+        if (!strcmp(*STATE_AT(*state, *location), "override")) {
+            override = true;
+            find_next_valid_token(&state->source_file, location);
+        } else {
+            override = false;
+        }
+
+        /* Reading the type of the variable. */
+        var_type = get_type(&state->pass, &state->source_file, *location);
         HANDLE_ERROR();
+        if (var_type.kind == UINT8_MAX)
+            send_error("Invalid type in struct variable");
 
         /* Skipping forward based on the type. */
         char** type_names = GET_FRONT_END(state)->type_names;
-        HANDLE_ERROR();
-        if (var_type.kind == __UINT8_MAX__)
-            send_error("Invalid type in struct variable");
         u32 skip = var_type.ptr_count;
         *location += skip << ((!!type_names[0xc][0])+(!!type_names[0xd][0]-1));
 
@@ -528,40 +682,73 @@ inline void salmon_parse_struct(parser_state* state, u32* location)
          * If this type is invalid, this is assumed to be the end of the struct
          * definition.
          */
-        if (var_type.kind == __UINT8_MAX__)
+        if (var_type.kind == UINT8_MAX)
             break;
 
+        // TODO: This should call a Salmon specific function to do this because
+        // it needs to check for forward definitions.
+
         /* Adding the variable to the struct. */
-        add_variable_to_struct(&state->_pass, _struct, var_type, var_name);
+        // TODO: Fix this
+        if (var_type.flags & STATIC_FLAG) {
+            salmon_add_static_member_to_struct (
+                data,
+                var_type,
+                var_name,
+                override
+            );
+        } else {
+            add_variable_to_struct (
+                &state->pass,
+                _struct,
+                var_type,
+                var_name,
+                override
+            );
+        }
     }
 
-    if (**(char**)STATE_AT(state, *location) != '}')
+    if (**STATE_AT(*state, *location) != '}')
         send_error("Expected '}' at the end of a struct definition.");
 }
 inline void salmon_parse_if(parser_state* state, u32* location)
 {
-    intermediate _intermediate = { IF, NULLPTR };
-    add_intermediate(&state->_pass, _intermediate);
+    intermediate _intermediate = {
+        .type = IF,
+        .ptr = NULLPTR,
+    };
+
+    add_intermediate(&state->pass, _intermediate);
 }
 inline void salmon_parse_else(parser_state* state, u32* location)
 {
-    intermediate _intermediate = { ELSE, NULLPTR };
-    add_intermediate(&state->_pass, _intermediate);
+    intermediate _intermediate = {
+        .type = ELSE,
+        .ptr = NULLPTR,
+    };
+
+    add_intermediate(&state->pass, _intermediate);
 }
 inline void salmon_parse_fn(parser_state* state, u32* location)
 {
-    vector inputs = { NULLPTR, 0, 0, sizeof(type) };
-    clear_variables_in_scope(&state->_pass);
+    vector inputs = {
+        .contents = NULLPTR,
+        .apparent_size = 0,
+        .size = 0,
+        .type_size = sizeof(type),
+    };
 
-    if (**(char**)STATE_AT(state, (*location)+1) == '$')
+    clear_variables_in_scope(&state->pass);
+
+    if (**(char**)STATE_AT(*state, (*location)+1) == '$')
         goto salmon_parse_fn_read_fn_name_label;
 
     *location += 1;
 
     /* This reads through the input variables. */
     for (; *location < VECTOR_SIZE(state->source_file); *location += 1) {
-        char* _name = *(char**)STATE_AT(state, *location);
-        if (is_invalid_name(&state->_pass, _name)) {
+        char* _name = *STATE_AT(*state, *location);
+        if (is_invalid_name(&state->pass, _name)) {
             printf(\
             "\x1b[091mERROR:\x1b[0m Invalid input variable name: \"%s\"\n", \
             _name);
@@ -570,45 +757,48 @@ inline void salmon_parse_fn(parser_state* state, u32* location)
 
         *location += 1;
 
-        type _type = get_type(&state->_pass, &state->source_file, *location);
+        type _type = get_type(&state->pass, &state->source_file, *location);
         HANDLE_ERROR();
-        if (_type.kind == __UINT8_MAX__)
+        if (_type.kind == UINT8_MAX)
             send_error("Unknown type in function inputs");
 
         *location += 1;
 
         vector_append(&inputs, &_type);
-        if (**(char**)STATE_AT(state, *location) != ',')
+        if (**STATE_AT(*state, *location) != ',')
             break;
     }
 
-    if (**(u16**)STATE_AT(state, *location) != ('<' | ('-' << 8)))
+    if (**(u16**)STATE_AT(*state, *location) != ('<' | ('-' << 8)))
         send_error("Expected \"<-\" after function inputs");
 
     /* This reads the function name. */
     salmon_parse_fn_read_fn_name_label:
     *location += 1;
-    if (**(char**)STATE_AT(state, *location) != '$')
+    if (**STATE_AT(*state, *location) != '$')
         send_error("Expected a '$' before function name");
 
     *location += 1;
-    char* fn_name = *(char**)STATE_AT(state, *location);
-    if (is_invalid_name(&state->_pass, fn_name))
+    char* fn_name = *STATE_AT(*state, *location);
+    if (is_invalid_name(&state->pass, fn_name))
         send_error("Function name is not valid");
 
     *location += 1;
-    if (**(char**)STATE_AT(state, *location) != '$')
+    if (**STATE_AT(*state, *location) != '$')
         send_error("Expected a '$' after function name");
 
     /* This reads the function return type. */
     *location += 1;
-    type return_type = { 0, __UINT8_MAX__ };
-    if (**(u16**)STATE_AT(state, *location) == ('-' | ('>' << 8))) {
-        return_type = get_type(&state->_pass, &state->source_file, *location+1);
+    type return_type = {
+        .kind = UINT8_MAX,
+    };
+
+    if (**(u16**)STATE_AT(*state, *location) == ('-' | ('>' << 8))) {
+        return_type = get_type(&state->pass, &state->source_file, *location+1);
         HANDLE_ERROR();
     }
 
-    if (!add_function_symbol(&state->_pass, fn_name, inputs, return_type, 0))
+    if (!add_function_symbol(&state->pass, fn_name, inputs, return_type, 0))
         send_error("Function name already used");
 
     // for (; *location < VECTOR_SIZE((*file)); *location += 1)
@@ -617,13 +807,17 @@ inline void salmon_parse_fn(parser_state* state, u32* location)
 
     *location += 2;
 
-    clear_operand_stack(&state->_pass);
+    clear_operand_stack(&state->pass);
 
     // TODO: This should put the function symbol into the ptr of the
     // intermediate.
 
-    intermediate _intermediate = { FUNC_DEF, NULLPTR };
-    add_intermediate(&state->_pass, _intermediate);
+    intermediate _intermediate = {
+        .type = FUNC_DEF,
+        .ptr = NULLPTR,
+    };
+
+    add_intermediate(&state->pass, _intermediate);
 
 }
 /* This sets errno on errors. */
@@ -631,30 +825,31 @@ inline void salmon_parse_let(parser_state* state, u32* location)
 {
     /* Reading the variable name. */
     *location += 1;
-    if (is_invalid_name(&state->_pass, *(char**)STATE_AT(state, *location))) {
+    if (is_invalid_name(&state->pass, *STATE_AT(*state, *location))) {
         #if DESCRIPTIVE_ERRORS
-        stack_push(&error_value, STATE_AT(state, *location));
+        stack_push(&error_value, STATE_AT(*state, *location));
         #endif
         HANDLE_ERROR_WITH_CODE(PARSING_ERROR_INVALID_VAR_NAME);
     }
-    char* name = *(char**)STATE_AT(state, *location);
+    char* name = *STATE_AT(*state, *location);
 
     /* Reading the variable type. */
     *location += 1;
-    type _type = get_type(&state->_pass, &state->source_file, *location);
+    type _type = get_type(&state->pass, &state->source_file, *location);
     HANDLE_ERROR();
-    if (_type.kind == __UINT8_MAX__) {
+    if (_type.kind == UINT8_MAX) {
         #if DESCRIPTIVE_ERRORS
-        stack_push(&error_value, STATE_AT(state, *location));
+        stack_push(&error_value, STATE_AT(*state, *location));
         #endif
         HANDLE_ERROR_WITH_CODE(PARSING_ERROR_EXPECTED_TYPE);
     }
 
     /* Trying to add the variable to the symbol table. */
-    variable_symbol* var = add_variable_symbol(&state->_pass, name, _type, 0);
+    variable_symbol* var = add_variable_symbol(&state->pass, name, _type, 0);
     if (var == NULLPTR) {
+        printf("%s\n", name);
         #if DESCRIPTIVE_ERRORS
-        stack_push(&error_value, STATE_AT(state, *location));
+        stack_push(&error_value, STATE_AT(*state, *location));
         #endif
         HANDLE_ERROR_WITH_CODE(PARSING_ERROR_VAR_NAME_USED);
         exit(-1);
@@ -672,17 +867,24 @@ inline void salmon_parse_let(parser_state* state, u32* location)
     *location += skip << ((bool)type_names[0xc][0]+(bool)type_names[0xd][0]-1);
 
     /* Defining the decleration intermediate. */
-    intermediate declaration = { VAR_DECLARATION, (void*)var };
+    intermediate declaration = {
+        .type = VAR_DECLARATION,
+        .ptr = (void*)var,
+    };
 
-    add_intermediate(&state->_pass, declaration);
+    add_intermediate(&state->pass, declaration);
     declaration.type = VAR_RETURN;
     declaration.ptr = (void*)var;
-    add_operand(&state->_pass, declaration, false);
+    add_operand(&state->pass, declaration, false);
 }
 inline void salmon_parse_loop(parser_state* state, u32* location)
 {
-    intermediate _intermediate = { .type = LOOP, .ptr = NULLPTR };
-    add_intermediate(&state->_pass, _intermediate);
+    intermediate _intermediate = {
+        .type = LOOP,
+        .ptr = NULLPTR,
+    };
+
+    add_intermediate(&state->pass, _intermediate);
 }
 
 /* This parses a type and if found sets the top operand to that type. */
@@ -691,18 +893,16 @@ static inline bool salmon_get_type(parser_state* state, u32* location)
     if (*location >= VECTOR_SIZE(state->source_file))
         return false;
 
-    type _type = get_type(&state->_pass, &state->source_file, *location);
+    type _type = get_type(&state->pass, &state->source_file, *location);
     HANDLE_ERROR();
-    if (_type.kind == __UINT8_MAX__)
+    if (_type.kind == UINT8_MAX)
         return false;
-
-    char** type_names = GET_FRONT_END(state)->type_names;
 
     /* Skipping the types and ptr chars. */
     for (u32 i = 0; i++; i < (_type.ptr_count << 1))
         find_next_valid_token(&state->source_file, location);
 
-    add_cast_intermediate(&state->_pass, _type);
+    add_cast_intermediate(&state->pass, _type);
 
     return true;
 }
@@ -765,7 +965,7 @@ char _char)
     default:
         return false;
     }
-    process_operation(&state->_pass, _operation);
+    process_operation(&state->pass, _operation);
     return true;
 }
 
@@ -776,7 +976,11 @@ char _char)
 static inline bool salmon_parse_flow_operators(parser_state* state, \
 char* string)
 {
-    intermediate _tmp_intermediate = { 0, NULLPTR };
+    intermediate _tmp_intermediate = {
+        .type = 0,
+        .ptr = NULLPTR,
+    };
+
     if (!strcmp(string, "break"))
         _tmp_intermediate.type = BREAK;
     else if (!strcmp(string, "continue"))
@@ -784,7 +988,7 @@ char* string)
     else
         return false;
 
-    add_intermediate(&state->_pass, _tmp_intermediate);
+    add_intermediate(&state->pass, _tmp_intermediate);
     return true;
 }
 
@@ -795,24 +999,24 @@ char* string)
 static inline bool salmon_parse_enum_entry(parser_state* state, u32* location)
 {
     /* Getting the hash of the token. */
-    HASH_STRING((*(char**)STATE_AT(state, *location)));
+    HASH_STRING((*STATE_AT(*state, *location)));
 
     /* Getting the enum entry. */
-    enum_entry* _entry = get_enum_entry(&state->_pass.enums, result_hash);
+    enum_entry* _entry = get_enum_entry(&state->pass.enums, result_hash);
 
     /* Checking if it's an enum entry. */
     if (_entry == NULLPTR)
         return false;
 
     /* Adding the entry to the stack. */
-    add_const_num(&state->_pass, _entry->value);
+    add_const_num(&state->pass, _entry->value);
 
     /* Make sure there's something on the operand stack. */
-    if (STACK_IS_EMPTY(state->_pass.operand_stack))
+    if (STACK_IS_EMPTY(state->pass.operand_stack))
         return false;
 
     /* Casting the top operand. */
-    operand* top_operand = stack_top(&state->_pass.operand_stack);
+    operand* top_operand = stack_top(&state->pass.operand_stack);
     top_operand->type = _entry->parent_enum->type;
 
     return true;
@@ -829,26 +1033,26 @@ u32* location)
      * If the size of operand stack is zero there are no operands to get a
      * variable from.
      */
-    if (STACK_IS_EMPTY(state->_pass.operand_stack))
+    if (STACK_IS_EMPTY(state->pass.operand_stack))
         return false;
 
     /* Making sure the top operand is a struct and we are accessing a var. */
-    operand* top_operand = stack_top(&state->_pass.operand_stack);
-    if (!(**(char**)STATE_AT(state, *location) == '.' \
+    operand* top_operand = stack_top(&state->pass.operand_stack);
+    if (!(**STATE_AT(*state, *location) == '.' \
     && top_operand->type.kind == STRUCT_TYPE) || top_operand == NULLPTR)
         return false;
 
     /* Getting the struct variable's name. */
     find_next_valid_token(&state->source_file, location);
-    char* variable_name = *(char**)STATE_AT(state, *location);
+    char* variable_name = *STATE_AT(*state, *location);
 
     /* If the struct is a ptr it has to be dereference. */
     if (top_operand->type.ptr_count) {
         printf("\x1b[091mERROR:\x1b[0m Cannot get the member `%s` from a ", \
             variable_name);
-        print_type_kind(&state->_pass, top_operand->type);
+        print_type_kind(&state->pass, top_operand->type);
         printf(": ");
-        print_type(&state->_pass, top_operand->type);
+        print_type(&state->pass, top_operand->type);
         printf("\n");
         exit(-1);
     }
@@ -857,7 +1061,7 @@ u32* location)
     u32 struct_hash = top_operand->type.extra_data;
 
     /* Getting the struct variable. */
-    struct_variable* _var = get_variable_from_struct_hash(&state->_pass, \
+    struct_variable* _var = get_variable_from_struct_hash(&state->pass, \
     struct_hash, variable_name);
 
     /* Makes sure the variable is valid. */
@@ -865,9 +1069,12 @@ u32* location)
         send_error("Unknown struct variable");
 
     /* Adding the intermediate. */
-    intermediate struct_var_intermediate = { .type = GET_STRUCT_VARIABLE, \
-        .ptr = (void*)(size_t)_var->hash };
-    add_intermediate(&state->_pass, struct_var_intermediate);
+    intermediate struct_var_intermediate = {
+        .type = GET_STRUCT_VARIABLE,
+        .ptr = (void*)(size_t)_var->hash,
+    };
+
+    add_intermediate(&state->pass, struct_var_intermediate);
 
     /* Changing the type of the top operand to the struct variable's type. */
     top_operand->type = _var->type;
@@ -913,7 +1120,7 @@ static inline bool salmon_parse_operation(parser_state* _state, char* string)
         default:
             return false;
     }
-    process_operation(&_state->_pass, _operation);
+    process_operation(&_state->pass, _operation);
     return true;
 
     #undef U16_CHAR

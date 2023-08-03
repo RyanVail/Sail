@@ -5,7 +5,7 @@
 #include<typedefs.h>
 
 /*
- * This copyies len bytes from the inputted source ptr into the inputted
+ * This copies len bytes from the inputted source ptr into the inputted
  * destination ptr. This returns a ptr to the destination.
  */
 void* memcpy(void* destination, const void* source, size_t len);

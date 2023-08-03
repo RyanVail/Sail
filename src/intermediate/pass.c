@@ -33,6 +33,7 @@ _intermediate)
 
 // TODO: There should be a function to handle the end of an intermediate pass
 // ie. freeing the symbol tables and things.
+// TODO: These default ones aren't right.
 /*
  * This is an array of the default intermediate handler functions. These are the
  * functions that get run when the function ptr in the handler function is a

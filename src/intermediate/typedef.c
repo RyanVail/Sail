@@ -5,6 +5,7 @@
 
 #include<intermediate/typedef.h>
 #include<frontend/common/parser.h>
+#include<intermediate/pass.h>
 
 /*
  * This finds and returns the typedef with the same hash. If none are found

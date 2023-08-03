@@ -1,0 +1,15 @@
+enum NUMS (u32) {
+    ZERO
+}
+
+struct RGBA {
+    R u8
+    G u8
+    B u8
+    A u8
+}
+
+fn $main$ -> u32 {
+    let test u32 3 = ;
+    test return
+}

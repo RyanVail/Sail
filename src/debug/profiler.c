@@ -36,7 +36,9 @@ typedef struct profile {
     bool has_parent;
 } profile;
 
-static stack profile_stack = { NULLPTR };
+static stack profile_stack = {
+    .top = NULLPTR,
+};
 
 /*
  * This searches the inputed stack for the inputed profile name's hash. The
@@ -173,11 +175,16 @@ void debug_profiler_end_profile(profile* _profile, bool print_profile)
         printf("%c ", point_to_print);
 
         #if _WIN32
-        printf("Took %f ms to %s\n", (f32)(_profile->ending_time - \
-        _profile->starting_time) / 1000.0f);
+        printf (
+            "Took %f ms to %s\n",
+            (f32)(_profile->ending_time -_profile->starting_time) / 1000.0f
+        );
         #else
-        printf("Took %f ms to %s\n", ((f32)_profile->ending_time - \
-        _profile->starting_time) / CLOCKS_PER_SEC * 1000.0f, _profile->name);
+        printf (
+            "Took %f ms to %s\n",
+            ((f32)_profile->ending_time - _profile->starting_time)
+                / CLOCKS_PER_SEC * 1000.0f, _profile->name
+        );
         #endif
     }
 

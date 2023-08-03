@@ -1,14 +1,21 @@
-#ifndef VECTOR_H
-#define VECTOR_H
+#ifndef DATASTRUCTURES_VECTOR_H
+#define DATASTRUCTURES_VECTOR_H
 
-#define VECTOR_SIZE(_vector) ((_vector).apparent_size / \
-sizeof((_vector).type_size))
+#define VECTOR_SIZE(_vector) ((_vector).apparent_size)
 
 /*
  * This returns true if the inputted index is outside of the end bounds of the
  * inputted vector.
  */
 #define IS_VEC_END(_vec, _index) ((_index) >= (VECTOR_SIZE(_vec)))
+
+/* This returns the value at the end of the inputted vector. */
+#define VECTOR_END(vec_ptr, result_type) \
+    VECTOR_AT(vec_ptr, VECTOR_SIZE(*(vec_ptr))-1, result_type)
+
+/* This returns the value in the inputted vector at the inputted index. */
+#define VECTOR_AT(vec_ptr, index, result_type) \
+    (*(result_type*)vector_at(vec_ptr, index, false))
 
 /* struct vector - This is a dynamicly allocated array
  * @contents: This is a pointer to the contents of the vector

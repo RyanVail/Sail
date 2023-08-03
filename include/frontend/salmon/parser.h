@@ -10,6 +10,14 @@
 #include<intermediate/pass.h>
 
 /*
+ * This function is used to init the data in an intermediate pass to the salmon
+ * front end for things like variable names and tokenizer characters. This is
+ * used when initing salmon parsing and when salmon parsing data is needed on an
+ * intermediate pass that doesn't contain it.
+ */
+void salmon_parser_init_front_end(intermediate_pass* _pass);
+
+/*
  * This function turns a single salmon source file into intermediate tokens
  * and returns an "intermediate_pass".
  */

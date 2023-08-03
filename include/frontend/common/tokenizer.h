@@ -4,6 +4,7 @@
 #include<common.h>
 
 #if DESCRIPTIVE_ERRORS
+// TODO: Finish this documentation
 /* struct tokenize_file_return - This is the return of the "toknize_file"
  * function
  * @token_vector: This is the vector of tokens.
@@ -57,7 +58,7 @@ void find_next_valid_token(vector *file, u32* current_index);
  * the DESCRIPTIVE_ERRORS flag is set to true this will also return the lines of
  * source code.
  */
-tokenize_file_return tokenize_file(const char* file_name, \
+tokenize_file_return tokenize_file(const char* file_name,
 const char* white_space_chars, const char* special_chars);
 
 /* This takes in the vector of a tokenized file and frees it. */
@@ -70,7 +71,7 @@ static inline bool is_special_char(char _char, const char* special_chars)
 }
 
 /* This returns true if the inputted char is a white space char. */
-static inline bool is_white_space_char(char _char, \
+static inline bool is_white_space_char(char _char,
 const char* white_space_chars)
 {
     return strchr(white_space_chars, _char) != NULLPTR;

@@ -9,12 +9,20 @@
 
 // TODO: These comments should be removed and explained clearly in
 // "documentation/intermediate".intermediate.
+
+// TODO: VAR_DECLERATION should be called VAR_DEC like FUNC_DEC.
+
 // TODO: This use of hashes inside ptrs is use less it should just be ptrs to
 // the values of them and the hashes really aren't that useful after the first
 // front end pass.
+
 // TODO: There should be another intermediate called scope which starts a new
-// scope for programming languages that support that.
+// scope for programming languages that support that. There also needs to be a
+// better system from freeing variables and rtl instructions in scope.
+// SCOPE_START and SCOPE_END could work well.
+
 // TODO: Why is NOT so high up and not in the bitwise??
+
 // TODO: VAR_MEM should be replaced with only MEM_LOCATION.
 typedef enum intermediate_type {
     /* Single operand */
@@ -69,7 +77,7 @@ typedef enum intermediate_type {
     GOTO,                   // "ptr" is a "char*" to the label name
     /* Constant intermediates */
     CONST,                  // A signed constant the size of (void*)
-    CONST_PTR,              // A ptr to a i64 bit constant the size of (void*)
+    CONST_PTR,              // A ptr to a "num"
     FLOAT,                  // The floating point intermediate. The value is
                             // inside of the ptr.
     DOUBLE,                 // The double point intermediate. The value is
@@ -86,10 +94,12 @@ typedef enum intermediate_type {
                             // "MEM_DEREF".
     COMPARISON_RETURN,      // This is used as a place holder for the result of
                             // a comparison.
-    VAR_RETURN,             // This is used as a place holder for a variable
-                            // declarations.
+    VAR_RETURN,             // This is used as a place holder for the returns of
+                            // a variable declaration.
     CAST,                   // This is used to cast the top operand into another
                             // type. The type is in "ptr".
+    // BIT_CAST,            // TODO: This should cast without processing other
+                            // than removing excess bits.
 	// TODO: These should be named something like "VARS_TO_REGISTER" or
 	// something like that
 	/* Variable optimization intermediates */
@@ -121,6 +131,8 @@ typedef struct intermediate {
     void* ptr;
 } intermediate;
 
+/* "OPERAND_DEFINED" allows passes to use custom operand structs. */
+#ifndef OPERAND_DEFINED
 /* struct operand - This represents an operand on "operand_stack"
  * @intermediate: The "intermediate" token of this operand
  * @initted: If this value is in a register / on the stack yet
@@ -131,6 +143,7 @@ typedef struct operand {
     bool initted;
     type type;
 } operand;
+#endif
 
 #endif
 

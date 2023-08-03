@@ -4,13 +4,13 @@ set(CMAKE_C_REQUIRED True)
 
 set(CMAKE_BUILD_TYPE Debug)
 # set(CMAKE_BUILD_TYPE Release)
-# set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+# set(CMAKE_CXX_FLAGS_RELEASE "--sanitize=address")
 
 project(Sail)
 
 include_directories(include)
 
-# add_compile_options(Sail -nostdlib)
+# add_compile_options(Sail --sanitize=address)
 
 # TODO: The stdc should be compiled as a library and a lot of other things
 # should be done but I'm not good enough at CMake to do them.
@@ -59,6 +59,7 @@ add_executable(Sail-debug
 	src/errors.c
 	src/types.c
 	src/cli.c
+	src/archs.c
 	src/datastructures/vector.c
 	src/datastructures/stack.c
 	src/datastructures/hash_table.c
@@ -67,7 +68,9 @@ add_executable(Sail-debug
 	src/frontend/common/parser.c
 	src/frontend/salmon/preprocessor.c
 	src/evaluate.c
+	src/frontend/salmon/types.c
 	src/frontend/salmon/parser.c
+	src/frontend/salmon/struct.c
 	# src/frontend/c/preprocessor.c
 	# src/frontend/c/parser.c
 	src/intermediate/pass.c
@@ -75,6 +78,7 @@ add_executable(Sail-debug
 	# src/intermediate/optimization/ignorepass.c
 	# src/intermediate/optimization/usescopepass.c
 	src/intermediate/optimization/constantpass.c
+	src/intermediate/warning/assignment.c
 	# src/intermediate/optimization/inequality.c
 	# src/intermediate/optimization/inequalitypass.c
 	src/intermediate/struct.c

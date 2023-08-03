@@ -67,15 +67,29 @@ typedef struct control_flow {
 
 static bin output_bin = { NULLPTR, 0 };
 static reg regs[GENERAL_REGISTER_COUNT];
-static vector variable_priorities = { NULLPTR, 0, 0, 0 };
+static vector variable_priorities = {
+    .contents = NULLPTR,
+    .apparent_size = 0,
+    .size = 0,
+    .type_size = 0,
+};
 
 /*
  * This is the operand stack which just holds the locations of operands and
  * their types.
  */
-static stack value_locations = { NULLPTR };
-static stack values_on_stack = { NULLPTR };
-static stack control_flow_stack = { NULLPTR };
+static stack value_locations = {
+    .top = NULLPTR,
+};
+
+static stack values_on_stack = {
+    .top = NULLPTR,
+};
+
+static stack control_flow_stack = {
+    .top = NULLPTR,
+};
+
 static u32 current_offset = 0;
 
 #define ASSEMBLE_MOVT(condition, destination_reg, _immediate) \
@@ -137,8 +151,7 @@ bin ARMv7_intermediates_into_binary(vector* intermediates)
     ARMv7_clear_registers();
     output_bin.contents.type_size = sizeof(u32);
     for (u32 i=0; i < VECTOR_SIZE(*intermediates); i++) {
-        ARMv7_process_intermediate(*(intermediate*) \
-            vector_at(intermediates,i,0));
+        ARMv7_process_intermediate(VECTOR_AT(intermediates, i, intermediate));
     }
     return output_bin;
 }
@@ -192,8 +205,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
 
         new_control_flow->intermediate = _intermediate.type;
         new_control_flow->offset = current_offset;
-        new_control_flow->instruction = vector_at(&output_bin.contents,\
-            VECTOR_SIZE(output_bin.contents)-1,0);
+        new_control_flow->instruction = VECTOR_END(&output_bin.contents, u32*);
 
         stack_push(&control_flow_stack, new_control_flow);
         break;
@@ -242,7 +254,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         CHECK_MALLOC(_var);
         #if PTRS_ARE_64BIT
         u32 immediate = ARMv7_get_immediate_of_const((u64)_intermediate.ptr);
-        if (immediate != __UINT32_MAX__) {
+        if (immediate != UINT32_MAX) {
             _var->type = IMMEDIATE;
             _var->value_type.ptr = 0;
             _var->first = (i64)_intermediate.ptr;
@@ -250,7 +262,7 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
         }
         #else
         u32 immediate = ARMv7_get_immediate_of_const((u64)_intermediate.ptr);
-        if (immediate != __UINT32_MAX__) {
+        if (immediate != UINT32_MAX) {
             _var->type = IMMEDIATE;
             _var->first = (u32)_intermediate.ptr;
         }
@@ -338,9 +350,9 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
     case CAST:
         _first = stack_top(&value_locations);
         #if PTRS_ARE_64BIT
-        _first->value_type = *((type*)&_intermediate.ptr);
+        _first->value_type = *(type*)&_intermediate.ptr;
         #else
-        _first->value_type = *((type*)_intermediate.ptr);
+        _first->value_type = *(type*)_intermediate.ptr;
         #endif
     case IS_EQUAL:
     case NOT_EQUAL:
@@ -356,8 +368,11 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
          * This is an ugly way of getting the immediate value into a register.
          */
         if (_second->type == IMMEDIATE) {
-            intermediate tmp_intermediate = { CONST, \
-                (void*)(size_t)_second->first };
+            intermediate tmp_intermediate = {
+                .type = CONST,
+                .ptr = (void*)(size_t)_second->first,
+            };
+
             _second->first = ARMv7_get_register_with_value(tmp_intermediate);
         }
 
@@ -408,26 +423,27 @@ static inline void ARMv7_process_intermediate(intermediate _intermediate)
 static inline u32 ARMv7_get_variable_priority(u32 variable_id)
 {
     for (u32 i=0; i < VECTOR_SIZE(variable_priorities); i++)
-        if (*(u32*)vector_at(&variable_priorities,i,false) == variable_id)
+        if (VECTOR_AT(&variable_priorities, i, u32) == variable_id)
             return i;
 
-    return __UINT32_MAX__;
+    return UINT32_MAX;
 }
 
+// TODO: Why is this a static
 /*
- * This returns the 12 bit immediate of the inputted 32 bit constant.
- * _UINT32_MAX__ is returned if the inputted constant is invalid.
+ * This returns the 12 bit immediate of the inputted 32 bit constant. UINT32_MAX
+ * is returned if the inputted constant is invalid.
  */
 static u32 ARMv7_get_immediate_of_const(u32 _const)
 {
     u8 current_rotate = 0;
     for (; current_rotate < 34; current_rotate += 2) {
-        if (ROR(_const, current_rotate) < __UINT8_MAX__)
+        if (ROR(_const, current_rotate) < UINT8_MAX)
             break;
     }
 
     if (current_rotate == 32)
-        return __UINT32_MAX__;
+        return UINT32_MAX;
 
     return ((32-current_rotate & 0x1f) >> 1) << 8 | ROR(_const, current_rotate);
 }
@@ -440,13 +456,13 @@ static inline void ARMv7_put_u32_const_into_register(u32 _const, u8 _reg)
     // TODO: This doesn't clear the register before MOVW
 
     u32 immediate = ARMv7_get_immediate_of_const(_const);
-    if (immediate != __UINT32_MAX__) {
+    if (immediate != UINT32_MAX) {
         ARMv7_add_asm(14 << 28 | 1 << 25 | 13 << 21 | _reg << 16 | _reg << 12 \
         | immediate);
         return;
     }
 
-    if (_const < __UINT16_MAX__) {
+    if (_const < UINT16_MAX) {
         ARMv7_add_asm(ASSEMBLE_MOVW(14, _reg, _const));
         ARMv7_add_asm(ASSEMBLE_MOVT(14, _reg, 0));
         return;
@@ -454,17 +470,17 @@ static inline void ARMv7_put_u32_const_into_register(u32 _const, u8 _reg)
 
     bool is_complement = false;
 
-    u32 immediate_result = __UINT32_MAX__;
+    u32 immediate_result = UINT32_MAX;
 
     // Find out why this if statement is here I added it for some reason then
     // removed it and things broke.
-    if ((_const <  __UINT16_MAX__)) {
+    if ((_const <  UINT16_MAX)) {
         is_complement = true;
         _const = ~_const;
         immediate_result = ARMv7_get_immediate_of_const(_const);
     }
 
-    if (immediate_result == __UINT32_MAX__) {
+    if (immediate_result == UINT32_MAX) {
         ARMv7_add_asm(ASSEMBLE_MOVT(14, _reg, (_const >> 16)));
         ARMv7_add_asm(ASSEMBLE_MOVW(14, _reg, ((_const << 16) >> 16)));
         return;
@@ -516,7 +532,7 @@ static inline void ARMv7_copy_variable(u32 _var_hash, u8 _reg)
 static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
 {
     /* This puts the desired variable into a valid register. */
-    u8 lowest_priority_reg = __UINT8_MAX__;
+    u8 lowest_priority_reg = UINT8_MAX;
     for (u32 i=0; i != GENERAL_REGISTER_COUNT; i++) {
         // if (i == operational_register)
             // continue;
@@ -550,14 +566,14 @@ static inline u8 ARMv7_get_register_with_value(intermediate _intermediate)
             return i;
     }
 
-    if (lowest_priority_reg != __UINT8_MAX__)
+    if (lowest_priority_reg != UINT8_MAX)
         goto ARMv7_ARMv7_get_register_with_value_put_in_register_label;
 
     /*
      * If there is not empty registers we replace the register with the lowest
      * priority variable.
      */
-    u32 lowest_priority = __UINT32_MAX__;
+    u32 lowest_priority = UINT32_MAX;
     for (u32 i=0; i != GENERAL_REGISTER_COUNT; i++) {
         /* Copying shouldn't replace the base reigster. */
         if (regs[i].content.ptr == _intermediate.ptr)
@@ -669,7 +685,11 @@ void ARMv7_generate_struct(intermediate_struct* _struct)
  */
 void ARMv7_clear_registers()
 {
-    intermediate _intermediate = { VAR_RETURN, NULLPTR };
+    intermediate _intermediate = {
+        .type = VAR_RETURN,
+        .ptr = NULLPTR,
+    };
+
     for (u32 i=0; i < GENERAL_REGISTER_COUNT; i++) {
         regs[i].content = _intermediate;
     }

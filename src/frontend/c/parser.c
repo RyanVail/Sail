@@ -9,10 +9,13 @@
 typedef u8 prio;
 
 /* The logically highest value of the "prio" type. */
-#define __PRIO_MAX__ ((prio)-1)
+#define PRIO_MAX ((prio)-1)
 
+// TODO: This has to be thread safe.
 /* Stack of operators. Operators are in the pointers of the links. */
-static stack operator_stack = { NULLPTR };
+static stack operator_stack = {
+    .top = NULLPTR,
+};
 
 prio C_get_operator_prio(operator _operator);
 operator C_get_operator(char* token);
@@ -65,8 +68,8 @@ void C_file_into_intermediates(char* file_name)
     // label:
         // return
 
-    char** current_token = vector_at(&file, 0, false);
-    char** end_token = vector_at(&file, VECTOR_SIZE(file)-1, false);
+    char** current_token = &VECTOR_AT(&file, 0, char*);
+    char** end_token = &VECTOR_END(&file, char*);
 
     for (; current_token <= end_token;) {
         /*
@@ -99,12 +102,12 @@ void C_parse_inital_syntax_tree(char*** _token)
         return;
 }
 
-// TODO: Why does these functions use __INTPTR_MAX__ instead of NULLPTR???
+// TODO: Why does these functions use INTPTR_MAX instead of NULLPTR???
 /*
  * This function reads an operand from the file, adds it to the intermediates,
  * and returns the ending token of the operands so the pointer will have to be
  * incremented once to reach the next token that is not part of the operand.
- * Returns "__INTPTR_MAX__" if nothing was read.
+ * Returns INTPTR_MAX if nothing was read.
  */
 char** C_parse_operand(char** current_token)
 {
@@ -130,7 +133,7 @@ char** C_parse_operand(char** current_token)
 
     // TODO: FUNC CALLS
 
-    return (char**)__INTPTR_MAX__;
+    return (char**)INTPTR_MAX;
 }
 
 /*
@@ -148,7 +151,7 @@ char** (*operand_func)(char**), char** ending_token)
      * to a value over the maximum ptr counter.
      */
     if (ending_token == NULLPTR)
-        ending_token = (char**)__INTPTR_MAX__;
+        ending_token = (char**)INTPTR_MAX;
 
     /*
     - Parse the equation:
@@ -176,7 +179,7 @@ char** (*operand_func)(char**), char** ending_token)
     bool have_operated = false;
 
     /* The operator to be evaluated. */
-    operator to_operate = __OPERATOR_MAX__;
+    operator to_operate = OPERATOR_MAX;
 
     char** current_token;
 
@@ -190,7 +193,7 @@ char** (*operand_func)(char**), char** ending_token)
 
         left_associative = false;
         right_associative = false;
-        to_operate = __OPERATOR_MAX__;
+        to_operate = OPERATOR_MAX;
 
         /* Adding the operators in between parenthesis. */
         if (**current_token == ')') {
@@ -218,7 +221,7 @@ char** (*operand_func)(char**), char** ending_token)
 
         /* Reading the first/left operand. */
         char** left_operand_pos = (*operand_func)(current_token);
-        if (left_operand_pos == (void*)__INTPTR_MAX__) {
+        if (left_operand_pos == (void*)INTPTR_MAX) {
             right_associative = true;
         } else {
             current_token = left_operand_pos;
@@ -238,7 +241,7 @@ char** (*operand_func)(char**), char** ending_token)
 
         /* Reading the operator. */
         operator current_operator = C_get_operator(*current_token);
-        if (current_operator == __OPERATOR_MAX__) {
+        if (current_operator == OPERATOR_MAX) {
             char _char = **current_token;
             if (_char == '\n' || _char == ';' || _char == '\0' \
             || current_token >= ending_token)
@@ -285,7 +288,7 @@ char** (*operand_func)(char**), char** ending_token)
 
         /* Reading the right operand. */
         char** right_operand_pos = (*operand_func)(current_token);
-        if ((void*)right_operand_pos == (void*)__INTPTR_MAX__)
+        if ((void*)right_operand_pos == (void*)INTPTR_MAX)
             left_associative = true;
         else
             current_token = right_operand_pos;
@@ -297,7 +300,7 @@ char** (*operand_func)(char**), char** ending_token)
             send_error("Unexpected operation");
 
         /* Processing the operation. */
-        if (to_operate != __OPERATOR_MAX__)
+        if (to_operate != OPERATOR_MAX)
             (*operator_func)(to_operate);
 
         C_parse_operation_continue_label: ;
@@ -341,13 +344,13 @@ bool* left_associative, bool* right_associative)
 }
 
 /*
- * This either returns the operator of the token or __OPERATOR_MAX__ if it is
- * not a valid operator. Negation and subtraction need to be done separate of
- * this.
+ * This either returns the operator of the token or OPERATOR_MAX if it is not a
+ * valid operator. Negation and subtraction need to be done separate of this.
  */
 operator C_get_operator(char* token)
 {
     #define U16_CHAR(a,b) a | (b << 8)
+
     if (strlen(token) == 1) {
         switch(*token)
         {
@@ -397,7 +400,8 @@ operator C_get_operator(char* token)
             return LESS_THAN_EQUAL;
         }
     }
-    return __OPERATOR_MAX__;
+
+    return OPERATOR_MAX;
     #undef U16_CHAR
 }
 
@@ -435,7 +439,7 @@ prio C_get_operator_prio(operator _operator)
     case MOD:
         return 5;
     default:
-        return __PRIO_MAX__;
+        return PRIO_MAX;
     }
 }
 
@@ -477,4 +481,4 @@ prio C_get_operator_prio(operator _operator)
 //     }
 // }
 
-#undef __PRIO_MAX__
+#undef PRIO_MAX

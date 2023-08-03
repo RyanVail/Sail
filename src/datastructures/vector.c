@@ -29,9 +29,15 @@ void vector_try_to_shrink(vector *_vector)
  */
 vector vector_init(u8 size_of_items, u8 size)
 {
-    // TODO: This should be checking the malloc.
-    vector _vector = \
-        { malloc(size_of_items*(1 << size)), 0, size, size_of_items };
+    vector _vector = {
+        .contents = malloc(size_of_items*(1 << size)),
+        .apparent_size = 0,
+        .size = size,
+        .type_size = size_of_items
+    };
+
+    CHECK_MALLOC(_vector.contents);
+
     return _vector;
 }
 
@@ -76,14 +82,8 @@ void* vector_at(vector *_vector, u32 index, bool real)
             send_error("Vector index is too large");
         }
     }
-    if (index < 0)
-        send_error("Vector index cannot be under 0");
     #endif
-    #ifdef _WIN32
-    return (u8*)_vector->contents + _vector->type_size * index;
-    #else
-    return _vector->contents + _vector->type_size * index;
-    #endif
+    return (u8*)_vector->contents + (size_t)_vector->type_size * (size_t)index;
 }
 
 /*

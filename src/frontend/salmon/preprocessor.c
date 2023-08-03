@@ -31,7 +31,7 @@ tokenize_file_return salmon_preprocess_file(char* file_name)
     START_PROFILING("preprocess file", "compile file");
 
     for (u32 i=0; i < VECTOR_SIZE(_return.token_vector); i++) {
-        if (*(char**)vector_at(&_return.token_vector, i, false) == NULLPTR)
+        if (VECTOR_AT(&_return.token_vector, i, char*) == NULLPTR)
             continue;
 
         replace_C_const_chars(&_return.token_vector, i, special_chars);
